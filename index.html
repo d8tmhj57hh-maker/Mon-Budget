@@ -187,6 +187,8 @@
     <button class="nb" onclick="aller('prog',this)">Programmées</button>
     <button class="nb" onclick="aller('recherche',this)">Recherche</button>
     <button class="nb" onclick="aller('import',this)">Import</button>
+    <button class="nb" onclick="aller('epargne',this)">Épargne</button>
+    <button class="nb" onclick="aller('params',this)">⚙️ Paramètres</button>
   </nav>
   <div class="con">
 
@@ -268,6 +270,39 @@
     </div>
 
   </div>
+
+    <div id="o-epargne" style="display:none">
+      <div class="ban" id="ban-ep"></div>
+      <div id="grille-ep"></div>
+      <button class="bp" style="max-width:480px;margin:16px auto 0;display:block;" onclick="ouvrirSaisieEp()">✏️ Mettre à jour les soldes</button>
+    </div>
+
+    <div id="o-params" style="display:none">
+      <div class="si">
+        <h3>🏦 Livrets d'épargne</h3>
+        <p>Un livret par ligne. Ex : Livret A, LEP, PEL, Assurance-vie…</p>
+        <textarea class="ch3" id="p-livrets" style="width:100%;padding:12px;border:1.5px solid var(--bo);border-radius:11px;font-size:.875rem;font-family:Inter,sans-serif;min-height:100px;outline:none;" placeholder="Livret A&#10;LEP&#10;PEL"></textarea>
+      </div>
+      <div class="si">
+        <h3>💰 Catégories de revenus</h3>
+        <p>Un revenu par ligne. Ex : Salaire, Retraite, Indemnités CPAM…</p>
+        <textarea class="ch3" id="p-rev" style="width:100%;padding:12px;border:1.5px solid var(--bo);border-radius:11px;font-size:.875rem;font-family:Inter,sans-serif;min-height:120px;outline:none;" placeholder="Salaire&#10;Prime d'activité&#10;Vente d'objets"></textarea>
+      </div>
+      <div class="si">
+        <h3>🏠 Dépenses fixes</h3>
+        <p>Un poste par ligne. Prélevements réguliers, loyer, abonnements…</p>
+        <textarea class="ch3" id="p-fixes" style="width:100%;padding:12px;border:1.5px solid var(--bo);border-radius:11px;font-size:.875rem;font-family:Inter,sans-serif;min-height:140px;outline:none;" placeholder="Logement&#10;Transport&#10;Impôts&#10;Abonnements"></textarea>
+      </div>
+      <div class="si">
+        <h3>🛒 Dépenses variables</h3>
+        <p>Un poste par ligne. Dépenses du quotidien, loisirs, imprévus…</p>
+        <textarea class="ch3" id="p-var" style="width:100%;padding:12px;border:1.5px solid var(--bo);border-radius:11px;font-size:.875rem;font-family:Inter,sans-serif;min-height:180px;outline:none;" placeholder="Courses alimentaires&#10;Restaurants&#10;Loisirs"></textarea>
+      </div>
+      <button class="bp" style="max-width:480px;margin:0 auto;display:block;" onclick="sauvegarderParamsUI()">💾 Enregistrer les paramètres</button>
+      <button class="bs2" style="max-width:480px;margin:8px auto 0;display:block;" onclick="reinitParams()">↺ Remettre les valeurs par défaut</button>
+    </div>
+
+  </div>
   <button class="fab" id="fab" onclick="aller('saisie')">+</button>
 </div>
 
@@ -303,19 +338,34 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="ov" id="ov-ep">
+  <div class="modal">
+    <div id="ov-ep-body"></div>
+  </div>
+</div>
+
 <script>
 const CID='438546104293-81acihkhskj9n95u88pupgoasl07dq4t.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/spreadsheets';
 const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const CDEP=['Logement','Transport','Alimentation','Santé','Loisirs / Musique','Bricolage / Maison','Restaurants / Bar','Spectacles / Concerts','Esthétique','Vêtements','Vacances / Voyages','Épargne','Impôts','Abonnements','Entretien voiture','Autres'];
-const CREV=["Salaire","Prime d'activité","Vente","Aide famille","Autres revenus"];
+// Valeurs par défaut — remplacées par les Paramètres du Sheet au chargement
+const DEF_FIXES=['Logement','Transport','Impôts','Abonnements et cotisations'];
+const DEF_VAR=['Courses alimentaires','Loisirs / Musique','Vêtements','Bricolage et jardinage','Restaurants / bars','Spectacles / concerts','Esthétique','Sport','Vacances / voyages','Cadeaux','Frais de santé','Autres divers'];
+const DEF_REV=["Salaire","Prime d'activité","Vente d'objets","Aide famille","Virements internes","Autres revenus"];
+const DEF_LIVRETS=["Livret d'Épargne Populaire","Livret A","Compte Parts Sociales"];
+// Paramètres actifs (chargés depuis Sheets)
+let CDEP_FIXES=[...DEF_FIXES];
+let CDEP_VAR=[...DEF_VAR];
+let CDEP=[...CDEP_FIXES,...CDEP_VAR];
+let CREV=[...DEF_REV];
+let LIVRETS=[...DEF_LIVRETS];
 const ANNEES=['2024','2025','2026','2027','2028'];
 
 // Lire l'ID depuis l'URL (?sid=...) en priorité, sinon localStorage
 const sidUrl=new URLSearchParams(window.location.search).get('sid');
 if(sidUrl)localStorage.setItem('sid',sidUrl);
 
-let E={sid:localStorage.getItem('sid')||'',annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),tx:[],prog:[],pts:[],projets:[],type:'depense',txc:null,tc:null};
+let E={sid:localStorage.getItem('sid')||'',annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),tx:[],prog:[],pts:[],epargne:[],projets:[],type:'depense',txc:null,tc:null};
 
 window.onload=()=>{
   const t=today();
@@ -357,8 +407,10 @@ function validerSheet(){const v=document.getElementById('inp-sid').value.trim();
 
 async function demarrer(){
   await initOnglets();await chargerTout();
-  if(!localStorage.getItem('init_fait')){document.getElementById('ec-conn').style.display='none';document.getElementById('ec-init').style.display='flex';}
-  else lancerApp();
+  if(!localStorage.getItem('init_fait')){
+    document.getElementById('ec-conn').style.display='none';
+    document.getElementById('ec-init').style.display='flex';
+  } else lancerApp();
 }
 
 function validerInit(){
@@ -383,17 +435,54 @@ async function initOnglets(){
   ANNEES.forEach(a=>{if(!ex.includes(`TX_${a}`))req.push({addSheet:{properties:{title:`TX_${a}`}}});});
   if(!ex.includes('Prog'))req.push({addSheet:{properties:{title:'Prog'}}});
   if(!ex.includes('Soldes'))req.push({addSheet:{properties:{title:'Soldes'}}});
+  const req2=[];if(!ex.includes('Epargne'))req2.push({addSheet:{properties:{title:'Epargne'}}});
   if(req.length)await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:req}});
+  if(req2.length){await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:req2}});await ecrire('Epargne!A1:N1',[['Livret','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']]);}  
   for(const a of ANNEES){if(!ex.includes(`TX_${a}`))await ecrire(`TX_${a}!A1:J1`,[['id','date','type','cat','projet','desc','montant','note','pointe','montant_reel']]);}
   if(!ex.includes('Prog'))await ecrire('Prog!A1:F1',[['id','nom','cat','montant','freq','actif']]);
   if(!ex.includes('Soldes'))await ecrire('Soldes!A1:B1',[['date','solde']]);
+  if(!ex.includes('Parametres')){
+    await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:[{addSheet:{properties:{title:'Parametres'}}}]}});
+    await sauvegarderParams();
+  }
+}
+
+async function chargerParams(){
+  try{
+    const rows=await lire('Parametres!A1:B50');
+    if(!rows.length)return;
+    const get=(cle)=>{
+      const row=rows.find(r=>r[0]===cle);
+      return row&&row[1]?row[1].split('|').map(s=>s.trim()).filter(Boolean):null;
+    };
+    const fixes=get('FIXES');const vari=get('VARIABLES');
+    const rev=get('REVENUS');const liv=get('LIVRETS');
+    if(fixes){CDEP_FIXES=fixes;}
+    if(vari){CDEP_VAR=vari;}
+    if(rev){CREV=rev;}
+    if(liv){LIVRETS=liv;}
+    CDEP=[...CDEP_FIXES,...CDEP_VAR];
+    peuplerCat();peuplerImpCats();
+  }catch(e){}
+}
+
+async function sauvegarderParams(){
+  const lignes=[
+    ['FIXES',CDEP_FIXES.join('|')],
+    ['VARIABLES',CDEP_VAR.join('|')],
+    ['REVENUS',CREV.join('|')],
+    ['LIVRETS',LIVRETS.join('|')],
+  ];
+  await ecrire('Parametres!A1:B4',lignes);
 }
 
 async function chargerTout(){
+  await chargerParams();
   E.tx=[];
   for(const a of ANNEES){try{const rows=await lire(`TX_${a}!A2:J`);rows.forEach(r=>{if(r[0])E.tx.push({id:r[0],date:r[1],type:r[2],cat:r[3],projet:r[4],desc:r[5],montant:parseFloat(r[6])||0,note:r[7],pointe:r[8]==='TRUE',montant_reel:parseFloat(r[9])||null,an:a});});}catch(e){}}
   try{const rows=await lire('Prog!A2:F');E.prog=rows.filter(r=>r[0]).map(r=>({id:r[0],nom:r[1],cat:r[2],montant:parseFloat(r[3])||0,freq:r[4],actif:r[5]==='TRUE'}));}catch(e){E.prog=[];}
   try{const rows=await lire('Soldes!A2:B');E.pts=rows.filter(r=>r[0]).map(r=>({date:r[0],solde:parseFloat(r[1])||0}));E.pts.sort((a,b)=>a.date.localeCompare(b.date));}catch(e){E.pts=[];}
+  try{const rows=await lire('Epargne!A2:N');E.epargne=rows.filter(r=>r[0]).map(r=>({livret:r[0],mois:r.slice(1).map(v=>parseFloat(v)||null)}));}catch(ex){E.epargne=[];}
   E.projets=[...new Set(E.tx.filter(t=>t.projet).map(t=>t.projet))];majDL();
 }
 
@@ -409,15 +498,16 @@ function calcSolde(j){
 function soldeAuj(){return calcSolde(today());}
 
 function aller(id,btn){
-  ['vue','mois','saisie','prog','recherche','import'].forEach(o=>{const el=document.getElementById(`o-${o}`);if(el)el.style.display=o===id?'block':'none';});
+  if(id==='params')setTimeout(ouvrirParams,50);
+  ['vue','mois','saisie','prog','recherche','import','epargne','params'].forEach(o=>{const el=document.getElementById(`o-${o}`);if(el)el.style.display=o===id?'block':'none';});
   document.querySelectorAll('.nb').forEach(b=>b.classList.remove('a'));
   if(btn)btn.classList.add('a');
-  else{const map={'vue':0,'mois':1,'saisie':2,'prog':3,'recherche':4,'import':5};const btns=document.querySelectorAll('.nb');if(map[id]!==undefined)btns[map[id]]?.classList.add('a');}
+  else{const map={'vue':0,'mois':1,'saisie':2,'prog':3,'recherche':4,'import':5,'epargne':6,'params':7};const btns=document.querySelectorAll('.nb');if(map[id]!==undefined)btns[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='saisie'?'none':'flex';
 }
 
 function changerAnnee(a){E.annee=a;localStorage.setItem('annee',a);refresh();}
-function refresh(){affVue();affGrille();affBanner();affProg();}
+function refresh(){affVue();affGrille();affBanner();affProg();affEpargne();}
 
 function peuplerSels(){
   const s=document.getElementById('sel-an');if(s)s.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
@@ -445,17 +535,103 @@ async function saveRecal(){
 
 function affVue(){
   document.getElementById('ld-vue').style.display='none';document.getElementById('cv').style.display='block';
-  const txA=E.tx.filter(t=>t.an===E.annee);const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
-  txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
+  const txA=E.tx.filter(t=>t.an===E.annee);
+  const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
+  txA.forEach(t=>{
+    const m=new Date(t.date).getMonth();
+    const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
+    const b=t.type==='revenu'?'rev':'dep';
+    if(!data[m][b][t.cat])data[m][b][t.cat]=0;
+    data[m][b][t.cat]+=v;
+  });
+  const nc=MOIS.length+2;
+  let h=`<thead><tr><th>Catégorie</th>`;
+  MOIS.forEach(m=>h+=`<th>${m.substring(0,3)}</th>`);
+  h+=`<th>Total</th></tr></thead><tbody>`;
+
+  // ── ÉPARGNE ──
+  h+=`<tr class="ch"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
+  let totEpMois=Array(12).fill(0);
+  LIVRETS.forEach(liv=>{
+    const ep=E.epargne.find(e=>e.livret===liv);
+    h+=`<tr><td>${liv}</td>`;
+    let tot=0;let dernier=0;
+    MOIS.forEach((_,i)=>{
+      const v=ep?ep.mois[i]:null;
+      if(v!==null&&v!==undefined){dernier=v;tot=v;}
+      totEpMois[i]+=(v||0);
+      h+=`<td>${v!==null&&v!==undefined?fmt(v):'—'}</td>`;
+    });
+    h+=`<td class="tp">${fmt(dernier)}</td></tr>`;
+  });
+  h+=`<tr class="lt"><td>Total épargne</td>`;
+  let totEpAn=0;
+  MOIS.forEach((_,i)=>{h+=`<td class="tp">${totEpMois[i]?fmt(totEpMois[i]):'—'}</td>`;if(totEpMois[i])totEpAn=totEpMois[i];});
+  h+=`<td class="tp">${fmt(totEpAn)}</td></tr>`;
+
+  // ── REVENUS ──
   const cR=[...new Set(txA.filter(t=>t.type==='revenu').map(t=>t.cat))];
-  const cD=[...new Set(txA.filter(t=>t.type==='depense').map(t=>t.cat))];
-  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach(m=>h+=`<th>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
-  if(cR.length){h+=`<tr class="ch"><td colspan="${MOIS.length+2}">Revenus</td></tr>`;cR.forEach(c=>{let t=0;h+=`<tr><td>${c}</td>`;MOIS.forEach((_,i)=>{const v=data[i].rev[c]||0;t+=v;h+=`<td>${v?fmt(v):'—'}</td>`;});h+=`<td class="tp">${fmt(t)}</td></tr>`;});}
-  h+=`<tr class="lt"><td>Total revenus</td>`;let tRA=0;MOIS.forEach((_,i)=>{const s=Object.values(data[i].rev).reduce((a,b)=>a+b,0);tRA+=s;h+=`<td class="tp">${fmt(s)}</td>`;});h+=`<td class="tp">${fmt(tRA)}</td></tr>`;
-  if(cD.length){h+=`<tr class="ch"><td colspan="${MOIS.length+2}">Dépenses</td></tr>`;cD.forEach(c=>{let t=0;h+=`<tr><td>${c}</td>`;MOIS.forEach((_,i)=>{const v=data[i].dep[c]||0;t+=v;h+=`<td>${v?fmt(v):'—'}</td>`;});h+=`<td class="tn">${fmt(t)}</td></tr>`;});}
-  h+=`<tr class="lt"><td>Total dépenses</td>`;let tDA=0;MOIS.forEach((_,i)=>{const s=Object.values(data[i].dep).reduce((a,b)=>a+b,0);tDA+=s;h+=`<td class="tn">${fmt(s)}</td>`;});h+=`<td class="tn">${fmt(tDA)}</td></tr>`;
-  h+=`<tr class="lr"><td>Reste</td>`;MOIS.forEach((_,i)=>{const r=(Object.values(data[i].rev).reduce((a,b)=>a+b,0))-(Object.values(data[i].dep).reduce((a,b)=>a+b,0));h+=`<td class="${r>=0?'tp':'tn'}">${fmt(r)}</td>`;});
-  const rA=tRA-tDA;h+=`<td class="${rA>=0?'tp':'tn'}">${fmt(rA)}</td></tr></tbody>`;
+  h+=`<tr class="ch"><td colspan="${nc}">Revenus</td></tr>`;
+  cR.forEach(c=>{
+    let tot=0;h+=`<tr><td>${c}</td>`;
+    MOIS.forEach((_,i)=>{const v=data[i].rev[c]||0;tot+=v;h+=`<td>${v?fmt(v):'—'}</td>`;});
+    h+=`<td class="tp">${fmt(tot)}</td></tr>`;
+  });
+  let tRA=0;
+  h+=`<tr class="lt"><td>Total revenus</td>`;
+  MOIS.forEach((_,i)=>{const s=Object.values(data[i].rev).reduce((a,b)=>a+b,0);tRA+=s;h+=`<td class="tp">${fmt(s)}</td>`;});
+  h+=`<td class="tp">${fmt(tRA)}</td></tr>`;
+
+  // ── DÉPENSES FIXES ──
+  const cDF=CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c));
+  if(cDF.length){
+    h+=`<tr class="ch"><td colspan="${nc}">Dépenses fixes</td></tr>`;
+    cDF.forEach(c=>{
+      let tot=0;h+=`<tr><td>${c}</td>`;
+      MOIS.forEach((_,i)=>{const v=data[i].dep[c]||0;tot+=v;h+=`<td>${v?fmt(v):'—'}</td>`;});
+      h+=`<td class="tn">${fmt(tot)}</td></tr>`;
+    });
+  }
+  let tDF=0;
+  h+=`<tr class="lt"><td>Total fixes</td>`;
+  MOIS.forEach((_,i)=>{const s=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||0),0);tDF+=s;h+=`<td class="tn">${fmt(s)}</td>`;});
+  h+=`<td class="tn">${fmt(tDF)}</td></tr>`;
+
+  // RESTE pour dépenses variables
+  h+=`<tr class="lr"><td>Reste pour variables</td>`;
+  let resteFixeMois=[];
+  MOIS.forEach((_,i)=>{
+    const r=(Object.values(data[i].rev).reduce((a,b)=>a+b,0))-CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||0),0);
+    resteFixeMois.push(r);h+=`<td class="${r>=0?'tp':'tn'}">${fmt(r)}</td>`;
+  });
+  h+=`<td></td></tr>`;
+
+  // ── DÉPENSES VARIABLES ──
+  const cDV=CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c));
+  if(cDV.length){
+    h+=`<tr class="ch"><td colspan="${nc}">Dépenses variables</td></tr>`;
+    cDV.forEach(c=>{
+      let tot=0;h+=`<tr><td>${c}</td>`;
+      MOIS.forEach((_,i)=>{const v=data[i].dep[c]||0;tot+=v;h+=`<td>${v?fmt(v):'—'}</td>`;});
+      h+=`<td class="tn">${fmt(tot)}</td></tr>`;
+    });
+  }
+  let tDV=0;
+  h+=`<tr class="lt"><td>Total variables</td>`;
+  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmt(s)}</td>`;});
+  h+=`<td class="tn">${fmt(tDV)}</td></tr>`;
+
+  // ── RESTE AU TOTAL ──
+  h+=`<tr class="lr" style="background:rgba(201,168,76,.08)!important"><td><strong>Reste au total</strong></td>`;
+  let resteAn=0;
+  MOIS.forEach((_,i)=>{
+    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0);
+    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0);
+    const r=rev-dep;resteAn+=r;
+    h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmt(r)}</strong></td>`;
+  });
+  h+=`<td class="${resteAn>=0?'tp':'tn'}"><strong>${fmt(resteAn)}</strong></td></tr>`;
+  h+=`</tbody>`;
   document.getElementById('ta').innerHTML=h;
 }
 
@@ -622,6 +798,114 @@ async function importerMois(){
   for(const inp of inputs){const v=parseFloat(inp.value);if(!v||v<=0)continue;const c=inp.dataset.cat;const t=inp.dataset.type;const id=`imp_${Date.now()}_${nb}`;await ajouter(`TX_${an}`,[id,d,t,c,'',`Import ${MOIS[mi]} ${an}`,v,'','TRUE',v]);E.tx.push({id,date:d,type:t,cat:c,projet:'',desc:`Import ${MOIS[mi]} ${an}`,montant:v,note:'',pointe:true,montant_reel:v,an});nb++;inp.value='';}
   if(nb>0){refresh();toast(`${nb} catégorie(s) importée(s) ✓`);}else toast('Aucun montant saisi');
 }
+
+function ouvrirParams(){
+  document.getElementById('p-livrets').value=LIVRETS.join('\n');
+  document.getElementById('p-rev').value=CREV.join('\n');
+  document.getElementById('p-fixes').value=CDEP_FIXES.join('\n');
+  document.getElementById('p-var').value=CDEP_VAR.join('\n');
+}
+
+async function sauvegarderParamsUI(){
+  const parse=id=>document.getElementById(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
+  const liv=parse('p-livrets');const rev=parse('p-rev');
+  const fixes=parse('p-fixes');const vari=parse('p-var');
+  if(!liv.length||!rev.length||!fixes.length||!vari.length){toast('Remplissez toutes les sections');return;}
+  LIVRETS=liv;CREV=rev;CDEP_FIXES=fixes;CDEP_VAR=vari;CDEP=[...fixes,...vari];
+  await sauvegarderParams();
+  peuplerCat();peuplerImpCats();refresh();
+  toast('Paramètres enregistrés ✓');
+}
+
+function reinitParams(){
+  CDEP_FIXES=[...DEF_FIXES];CDEP_VAR=[...DEF_VAR];CREV=[...DEF_REV];LIVRETS=[...DEF_LIVRETS];
+  CDEP=[...CDEP_FIXES,...CDEP_VAR];
+  ouvrirParams();toast('Valeurs par défaut restaurées');
+}
+
+function affEpargne(){
+  const el=document.getElementById('ban-ep');const gel=document.getElementById('grille-ep');
+  if(!el||!gel)return;
+  // Calcul total épargne derniers soldes connus
+  let totEp=0;
+  LIVRETS.forEach(liv=>{
+    const ep=E.epargne.find(e=>e.livret===liv);
+    if(ep){const vals=ep.mois.filter(v=>v!==null&&v!==undefined);if(vals.length)totEp+=vals[vals.length-1];}
+  });
+  el.innerHTML=`<div class="lb">Total épargne</div><div class="gr">${fmt(totEp)}</div><div class="su">Derniers soldes connus</div>`;
+  // Grille livrets
+  let h='';
+  LIVRETS.forEach(liv=>{
+    const ep=E.epargne.find(e=>e.livret===liv);
+    const vals=ep?ep.mois.filter(v=>v!==null&&v!==undefined):[];
+    const dernier=vals.length?vals[vals.length-1]:null;
+    h+=`<div class="si" style="margin-bottom:12px"><h3>${liv}</h3>`;
+    if(ep&&ep.mois.some(v=>v!==null&&v!==undefined)){
+      h+=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;">`;
+      MOIS.forEach((m,i)=>{
+        const v=ep.mois[i];
+        h+=`<div style="text-align:center;padding:6px;background:${v?'var(--vec)':'rgba(0,0,0,.03)'};border-radius:8px;">
+          <div style="font-size:.65rem;color:var(--txl);text-transform:uppercase;">${m.substring(0,3)}</div>
+          <div style="font-weight:600;font-size:.82rem;color:${v?'var(--ve)':'var(--txl)'};">${v?fmt(v):'—'}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    } else {
+      h+=`<p style="font-size:.8rem;color:var(--txl);margin-top:8px;">Aucun solde saisi</p>`;
+    }
+    h+=`</div>`;
+  });
+  gel.innerHTML=h;
+}
+
+async function ouvrirSaisieEp(){
+  const moisActuel=new Date().getMonth();
+  const annee=E.annee;
+  // Overlay simple avec les 3 livrets
+  const vals=LIVRETS.map(liv=>{
+    const ep=E.epargne.find(e=>e.livret===liv);
+    const v=ep?ep.mois[moisActuel]:null;
+    return {liv,v};
+  });
+  // Construire un overlay dynamique
+  let html=`<div class="mh"></div><button class="bf" onclick="fOv('ov-ep')">✕</button>
+    <h2>Soldes épargne — ${MOIS[moisActuel]} ${annee}</h2>
+    <p style="font-size:.82rem;color:var(--txl);margin-bottom:16px;">Saisissez les soldes actuels de vos livrets depuis votre appli bancaire.</p>`;
+  vals.forEach(({liv,v},i)=>{
+    html+=`<div class="ch3 cm3"><label>${liv}</label><input type="number" id="ep-inp-${i}" step="0.01" inputmode="decimal" value="${v||''}" placeholder="Ex : 8235.26" /></div>`;
+  });
+  html+=`<button class="bp" onclick="saveEp(${moisActuel})">Enregistrer</button><button class="bs2" onclick="fOv('ov-ep')">Annuler</button>`;
+  document.getElementById('ov-ep-body').innerHTML=html;
+  document.getElementById('ov-ep').classList.add('v');
+}
+
+async function saveEp(mi){
+  const an=E.annee;
+  // S'assurer que l'onglet Epargne existe et est structuré
+  try{
+    const rows=await lire('Epargne!A2:N');
+    for(let i=0;i<LIVRETS.length;i++){
+      const liv=LIVRETS[i];
+      const val=parseFloat(document.getElementById(`ep-inp-${i}`).value);
+      if(isNaN(val))continue;
+      const idx=rows.findIndex(r=>r[0]===liv);
+      if(idx>=0){
+        // Mettre à jour la colonne du mois (col B=0 → col N=12, mois 0=col B=index 1)
+        await ecrire(`Epargne!${colLetter(mi+1)}${idx+2}`,[[val]]);
+        if(!E.epargne.find(e=>e.livret===liv))E.epargne.push({livret:liv,mois:Array(12).fill(null)});
+        E.epargne.find(e=>e.livret===liv).mois[mi]=val;
+      } else {
+        // Nouvelle ligne
+        const ligne=Array(13).fill('');ligne[0]=liv;ligne[mi+1]=val;
+        await ajouter('Epargne',ligne);
+        E.epargne.push({livret:liv,mois:Array(12).fill(null).map((_,j)=>j===mi?val:null)});
+      }
+    }
+    fOv('ov-ep');affEpargne();affVue();toast('Soldes épargne enregistrés ✓');
+  }catch(e){toast('Erreur enregistrement');}
+}
+
+function colLetter(n){const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';let r='';let c=n;while(c>0){r=letters[(c-1)%26]+r;c=Math.floor((c-1)/26);}return r;}
 
 async function recalerSolde(){
   const s=parseFloat(document.getElementById('rec-s').value);const d=document.getElementById('rec-d').value;
