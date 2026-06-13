@@ -393,7 +393,7 @@
     <div class="ch3"><label>Montants par mois (€)</label>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px" id="prog-mois-sel"></div>
     </div>
-    <button class="bp" onclick="saveProg()">Enregistrer</button>
+    <button class="bp" id="btn-save-prog" onclick="saveProg()">Enregistrer</button>
     <button class="bs2" onclick="fOv('ov-prog')">Annuler</button>
   </div>
 </div>
@@ -953,6 +953,8 @@ function ouvrirAjoutProg(){
   document.getElementById('ov-prog-ti').textContent='Nouvel élément programmé';
   document.getElementById('prog-nom').value='';
   document.getElementById('prog-id-edit').value='';
+  const mp=document.getElementById('msg-prog');if(mp)mp.remove();
+  document.getElementById('btn-save-prog').disabled=false;
   PROG_TYPE='depense';
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if(b.textContent.includes('Dépense'))b.classList.add('a');});
   peuplerProgCat();
@@ -962,9 +964,11 @@ function ouvrirAjoutProg(){
 
 function ouvrirEditProg(pid){
   const p=E.prog.find(x=>x.id===pid);if(!p)return;
-  document.getElementById('ov-prog-ti').textContent='Modifier';
+  document.getElementById('ov-prog-ti').textContent='Modifier — '+p.nom;
   document.getElementById('prog-nom').value=p.nom;
   document.getElementById('prog-id-edit').value=pid;
+  const mp=document.getElementById('msg-prog');if(mp)mp.remove();
+  document.getElementById('btn-save-prog').disabled=false;
   PROG_TYPE=p.type;
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if((p.type==='revenu'&&b.textContent.includes('Revenu'))||(p.type==='depense'&&b.textContent.includes('Dépense')))b.classList.add('a');});
   peuplerProgCat();
@@ -987,40 +991,75 @@ async function saveProg(){
   const nom=document.getElementById('prog-nom').value.trim();
   const cat=document.getElementById('prog-cat').value;
   const pid=document.getElementById('prog-id-edit').value;
-  if(!nom){toast('Entrez un nom');return;}
-  // Lire les montants par mois
-  const montsMois=MOIS.map((_,i)=>{const el=document.getElementById('pmois'+i);const v=el?parseFloat(el.value):NaN;return isNaN(v)||v<=0?null:v;});
-  const aDesMonts=montsMois.some(v=>v!==null);
-  if(!aDesMonts){toast('Saisissez au moins un montant');return;}
+  if(!nom){affMsgProg('Entrez un nom','er');return;}
+
+  // Lire depuis le tableau en mémoire (plus fiable que getElementById sur mobile)
+  const montsMois=E.montsMoisEnCours.map(v=>v&&v>0?v:null);
+  const nbMois=montsMois.filter(v=>v!==null).length;
+  if(!nbMois){affMsgProg('Saisissez au moins un montant','er');return;}
+
+  // Afficher spinner
+  affMsgProg('Enregistrement en cours…','info');
+  document.getElementById('btn-save-prog').disabled=true;
+
   try{
-    if(pid){
-      // Modification : mettre à jour en mémoire + supprimer anciennes lignes Sheets pour cette année puis réinsérer
-      const p=E.prog.find(x=>x.id===pid);
-      if(p){p.nom=nom;p.cat=cat;p.type=PROG_TYPE;if(!p.montantsMois[E.annee])p.montantsMois[E.annee]=Array(12).fill(null);p.montantsMois[E.annee]=montsMois;}
-      // Supprimer lignes existantes pour cet id+annee dans Sheets
-      const rows=await lire('Prog!A2:H');
-      for(let i=rows.length-1;i>=0;i--){
-        if(rows[i][0]&&rows[i][0].startsWith(pid)&&rows[i][4]===E.annee){
-          await ecrire(`Prog!A${i+2}:H${i+2}`,[['','','','','','','','']]);
-        }
-      }
-      // Réinsérer
-      for(let mi=0;mi<12;mi++){if(montsMois[mi]===null)continue;const lid=`${pid}_m${mi}`;await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,montsMois[mi],'TRUE']);}
-      toast('Modifié ✓');
+    const id=pid||`prog_${Date.now()}`;
+
+    // Mettre à jour en mémoire
+    let p=E.prog.find(x=>x.id===id);
+    if(p){
+      p.nom=nom;p.cat=cat;p.type=PROG_TYPE;
+      if(!p.montantsMois[E.annee])p.montantsMois[E.annee]=Array(12).fill(null);
+      p.montantsMois[E.annee]=montsMois;
     } else {
-      // Nouveau
-      const id=`prog_${Date.now()}`;
-      const montsMoisObj={};montsMoisObj[E.annee]=montsMois;
-      E.prog.push({id,nom,type:PROG_TYPE,cat,actif:true,montantsMois:montsMoisObj});
-      for(let mi=0;mi<12;mi++){if(montsMois[mi]===null)continue;const lid=`${id}_m${mi}`;await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,montsMois[mi],'TRUE']);}
-      toast('Ajouté ✓');
+      const obj={};obj[E.annee]=montsMois;
+      p={id,nom,type:PROG_TYPE,cat,actif:true,montantsMois:obj};
+      E.prog.push(p);
     }
-    fOv('ov-prog');affProg();affBudget();
-    // Toast de confirmation avec résumé
-    const nbMois=montsMois.filter(v=>v!==null).length;
+
+    // Stratégie SAFE : lire toutes les lignes existantes, 
+    // mettre à jour celles qui existent, ajouter celles qui manquent
+    // JAMAIS de suppression
+    const rows=await lire('Prog!A2:H');
+    for(let mi=0;mi<12;mi++){
+      const lid=`${id}_m${mi}`;
+      const val=montsMois[mi];
+      const idxExist=rows.findIndex(r=>r[0]===lid);
+      if(idxExist>=0){
+        // Mettre à jour la ligne existante
+        if(val!==null){
+          await ecrire(`Prog!A${idxExist+2}:H${idxExist+2}`,[[lid,nom,PROG_TYPE,cat,E.annee,mi,val,'TRUE']]);
+        } else {
+          // Effacer seulement cette ligne précise (montant nul = pas prévu ce mois)
+          await ecrire(`Prog!A${idxExist+2}:H${idxExist+2}`,[['','','','','','','','']]);
+        }
+      } else if(val!==null){
+        // Ajouter nouvelle ligne
+        await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,val,'TRUE']);
+      }
+    }
+
     const total=montsMois.filter(v=>v!==null).reduce((a,b)=>a+b,0);
-    toast((pid?'Modifié':'Ajouté')+' : '+nom+' — '+nbMois+' mois, total '+fmt(total));
-  }catch(e){console.error(e);toast('Erreur enregistrement');}
+    affMsgProg('✅ Enregistré : '+nom+' — '+nbMois+' mois · total '+fmt(total),'ok');
+    document.getElementById('btn-save-prog').disabled=false;
+    affProg();affBudget();
+    // Fermer le modal après 2 secondes
+    setTimeout(()=>fOv('ov-prog'),2000);
+
+  }catch(e){
+    console.error(e);
+    affMsgProg('❌ Erreur — réessayez','er');
+    document.getElementById('btn-save-prog').disabled=false;
+  }
+}
+
+function affMsgProg(msg,type){
+  let el=document.getElementById('msg-prog');
+  if(!el){el=document.createElement('div');el.id='msg-prog';el.style.cssText='border-radius:10px;padding:10px 13px;font-size:.82rem;margin-bottom:10px;font-weight:500;';document.getElementById('btn-save-prog').insertAdjacentElement('beforebegin',el);}
+  el.textContent=msg;
+  el.style.background=type==='ok'?'var(--vec)':type==='er'?'var(--roc)':'rgba(26,47,74,.07)';
+  el.style.color=type==='ok'?'var(--ve)':type==='er'?'var(--ro)':'var(--txl)';
+  el.style.border=type==='ok'?'1px solid #b8e4d0':type==='er'?'1px solid #f5c6c3':'1px solid var(--bo)';
 }
 
 async function togProg(id){
