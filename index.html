@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Mon Budget</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Mon Budget" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bleu: #1a2f4a;
+      --bleu-clair: #2c4a6e;
+      --or: #c9a84c;
+      --or-clair: #f0d98a;
+      --fond: #f7f5f0;
+      --blanc: #ffffff;
+      --texte: #1a2f4a;
+      --texte-leger: #6b7a8d;
+      --vert: #2d7a5f;
+      --vert-clair: #e8f5ef;
+      --rouge: #c0392b;
+      --rouge-clair: #fdecea;
+      --orange: #e07b39;
+      --orange-clair: #fef3eb;
+      --bordure: #e2ddd6;
+      --ombre: 0 2px 12px rgba(26,47,74,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--fond);
+      color: var(--texte);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── CONNEXION ── */
+    #ecran-connexion {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      background: linear-gradient(160deg, var(--bleu) 0%, var(--bleu-clair) 100%);
+    }
+    #ecran-connexion h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2.4rem;
+      color: var(--blanc);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    #ecran-connexion p {
+      color: rgba(255,255,255,0.65);
+      font-size: 0.9rem;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+    .btn-google {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--blanc);
+      color: var(--texte);
+      border: none;
+      border-radius: 14px;
+      padding: 16px 28px;
+      font-size: 1rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn-google:active { transform: scale(0.97); }
+    .btn-google svg { width: 22px; height: 22px; flex-shrink: 0; }
+    .champ-sheet {
+      margin-top: 24px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .champ-sheet label {
+      display: block;
+      color: rgba(255,255,255,0.75);
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .champ-sheet input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
+      color: var(--blanc);
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+    }
+    .champ-sheet input::placeholder { color: rgba(255,255,255,0.4); }
+    .btn-valider {
+      margin-top: 12px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: var(--or);
+      color: var(--bleu);
+      font-weight: 600;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-valider:active { background: var(--or-clair); }
+
+    /* ── APP PRINCIPALE ── */
+    #app { display: none; min-height: 100vh; flex-direction: column; }
+
+    /* Header */
+    .header {
+      background: var(--bleu);
+      padding: 52px 20px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 {
+      font-family: 'DM Serif Display', serif;
+      color: var(--blanc);
+      font-size: 1.5rem;
+    }
+    .header-droite { display: flex; align-items: center; gap: 12px; }
+    .select-annee {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: var(--blanc);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.9rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      cursor: pointer;
+    }
+    .select-annee option { background: var(--bleu); }
+    .btn-icone {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 8px;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      color: var(--blanc);
+      font-size: 1.1rem;
+      transition: background 0.15s;
+    }
+    .btn-icone:active { background: rgba(255,255,255,0.25); }
+
+    /* Nav */
+    .nav {
+      display: flex;
+      background: var(--blanc);
+      border-bottom: 1px solid var(--bordure);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .nav::-webkit-scrollbar { display: none; }
+    .nav-btn {
+      flex: 0 0 auto;
+      padding: 14px 20px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--texte-leger);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .nav-btn.actif {
+      color: var(--bleu);
+      border-bottom-color: var(--or);
+    }
+
+    /* Contenu */
+    .contenu { flex: 1; overflow-y: auto; padding: 20px 16px 100px; }
+
+    /* Carte solde */
+    .carte-solde {
+      background: linear-gradient(135deg, var(--bleu) 0%, var(--bleu-clair) 100%);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 20px;
+      color: var(--blanc);
+      box-shadow: var(--ombre);
+    }
+    .carte-solde .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin-bottom: 6px; }
+    .carte-solde .montant { font-family: 'DM Serif Display', serif; font-size: 2.2rem; margin-bottom: 4px; }
+    .carte-solde .sous-label { font-size: 0.8rem; opacity: 0.6; }
+    .carte-solde .ligne-soldes {
+      display: flex; gap: 16px; margin-top: 16px; padding-top: 16px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+    }
+    .carte-solde .mini-solde { flex: 1; }
+    .carte-solde .mini-solde .label { margin-bottom: 4px; }
+    .carte-solde .mini-solde .val { font-size: 1.1rem; font-weight: 600; }
+    .val.positif { color: #7eefc4; }
+    .val.negatif { color: #ff8a8a; }
+    .val.neutre { color: rgba(255,255,255,0.85); }
+
+    /* Mois grid */
+    .titre-section {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--texte-leger);
+      margin-bottom: 12px;
+      margin-top: 4px;
+    }
+    .grille-mois {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .carte-mois {
+      background: var(--blanc);
+      border-radius: 14px;
+      padding: 14px 12px;
+      box-shadow: var(--ombre);
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.1s;
+      position: relative;
+    }
+    .carte-mois:active { transform: scale(0.97); }
+    .carte-mois.selectionne { border-color: var(--or); }
+    .carte-mois .nom-mois { font-size: 0.75rem; font-weight: 600; color: var(--texte-leger); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .carte-mois .reste-mois { font-size: 1rem; font-weight: 600; }
+    .carte-mois .reste-mois.positif { color: var(--vert); }
+    .carte-mois .reste-mois.negatif { color: var(--rouge); }
+    .carte-mois .reste-mois.neutre { color: var(--texte-leger); }
+    .carte-mois .barre {
+      height: 3px; border-radius: 2px; margin-top: 8px;
+      background: var(--bordure);
+      overflow: hidden;
+    }
+    .carte-mois .barre-remplie { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .badge-mois {
+      position: absolute; top: 8px; right: 8px;
+      width: 8px; height: 8px; border-radius: 50%;
+    }
+    .badge-mois.en-cours { background: var(--or); }
+
+    /* Détail mois */
+    .detail-mois { display: none; }
+    .detail-mois.visible { display: block; }
+    .btn-retour {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: none;
+      color: var(--bleu); font-size: 0.9rem; font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer; margin-bottom: 16px; padding: 4px 0;
+    }
+    .section-depenses { margin-bottom: 20px; }
+    .titre-categorie {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .titre-categorie span { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--texte-leger); font-weight: 600; }
+    .titre-categorie .total-cat { font-weight: 600; color: var(--texte); font-size: 0.9rem; }
+
+    /* Ligne dépense */
+    .ligne-depense {
+      background: var(--blanc);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--ombre);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .ligne-depense:active { transform: scale(0.98); }
+    .ligne-depense.pointee { opacity: 0.65; }
+    .icone-statut {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 0.9rem;
+    }
+    .icone-statut.fixe-non-pointe { background: var(--orange-clair); color: var(--orange); font-style: italic; }
+    .icone-statut.fixe-pointe { background: var(--vert-clair); color: var(--vert); }
+    .icone-statut.variable { background: #eef2ff; color: #5b6dcd; }
+    .info-depense { flex: 1; min-width: 0; }
+    .info-depense .nom { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .info-depense .nom.italique { font-style: italic; color: var(--texte-leger); }
+    .info-depense .detail { font-size: 0.75rem; color: var(--texte-leger); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .montant-depense { font-weight: 600; font-size: 0.95rem; flex-shrink: 0; }
+    .montant-depense.negatif { color: var(--rouge); }
+    .montant-depense.positif { color: var(--vert); }
+
+    /* Barre résumé mois */
+    .resume-mois {
+      background: var(--blanc);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: var(--ombre);
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 8px;
+      text-align: center;
+    }
+    .resume-mois .item .val { font-weight: 600; font-size: 1rem; }
+    .resume-mois .item .lab { font-size: 0.7rem; color: var(--texte-leger); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+
+    /* Saisie */
+    .formulaire { max-width: 480px; margin: 0 auto; }
+    .champ { margin-bottom: 16px; }
+    .champ label { display: block; font-size: 0.8rem; font-weight: 500; color: var(--texte-leger); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .champ input, .champ select, .champ textarea {
+      width: 100%; padding: 14px 16px;
+      border: 1.5px solid var(--bordure);
+      border-radius: 12px;
+      font-size: 0.95rem;
+      font-family: 'Inter', sans-serif;
+      color: var(--texte);
+      background: var(--blanc);
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+    }
+    .champ input:focus, .champ select:focus, .champ textarea:focus { border-color: var(--bleu); }
+    .champ textarea { resize: vertical; min-height: 80px; }
+    .champ-montant { position: relative; }
+    .champ-montant input { padding-right: 36px; }
+    .champ-montant::after { content: '€'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--texte-leger); font-size: 0.9rem; pointer-events: none; }
+    .grille-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-principal {
+      width: 100%; padding: 16px;
+      background: var(--bleu);
+      color: var(--blanc);
+      border: none; border-radius: 14px;
+      font-size: 1rem; font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer; margin-top: 8px;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-principal:active { transform: scale(0.98); background: var(--bleu-clair); }
+    .btn-secondaire {
+      width: 100%; padding: 14px;
+      background: var(--fond);
+      color: var(--texte);
+      border: 1.5px solid var(--bordure);
+      border-radius: 14px;
+      font-size: 0.95rem; font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer; margin-top: 8px;
+      transition: background 0.15s;
+    }
+    .btn-secondaire:active { background: var(--bordure); }
+    .tabs-type {
+      display: flex; gap: 8px; margin-bottom: 20px;
+    }
+    .tab-type {
+      flex: 1; padding: 12px;
+      border: 1.5px solid var(--bordure);
+      border-radius: 12px;
+      background: var(--blanc);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; text-align: center;
+      transition: all 0.15s;
+      color: var(--texte-leger);
+    }
+    .tab-type.actif {
+      background: var(--bleu); color: var(--blanc);
+      border-color: var(--bleu);
+    }
+
+    /* Programmées */
+    .liste-programmees { max-width: 480px; margin: 0 auto; }
+    .carte-programmee {
+      background: var(--blanc);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--ombre);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .toggle-auto {
+      width: 44px; height: 26px;
+      background: var(--bordure);
+      border-radius: 13px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0; border: none;
+    }
+    .toggle-auto.actif { background: var(--vert); }
+    .toggle-auto::after {
+      content: '';
+      position: absolute;
+      width: 20px; height: 20px;
+      background: var(--blanc);
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .toggle-auto.actif::after { transform: translateX(18px); }
+    .info-programmee { flex: 1; }
+    .info-programmee .nom { font-weight: 500; font-size: 0.9rem; }
+    .info-programmee .detail { font-size: 0.75rem; color: var(--texte-leger); margin-top: 2px; }
+    .montant-prog { font-weight: 600; font-size: 0.95rem; color: var(--rouge); flex-shrink: 0; }
+
+    /* Paramètres */
+    .section-param {
+      background: var(--blanc);
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      box-shadow: var(--ombre);
+    }
+    .section-param h3 {
+      padding: 16px 16px 12px;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--texte-leger);
+      border-bottom: 1px solid var(--bordure);
+    }
+    .item-param {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--bordure);
+      cursor: pointer;
+    }
+    .item-param:last-child { border-bottom: none; }
+    .item-param .nom { font-size: 0.9rem; font-weight: 500; }
+    .item-param .val { font-size: 0.85rem; color: var(--texte-leger); }
+    .item-param .chevron { color: var(--texte-leger); font-size: 0.8rem; }
+
+    /* Fab */
+    .fab {
+      position: fixed;
+      bottom: 24px; right: 20px;
+      width: 56px; height: 56px;
+      background: var(--or);
+      border: none; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; color: var(--bleu);
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(201,168,76,0.45);
+      transition: transform 0.15s;
+      z-index: 100;
+    }
+    .fab:active { transform: scale(0.93); }
+
+    /* Modal */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(26,47,74,0.5);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+    }
+    .overlay.visible { display: flex; }
+    .modal {
+      background: var(--blanc);
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 40px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      animation: glisser 0.25s ease;
+    }
+    @keyframes glisser { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--bordure);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 600; margin-bottom: 20px; }
+    .modal .btn-fermer {
+      float: right; background: none; border: none;
+      font-size: 1.4rem; cursor: pointer; color: var(--texte-leger);
+      margin-top: -4px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      background: var(--bleu); color: var(--blanc);
+      padding: 12px 20px; border-radius: 12px;
+      font-size: 0.875rem; font-weight: 500;
+      z-index: 300; opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .toast.visible { opacity: 1; }
+
+    /* Loader */
+    .loader {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 200px; gap: 16px;
+      color: var(--texte-leger); font-size: 0.9rem;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--bordure);
+      border-top-color: var(--bleu);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Erreur */
+    .erreur {
+      background: var(--rouge-clair);
+      border: 1px solid #f5c6c3;
+      border-radius: 12px;
+      padding: 14px 16px;
+      color: var(--rouge);
+      font-size: 0.875rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .erreur.visible { display: block; }
+
+    /* Vue annuelle */
+    .tableau-annuel { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .tableau-annuel table {
+      width: 100%; min-width: 700px;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .tableau-annuel th {
+      background: var(--bleu);
+      color: var(--blanc);
+      padding: 8px 10px;
+      text-align: right;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .tableau-annuel th:first-child { text-align: left; border-radius: 8px 0 0 0; min-width: 140px; }
+    .tableau-annuel th:last-child { border-radius: 0 8px 0 0; }
+    .tableau-annuel td {
+      padding: 7px 10px;
+      text-align: right;
+      border-bottom: 1px solid var(--bordure);
+    }
+    .tableau-annuel td:first-child { text-align: left; font-weight: 500; }
+    .tableau-annuel tr:nth-child(even) td { background: rgba(26,47,74,0.02); }
+    .tableau-annuel tr.ligne-total td { font-weight: 700; background: rgba(26,47,74,0.06); }
+    .tableau-annuel tr.ligne-reste td { font-weight: 700; }
+    .tableau-annuel .positif { color: var(--vert); }
+    .tableau-annuel .negatif { color: var(--rouge); }
+    .tableau-annuel .categorie-header td {
+      background: rgba(26,47,74,0.06);
+      font-weight: 600;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--texte-leger);
+      padding: 6px 10px;
+    }
+
+    @media (max-width: 380px) {
+      .grille-mois { grid-template-columns: repeat(2,1fr); }
+      .carte-solde .montant { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ÉCRAN CONNEXION -->
+<div id="ecran-connexion">
+  <h1>Mon Budget</h1>
+  <p>Gérez vos finances simplement</p>
+  <button class="btn-google" onclick="connecterGoogle()">
+    <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Se connecter avec Google
+  </button>
+  <div class="champ-sheet">
+    <label>ID de votre Google Sheet</label>
+    <input type="text" id="input-sheet-id" placeholder="1-4h0Rzbeu8y..." />
+    <button class="btn-valider" onclick="validerSheetId()">Utiliser ce fichier</button>
+  </div>
+</div>
+
+<!-- APP PRINCIPALE -->
+<div id="app">
+  <div class="header">
+    <h1>Mon Budget</h1>
+    <div class="header-droite">
+      <select class="select-annee" id="select-annee" onchange="changerAnnee(this.value)">
+        <option>2026</option>
+        <option>2027</option>
+        <option>2028</option>
+      </select>
+      <button class="btn-icone" onclick="ouvrirParam()" title="Paramètres">⚙️</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-btn actif" onclick="afficherOnglet('vue', this)">Vue annuelle</button>
+    <button class="nav-btn" onclick="afficherOnglet('mois', this)">Par mois</button>
+    <button class="nav-btn" onclick="afficherOnglet('saisie', this)">Saisir</button>
+    <button class="nav-btn" onclick="afficherOnglet('programmees', this)">Programmées</button>
+  </nav>
+
+  <div class="contenu">
+
+    <!-- VUE ANNUELLE -->
+    <div id="onglet-vue">
+      <div class="loader" id="loader-vue"><div class="spinner"></div><span>Chargement…</span></div>
+      <div class="tableau-annuel" id="tableau-annuel" style="display:none"></div>
+    </div>
+
+    <!-- PAR MOIS -->
+    <div id="onglet-mois" style="display:none">
+      <!-- Vue grille -->
+      <div id="grille-mois-vue">
+        <div class="carte-solde">
+          <div class="label">Solde début d'année estimé</div>
+          <div class="montant" id="solde-annuel">—</div>
+          <div class="ligne-soldes">
+            <div class="mini-solde">
+              <div class="label">Revenus annuels</div>
+              <div class="val positif" id="total-revenus-an">—</div>
+            </div>
+            <div class="mini-solde">
+              <div class="label">Dépenses annuelles</div>
+              <div class="val negatif" id="total-depenses-an">—</div>
+            </div>
+          </div>
+        </div>
+        <p class="titre-section">Tous les mois</p>
+        <div class="grille-mois" id="grille-mois"></div>
+      </div>
+      <!-- Détail mois -->
+      <div class="detail-mois" id="detail-mois-vue">
+        <button class="btn-retour" onclick="fermerDetailMois()">← Retour</button>
+        <div id="contenu-detail-mois"></div>
+      </div>
+    </div>
+
+    <!-- SAISIE -->
+    <div id="onglet-saisie" style="display:none">
+      <div class="formulaire">
+        <div class="tabs-type">
+          <button class="tab-type actif" onclick="changerTypeSaisie('depense', this)">💸 Dépense</button>
+          <button class="tab-type" onclick="changerTypeSaisie('revenu', this)">💰 Revenu</button>
+        </div>
+        <div class="erreur" id="erreur-saisie"></div>
+        <div class="champ">
+          <label>Description</label>
+          <input type="text" id="s-description" placeholder="Ex : Courses Lidl, Essence…" />
+        </div>
+        <div class="grille-2">
+          <div class="champ champ-montant">
+            <label>Montant</label>
+            <input type="number" id="s-montant" placeholder="0.00" step="0.01" inputmode="decimal" />
+          </div>
+          <div class="champ">
+            <label>Date</label>
+            <input type="date" id="s-date" />
+          </div>
+        </div>
+        <div class="champ">
+          <label>Catégorie</label>
+          <select id="s-categorie"></select>
+        </div>
+        <div class="champ">
+          <label>Sous-catégorie / détail</label>
+          <input type="text" id="s-sous-cat" placeholder="Ex : Pneus, Acompte clim…" />
+        </div>
+        <div class="champ">
+          <label>Note (optionnel)</label>
+          <textarea id="s-note" placeholder="Informations complémentaires…"></textarea>
+        </div>
+        <button class="btn-principal" onclick="enregistrerTransaction()">Enregistrer</button>
+        <button class="btn-secondaire" onclick="reinitialiserFormulaire()">Effacer</button>
+      </div>
+    </div>
+
+    <!-- PROGRAMMÉES -->
+    <div id="onglet-programmees" style="display:none">
+      <div class="liste-programmees" id="liste-programmees">
+        <div class="loader"><div class="spinner"></div><span>Chargement…</span></div>
+      </div>
+      <div style="text-align:center; margin-top:16px;">
+        <button class="btn-secondaire" style="max-width:480px" onclick="ouvrirModalProgrammee()">+ Ajouter une dépense programmée</button>
+      </div>
+    </div>
+
+  </div><!-- /contenu -->
+
+  <button class="fab" onclick="fabAction()" id="fab" title="Ajouter">+</button>
+</div>
+
+<!-- OVERLAY POINTAGE -->
+<div class="overlay" id="overlay-pointage">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="btn-fermer" onclick="fermerOverlay('overlay-pointage')">✕</button>
+    <h2 id="titre-pointage">Pointer la dépense</h2>
+    <div class="champ champ-montant">
+      <label>Montant réel</label>
+      <input type="number" id="p-montant" step="0.01" inputmode="decimal" />
+    </div>
+    <div class="champ">
+      <label>Note (optionnel)</label>
+      <input type="text" id="p-note" placeholder="Précision…" />
+    </div>
+    <button class="btn-principal" onclick="confirmerPointage()">✓ Pointer comme payée</button>
+    <button class="btn-secondaire" onclick="fermerOverlay('overlay-pointage')">Annuler</button>
+  </div>
+</div>
+
+<!-- OVERLAY DÉTAIL TRANSACTION -->
+<div class="overlay" id="overlay-detail-tx">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="btn-fermer" onclick="fermerOverlay('overlay-detail-tx')">✕</button>
+    <h2 id="titre-detail-tx">Détail</h2>
+    <div id="contenu-detail-tx"></div>
+    <button class="btn-secondaire" style="margin-top:12px; color:var(--rouge); border-color:var(--rouge);" onclick="supprimerTransaction()">Supprimer</button>
+    <button class="btn-secondaire" onclick="fermerOverlay('overlay-detail-tx')">Fermer</button>
+  </div>
+</div>
+
+<!-- OVERLAY SOLDE COMPTE -->
+<div class="overlay" id="overlay-solde">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="btn-fermer" onclick="fermerOverlay('overlay-solde')">✕</button>
+    <h2>Solde du compte courant</h2>
+    <p style="font-size:0.85rem; color:var(--texte-leger); margin-bottom:16px;">Saisissez le solde réel de votre compte au début du mois sélectionné.</p>
+    <div class="champ champ-montant">
+      <label>Solde au <span id="label-mois-solde"></span></label>
+      <input type="number" id="solde-input" step="0.01" inputmode="decimal" placeholder="Ex : 1250.00" />
+    </div>
+    <button class="btn-principal" onclick="enregistrerSolde()">Enregistrer</button>
+    <button class="btn-secondaire" onclick="fermerOverlay('overlay-solde')">Annuler</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIGURATION
+// ═══════════════════════════════════════════════
+const CLIENT_ID = '438546104293-81acihkhskj9n95u88pupgoasl07dq4t.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+const MOIS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+const CATEGORIES_DEFAUT = {
+  depense: ['Logement','Transport','Alimentation','Santé','Loisirs / Musique','Bricolage / Maison','Restaurants / Bar','Spectacles / Concerts','Esthétique','Vêtements','Vacances / Voyages','Épargne','Impôts','Abonnements','Entretien voiture','Autres'],
+  revenu: ['Salaire','Prime d\'activité','Vente','Aide famille','Autres revenus']
+};
+
+// ═══════════════════════════════════════════════
+// ÉTAT
+// ═══════════════════════════════════════════════
+let etat = {
+  connecte: false,
+  sheetId: localStorage.getItem('sheetId') || '',
+  annee: new Date().getFullYear().toString(),
+  moisSelectionne: null,
+  transactions: [],
+  programmees: [],
+  soldes: {},
+  typeSaisie: 'depense',
+  depenseEnCours: null,
+  txEnCours: null,
+  tokenClient: null,
+};
+
+// ═══════════════════════════════════════════════
+// INITIALISATION
+// ═══════════════════════════════════════════════
+window.onload = () => {
+  const today = new Date();
+  document.getElementById('s-date').value = today.toISOString().split('T')[0];
+  
+  if (etat.sheetId) {
+    document.getElementById('input-sheet-id').value = etat.sheetId;
+  }
+
+  // Charger GAPI
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.onload = initGoogle;
+  document.head.appendChild(script);
+
+  const gapiScript = document.createElement('script');
+  gapiScript.src = 'https://apis.google.com/js/api.js';
+  gapiScript.onload = () => gapi.load('client', initGapiClient);
+  document.head.appendChild(gapiScript);
+};
+
+function initGoogle() {
+  etat.tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { afficherToast('Connexion annulée'); return; }
+      localStorage.setItem('gtoken', resp.access_token);
+      gapi.client.setToken({ access_token: resp.access_token });
+      await demarrerApp();
+    }
+  });
+}
+
+async function initGapiClient() {
+  await gapi.client.init({ discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
+  const token = localStorage.getItem('gtoken');
+  if (token && etat.sheetId) {
+    gapi.client.setToken({ access_token: token });
+    try { await demarrerApp(); } catch(e) { /* token expiré */ }
+  }
+}
+
+function connecterGoogle() {
+  if (!etat.sheetId) { afficherToast('Entrez d\'abord l\'ID du Sheet'); return; }
+  if (etat.tokenClient) etat.tokenClient.requestAccessToken();
+}
+
+function validerSheetId() {
+  const val = document.getElementById('input-sheet-id').value.trim();
+  if (!val) { afficherToast('Entrez l\'ID du fichier Google Sheets'); return; }
+  etat.sheetId = val;
+  localStorage.setItem('sheetId', val);
+  if (etat.tokenClient) connecterGoogle();
+  else afficherToast('Cliquez sur "Se connecter avec Google"');
+}
+
+async function demarrerApp() {
+  document.getElementById('ecran-connexion').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  etat.connecte = true;
+  await chargerDonnees();
+  peuplerSelectCategorie();
+  mettreAJourSelectAnnee();
+}
+
+// ═══════════════════════════════════════════════
+// GOOGLE SHEETS API
+// ═══════════════════════════════════════════════
+async function lireSheet(plage) {
+  const res = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: etat.sheetId,
+    range: plage,
+  });
+  return res.result.values || [];
+}
+
+async function ecrireSheet(plage, valeurs) {
+  await gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId: etat.sheetId,
+    range: plage,
+    valueInputOption: 'USER_ENTERED',
+    resource: { values: valeurs }
+  });
+}
+
+async function ajouterLigne(onglet, valeurs) {
+  await gapi.client.sheets.spreadsheets.values.append({
+    spreadsheetId: etat.sheetId,
+    range: `${onglet}!A:Z`,
+    valueInputOption: 'USER_ENTERED',
+    insertDataOption: 'INSERT_ROWS',
+    resource: { values: [valeurs] }
+  });
+}
+
+// ═══════════════════════════════════════════════
+// STRUCTURE DES ONGLETS
+// Onglet "Transactions_ANNEE" : id | date | type | categorie | sous_cat | description | montant | note | pointe
+// Onglet "Programmees" : id | nom | categorie | montant | frequence | actif
+// Onglet "Soldes" : mois_annee | solde
+// ═══════════════════════════════════════════════
+async function chargerDonnees() {
+  try {
+    await initialiserOngletsSiNecessaire();
+    await chargerTransactions();
+    await chargerProgrammees();
+    await chargerSoldes();
+    afficherVueAnnuelle();
+    afficherGrilleMois();
+    afficherListeProgrammees();
+  } catch(e) {
+    console.error(e);
+    afficherToast('Erreur de chargement. Reconnexion…');
+    localStorage.removeItem('gtoken');
+  }
+}
+
+async function initialiserOngletsSiNecessaire() {
+  const meta = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: etat.sheetId });
+  const sheets = meta.result.sheets.map(s => s.properties.title);
+  
+  const aCreer = [];
+  const ongletTx = `Transactions_${etat.annee}`;
+  if (!sheets.includes(ongletTx)) aCreer.push({ addSheet: { properties: { title: ongletTx } } });
+  if (!sheets.includes('Programmees')) aCreer.push({ addSheet: { properties: { title: 'Programmees' } } });
+  if (!sheets.includes('Soldes')) aCreer.push({ addSheet: { properties: { title: 'Soldes' } } });
+
+  if (aCreer.length > 0) {
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: etat.sheetId,
+      resource: { requests: aCreer }
+    });
+    // En-têtes
+    if (!sheets.includes(ongletTx)) {
+      await ecrireSheet(`${ongletTx}!A1:I1`, [['id','date','type','categorie','sous_cat','description','montant','note','pointe']]);
+    }
+    if (!sheets.includes('Programmees')) {
+      await ecrireSheet('Programmees!A1:F1', [['id','nom','categorie','montant','frequence','actif']]);
+    }
+    if (!sheets.includes('Soldes')) {
+      await ecrireSheet('Soldes!A1:B1', [['mois_annee','solde']]);
+    }
+  }
+}
+
+async function chargerTransactions() {
+  const onglet = `Transactions_${etat.annee}`;
+  try {
+    const rows = await lireSheet(`${onglet}!A2:I`);
+    etat.transactions = rows.map(r => ({
+      id: r[0], date: r[1], type: r[2], categorie: r[3],
+      sous_cat: r[4], description: r[5], montant: parseFloat(r[6]) || 0,
+      note: r[7], pointe: r[8] === 'TRUE'
+    })).filter(t => t.id);
+  } catch(e) { etat.transactions = []; }
+}
+
+async function chargerProgrammees() {
+  try {
+    const rows = await lireSheet('Programmees!A2:F');
+    etat.programmees = rows.map(r => ({
+      id: r[0], nom: r[1], categorie: r[2],
+      montant: parseFloat(r[3]) || 0, frequence: r[4], actif: r[5] === 'TRUE'
+    })).filter(p => p.id);
+  } catch(e) { etat.programmees = []; }
+}
+
+async function chargerSoldes() {
+  try {
+    const rows = await lireSheet('Soldes!A2:B');
+    etat.soldes = {};
+    rows.forEach(r => { if (r[0]) etat.soldes[r[0]] = parseFloat(r[1]) || 0; });
+  } catch(e) { etat.soldes = {}; }
+}
+
+// ═══════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════
+function afficherOnglet(id, btn) {
+  ['vue','mois','saisie','programmees'].forEach(o => {
+    document.getElementById(`onglet-${o}`).style.display = o === id ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('actif'));
+  btn.classList.add('actif');
+  document.getElementById('fab').style.display = id === 'saisie' ? 'none' : 'flex';
+}
+
+function fabAction() {
+  const ongletActif = [...document.querySelectorAll('.nav-btn')].find(b => b.classList.contains('actif'))?.textContent;
+  afficherOnglet('saisie', document.querySelectorAll('.nav-btn')[2]);
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('actif'));
+  document.querySelectorAll('.nav-btn')[2].classList.add('actif');
+}
+
+function changerAnnee(annee) {
+  etat.annee = annee;
+  localStorage.setItem('annee', annee);
+  chargerDonnees();
+}
+
+function mettreAJourSelectAnnee() {
+  const sel = document.getElementById('select-annee');
+  sel.value = etat.annee;
+}
+
+// ═══════════════════════════════════════════════
+// VUE ANNUELLE (TABLEAU)
+// ═══════════════════════════════════════════════
+function afficherVueAnnuelle() {
+  const loader = document.getElementById('loader-vue');
+  const tableau = document.getElementById('tableau-annuel');
+  loader.style.display = 'none';
+  tableau.style.display = 'block';
+
+  // Calcul par mois
+  const data = {};
+  MOIS.forEach((m, i) => {
+    data[i] = { revenus: {}, depenses: {} };
+  });
+
+  etat.transactions.forEach(t => {
+    if (!t.date) return;
+    const mois = new Date(t.date).getMonth();
+    if (t.type === 'revenu') {
+      if (!data[mois].revenus[t.categorie]) data[mois].revenus[t.categorie] = 0;
+      data[mois].revenus[t.categorie] += t.montant;
+    } else {
+      if (!data[mois].depenses[t.categorie]) data[mois].depenses[t.categorie] = 0;
+      data[mois].depenses[t.categorie] += t.montant;
+    }
+  });
+
+  // Toutes les catégories
+  const catRevenus = [...new Set(etat.transactions.filter(t=>t.type==='revenu').map(t=>t.categorie))];
+  const catDepenses = [...new Set(etat.transactions.filter(t=>t.type==='depense').map(t=>t.categorie))];
+
+  let html = `<table><thead><tr><th>Catégorie</th>`;
+  MOIS.forEach(m => html += `<th>${m.substring(0,3)}</th>`);
+  html += `<th>Total</th></tr></thead><tbody>`;
+
+  // Revenus
+  html += `<tr class="categorie-header"><td colspan="${MOIS.length+2}">Revenus</td></tr>`;
+  catRevenus.forEach(cat => {
+    html += `<tr><td>${cat}</td>`;
+    let total = 0;
+    MOIS.forEach((m, i) => {
+      const val = data[i].revenus[cat] || 0;
+      total += val;
+      html += `<td>${val > 0 ? fmt(val) : '—'}</td>`;
+    });
+    html += `<td class="positif">${fmt(total)}</td></tr>`;
+  });
+  html += `<tr class="ligne-total"><td>Total revenus</td>`;
+  let totalRevAn = 0;
+  MOIS.forEach((m, i) => {
+    const s = Object.values(data[i].revenus).reduce((a,b)=>a+b,0);
+    totalRevAn += s;
+    html += `<td class="positif">${fmt(s)}</td>`;
+  });
+  html += `<td class="positif">${fmt(totalRevAn)}</td></tr>`;
+
+  // Dépenses
+  html += `<tr class="categorie-header"><td colspan="${MOIS.length+2}">Dépenses</td></tr>`;
+  catDepenses.forEach(cat => {
+    html += `<tr><td>${cat}</td>`;
+    let total = 0;
+    MOIS.forEach((m, i) => {
+      const val = data[i].depenses[cat] || 0;
+      total += val;
+      html += `<td>${val > 0 ? fmt(val) : '—'}</td>`;
+    });
+    html += `<td class="negatif">${fmt(total)}</td></tr>`;
+  });
+  html += `<tr class="ligne-total"><td>Total dépenses</td>`;
+  let totalDepAn = 0;
+  MOIS.forEach((m, i) => {
+    const s = Object.values(data[i].depenses).reduce((a,b)=>a+b,0);
+    totalDepAn += s;
+    html += `<td class="negatif">${fmt(s)}</td>`;
+  });
+  html += `<td class="negatif">${fmt(totalDepAn)}</td></tr>`;
+
+  // Reste
+  html += `<tr class="ligne-reste"><td>Reste</td>`;
+  MOIS.forEach((m, i) => {
+    const rev = Object.values(data[i].revenus).reduce((a,b)=>a+b,0);
+    const dep = Object.values(data[i].depenses).reduce((a,b)=>a+b,0);
+    const reste = rev - dep;
+    html += `<td class="${reste >= 0 ? 'positif' : 'negatif'}">${fmt(reste)}</td>`;
+  });
+  const resteAn = totalRevAn - totalDepAn;
+  html += `<td class="${resteAn >= 0 ? 'positif' : 'negatif'}">${fmt(resteAn)}</td></tr>`;
+
+  html += `</tbody></table>`;
+  tableau.innerHTML = html;
+
+  // Mettre à jour les totaux
+  document.getElementById('solde-annuel').textContent = fmt(resteAn);
+  document.getElementById('total-revenus-an').textContent = fmt(totalRevAn);
+  document.getElementById('total-depenses-an').textContent = fmt(totalDepAn);
+}
+
+// ═══════════════════════════════════════════════
+// GRILLE MOIS
+// ═══════════════════════════════════════════════
+function afficherGrilleMois() {
+  const grille = document.getElementById('grille-mois');
+  const moisActuel = new Date().getMonth();
+  let html = '';
+
+  MOIS.forEach((nom, i) => {
+    const txMois = etat.transactions.filter(t => t.date && new Date(t.date).getMonth() === i);
+    const revenus = txMois.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
+    const depenses = txMois.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
+    const reste = revenus - depenses;
+    const cls = reste > 0 ? 'positif' : reste < 0 ? 'negatif' : 'neutre';
+    const pct = revenus > 0 ? Math.min((depenses/revenus)*100, 100) : 0;
+    const couleurBarre = pct > 90 ? 'var(--rouge)' : pct > 70 ? 'var(--orange)' : 'var(--vert)';
+    const enCours = i === moisActuel && etat.annee === new Date().getFullYear().toString();
+
+    html += `<div class="carte-mois" onclick="ouvrirDetailMois(${i})">
+      ${enCours ? '<div class="badge-mois en-cours"></div>' : ''}
+      <div class="nom-mois">${nom.substring(0,3)}</div>
+      <div class="reste-mois ${cls}">${fmt(reste)}</div>
+      <div class="barre"><div class="barre-remplie" style="width:${pct}%;background:${couleurBarre}"></div></div>
+    </div>`;
+  });
+
+  grille.innerHTML = html;
+}
+
+function ouvrirDetailMois(moisIdx) {
+  etat.moisSelectionne = moisIdx;
+  document.getElementById('grille-mois-vue').style.display = 'none';
+  document.getElementById('detail-mois-vue').classList.add('visible');
+  afficherDetailMois(moisIdx);
+}
+
+function fermerDetailMois() {
+  document.getElementById('detail-mois-vue').classList.remove('visible');
+  document.getElementById('grille-mois-vue').style.display = 'block';
+  etat.moisSelectionne = null;
+}
+
+function afficherDetailMois(moisIdx) {
+  const nom = MOIS[moisIdx];
+  const txMois = etat.transactions.filter(t => t.date && new Date(t.date).getMonth() === moisIdx);
+  const revenus = txMois.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
+  const depenses = txMois.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
+  const reste = revenus - depenses;
+  const clsReste = reste >= 0 ? 'positif' : 'negatif';
+
+  const clesolde = `${moisIdx+1}_${etat.annee}`;
+  const soldeDebut = etat.soldes[clesolde];
+  const soldeFin = soldeDebut !== undefined ? soldeDebut + reste : null;
+
+  let html = `<h2 style="font-size:1.2rem;margin-bottom:12px;font-family:'DM Serif Display',serif;">${nom} ${etat.annee}</h2>`;
+
+  // Carte solde compte
+  html += `<div class="carte-solde" style="margin-bottom:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="label">Solde compte courant début de mois</div>
+        <div class="montant" style="font-size:1.6rem;">${soldeDebut !== undefined ? fmt(soldeDebut) : '—'}</div>
+      </div>
+      <button onclick="ouvrirSaisiesolde(${moisIdx})" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:10px;padding:8px 14px;color:white;font-size:0.8rem;cursor:pointer;font-family:'Inter',sans-serif;">Modifier</button>
+    </div>
+    ${soldeFin !== null ? `<div class="ligne-soldes">
+      <div class="mini-solde"><div class="label">Solde estimé fin de mois</div><div class="val ${soldeFin >= 0 ? 'positif' : 'negatif'}">${fmt(soldeFin)}</div></div>
+      <div class="mini-solde"><div class="label">Reste budget</div><div class="val ${clsReste}">${fmt(reste)}</div></div>
+    </div>` : ''}
+  </div>`;
+
+  // Résumé
+  html += `<div class="resume-mois">
+    <div class="item"><div class="val positif">${fmt(revenus)}</div><div class="lab">Revenus</div></div>
+    <div class="item"><div class="val negatif">${fmt(depenses)}</div><div class="lab">Dépenses</div></div>
+    <div class="item"><div class="val ${clsReste}">${fmt(reste)}</div><div class="lab">Reste</div></div>
+  </div>`;
+
+  // Dépenses par catégorie
+  const catsDep = [...new Set(txMois.filter(t=>t.type==='depense').map(t=>t.categorie))];
+  if (catsDep.length > 0) {
+    html += `<p class="titre-section">Dépenses</p>`;
+    catsDep.forEach(cat => {
+      const txCat = txMois.filter(t=>t.type==='depense' && t.categorie===cat);
+      const totalCat = txCat.reduce((a,t)=>a+t.montant,0);
+      html += `<div class="section-depenses">
+        <div class="titre-categorie"><span>${cat}</span><span class="total-cat">${fmt(totalCat)}</span></div>`;
+      txCat.forEach(t => {
+        const estFixe = etat.programmees.some(p => p.categorie === cat && p.actif);
+        html += ligneDepense(t, estFixe ? (t.pointe ? 'fixe-pointe' : 'fixe-non-pointe') : 'variable');
+      });
+      html += `</div>`;
+    });
+  }
+
+  // Revenus
+  const catsRev = [...new Set(txMois.filter(t=>t.type==='revenu').map(t=>t.categorie))];
+  if (catsRev.length > 0) {
+    html += `<p class="titre-section">Revenus</p>`;
+    catsRev.forEach(cat => {
+      const txCat = txMois.filter(t=>t.type==='revenu' && t.categorie===cat);
+      const totalCat = txCat.reduce((a,t)=>a+t.montant,0);
+      html += `<div class="section-depenses">
+        <div class="titre-categorie"><span>${cat}</span><span class="total-cat">${fmt(totalCat)}</span></div>`;
+      txCat.forEach(t => html += ligneDepense(t, 'revenu'));
+      html += `</div>`;
+    });
+  }
+
+  if (txMois.length === 0) {
+    html += `<div style="text-align:center;padding:40px 0;color:var(--texte-leger);">
+      <div style="font-size:2rem;margin-bottom:12px;">📭</div>
+      <p>Aucune transaction ce mois</p>
+      <button class="btn-secondaire" style="max-width:240px;margin-top:16px;" onclick="allerSaisie()">+ Ajouter une transaction</button>
+    </div>`;
+  }
+
+  document.getElementById('contenu-detail-mois').innerHTML = html;
+}
+
+function ligneDepense(t, type) {
+  const icones = { 'fixe-non-pointe': '⏳', 'fixe-pointe': '✓', 'variable': '·', 'revenu': '↑' };
+  const labelType = { 'fixe-non-pointe': 'fixe-non-pointe', 'fixe-pointe': 'fixe-pointe', 'variable': 'variable', 'revenu': 'variable' };
+  const clsMontant = type === 'revenu' ? 'positif' : 'negatif';
+  const nomClass = type === 'fixe-non-pointe' ? 'italique' : '';
+  const onClick = type === 'revenu' ? `ouvrirDetailTx('${t.id}')` : type.startsWith('fixe') ? `ouvrirPointage('${t.id}')` : `ouvrirDetailTx('${t.id}')`;
+
+  return `<div class="ligne-depense ${t.pointe ? 'pointee' : ''}" onclick="${onClick}">
+    <div class="icone-statut ${labelType[type]}">${icones[type]}</div>
+    <div class="info-depense">
+      <div class="nom ${nomClass}">${t.description || t.categorie}</div>
+      ${t.sous_cat || t.note ? `<div class="detail">${[t.sous_cat, t.note].filter(Boolean).join(' · ')}</div>` : ''}
+    </div>
+    <div class="montant-depense ${clsMontant}">${fmt(t.montant)}</div>
+  </div>`;
+}
+
+function allerSaisie() {
+  afficherOnglet('saisie', document.querySelectorAll('.nav-btn')[2]);
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('actif'));
+  document.querySelectorAll('.nav-btn')[2].classList.add('actif');
+}
+
+// ═══════════════════════════════════════════════
+// SOLDE COMPTE
+// ═══════════════════════════════════════════════
+function ouvrirSaisiesolde(moisIdx) {
+  const nom = MOIS[moisIdx];
+  document.getElementById('label-mois-solde').textContent = `1er ${nom} ${etat.annee}`;
+  const cle = `${moisIdx+1}_${etat.annee}`;
+  document.getElementById('solde-input').value = etat.soldes[cle] || '';
+  etat.moisSelectionne = moisIdx;
+  document.getElementById('overlay-solde').classList.add('visible');
+}
+
+async function enregistrerSolde() {
+  const val = parseFloat(document.getElementById('solde-input').value);
+  if (isNaN(val)) { afficherToast('Entrez un montant valide'); return; }
+  const moisIdx = etat.moisSelectionne;
+  const cle = `${moisIdx+1}_${etat.annee}`;
+  etat.soldes[cle] = val;
+
+  // Sauvegarder dans Soldes
+  try {
+    const rows = await lireSheet('Soldes!A2:B');
+    let ligneExistante = -1;
+    rows.forEach((r, i) => { if (r[0] === cle) ligneExistante = i + 2; });
+    if (ligneExistante > 0) {
+      await ecrireSheet(`Soldes!A${ligneExistante}:B${ligneExistante}`, [[cle, val]]);
+    } else {
+      await ajouterLigne('Soldes', [cle, val]);
+    }
+    fermerOverlay('overlay-solde');
+    afficherDetailMois(moisIdx);
+    afficherToast('Solde enregistré ✓');
+  } catch(e) {
+    afficherToast('Erreur d\'enregistrement');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// POINTAGE
+// ═══════════════════════════════════════════════
+function ouvrirPointage(txId) {
+  const tx = etat.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  etat.depenseEnCours = txId;
+  document.getElementById('titre-pointage').textContent = tx.description || tx.categorie;
+  document.getElementById('p-montant').value = tx.montant;
+  document.getElementById('p-note').value = tx.note || '';
+  document.getElementById('overlay-pointage').classList.add('visible');
+}
+
+async function confirmerPointage() {
+  const montant = parseFloat(document.getElementById('p-montant').value);
+  const note = document.getElementById('p-note').value;
+  if (isNaN(montant)) { afficherToast('Montant invalide'); return; }
+
+  const tx = etat.transactions.find(t => t.id === etat.depenseEnCours);
+  if (!tx) return;
+
+  // Trouver la ligne dans le Sheet
+  try {
+    const onglet = `Transactions_${etat.annee}`;
+    const rows = await lireSheet(`${onglet}!A2:I`);
+    const idx = rows.findIndex(r => r[0] === tx.id);
+    if (idx >= 0) {
+      const ligne = idx + 2;
+      await ecrireSheet(`${onglet}!G${ligne}:I${ligne}`, [[montant, note, 'TRUE']]);
+      tx.montant = montant;
+      tx.note = note;
+      tx.pointe = true;
+      fermerOverlay('overlay-pointage');
+      afficherDetailMois(etat.moisSelectionne);
+      afficherGrilleMois();
+      afficherVueAnnuelle();
+      afficherToast('Dépense pointée ✓');
+    }
+  } catch(e) { afficherToast('Erreur lors du pointage'); }
+}
+
+// ═══════════════════════════════════════════════
+// DÉTAIL TRANSACTION
+// ═══════════════════════════════════════════════
+function ouvrirDetailTx(txId) {
+  const tx = etat.transactions.find(t => t.id === txId);
+  if (!tx) return;
+  etat.txEnCours = txId;
+  document.getElementById('titre-detail-tx').textContent = tx.description || tx.categorie;
+  document.getElementById('contenu-detail-tx').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--texte-leger);font-size:0.85rem;">Montant</span><strong>${fmt(tx.montant)}</strong></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--texte-leger);font-size:0.85rem;">Date</span><span>${new Date(tx.date).toLocaleDateString('fr-FR')}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--texte-leger);font-size:0.85rem;">Catégorie</span><span>${tx.categorie}</span></div>
+      ${tx.sous_cat ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--texte-leger);font-size:0.85rem;">Sous-catégorie</span><span>${tx.sous_cat}</span></div>` : ''}
+      ${tx.note ? `<div style="display:flex;justify-content:space-between;"><span style="color:var(--texte-leger);font-size:0.85rem;">Note</span><span>${tx.note}</span></div>` : ''}
+    </div>
+  `;
+  document.getElementById('overlay-detail-tx').classList.add('visible');
+}
+
+async function supprimerTransaction() {
+  const tx = etat.transactions.find(t => t.id === etat.txEnCours);
+  if (!tx) return;
+  if (!confirm('Supprimer cette transaction ?')) return;
+
+  try {
+    const onglet = `Transactions_${etat.annee}`;
+    const rows = await lireSheet(`${onglet}!A2:I`);
+    const idx = rows.findIndex(r => r[0] === tx.id);
+    if (idx >= 0) {
+      // On vide la ligne
+      await ecrireSheet(`${onglet}!A${idx+2}:I${idx+2}`, [['','','','','','','','','']]);
+      etat.transactions = etat.transactions.filter(t => t.id !== tx.id);
+      fermerOverlay('overlay-detail-tx');
+      if (etat.moisSelectionne !== null) afficherDetailMois(etat.moisSelectionne);
+      afficherGrilleMois();
+      afficherVueAnnuelle();
+      afficherToast('Transaction supprimée');
+    }
+  } catch(e) { afficherToast('Erreur lors de la suppression'); }
+}
+
+// ═══════════════════════════════════════════════
+// SAISIE
+// ═══════════════════════════════════════════════
+function changerTypeSaisie(type, btn) {
+  etat.typeSaisie = type;
+  document.querySelectorAll('.tab-type').forEach(b => b.classList.remove('actif'));
+  btn.classList.add('actif');
+  peuplerSelectCategorie();
+}
+
+function peuplerSelectCategorie() {
+  const sel = document.getElementById('s-categorie');
+  const cats = CATEGORIES_DEFAUT[etat.typeSaisie];
+  sel.innerHTML = cats.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+async function enregistrerTransaction() {
+  const desc = document.getElementById('s-description').value.trim();
+  const montant = parseFloat(document.getElementById('s-montant').value);
+  const date = document.getElementById('s-date').value;
+  const cat = document.getElementById('s-categorie').value;
+  const sousCat = document.getElementById('s-sous-cat').value.trim();
+  const note = document.getElementById('s-note').value.trim();
+  const errDiv = document.getElementById('erreur-saisie');
+
+  if (!desc || isNaN(montant) || montant <= 0 || !date) {
+    errDiv.textContent = 'Veuillez remplir la description, le montant et la date.';
+    errDiv.classList.add('visible');
+    return;
+  }
+  errDiv.classList.remove('visible');
+
+  const id = `tx_${Date.now()}`;
+  const ligne = [id, date, etat.typeSaisie, cat, sousCat, desc, montant, note, 'FALSE'];
+
+  try {
+    const onglet = `Transactions_${etat.annee}`;
+    await ajouterLigne(onglet, ligne);
+    etat.transactions.push({ id, date, type: etat.typeSaisie, categorie: cat, sous_cat: sousCat, description: desc, montant, note, pointe: false });
+    reinitialiserFormulaire();
+    afficherGrilleMois();
+    afficherVueAnnuelle();
+    afficherToast('Transaction enregistrée ✓');
+  } catch(e) {
+    errDiv.textContent = 'Erreur lors de l\'enregistrement. Réessayez.';
+    errDiv.classList.add('visible');
+  }
+}
+
+function reinitialiserFormulaire() {
+  document.getElementById('s-description').value = '';
+  document.getElementById('s-montant').value = '';
+  document.getElementById('s-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('s-sous-cat').value = '';
+  document.getElementById('s-note').value = '';
+  document.getElementById('erreur-saisie').classList.remove('visible');
+}
+
+// ═══════════════════════════════════════════════
+// PROGRAMMÉES
+// ═══════════════════════════════════════════════
+function afficherListeProgrammees() {
+  const liste = document.getElementById('liste-programmees');
+  if (etat.programmees.length === 0) {
+    liste.innerHTML = `<div style="text-align:center;padding:40px 0;color:var(--texte-leger);">
+      <div style="font-size:2rem;margin-bottom:12px;">🔄</div>
+      <p>Aucune dépense programmée</p>
+    </div>`;
+    return;
+  }
+
+  liste.innerHTML = etat.programmees.map(p => `
+    <div class="carte-programmee">
+      <button class="toggle-auto ${p.actif ? 'actif' : ''}" onclick="toggleProgrammee('${p.id}')"></button>
+      <div class="info-programmee">
+        <div class="nom">${p.nom}</div>
+        <div class="detail">${p.categorie} · ${p.frequence || 'Mensuel'}</div>
+      </div>
+      <div class="montant-prog">−${fmt(p.montant)}</div>
+    </div>
+  `).join('');
+}
+
+async function toggleProgrammee(id) {
+  const p = etat.programmees.find(p => p.id === id);
+  if (!p) return;
+  p.actif = !p.actif;
+  try {
+    const rows = await lireSheet('Programmees!A2:F');
+    const idx = rows.findIndex(r => r[0] === id);
+    if (idx >= 0) {
+      await ecrireSheet(`Programmees!F${idx+2}`, [[p.actif ? 'TRUE' : 'FALSE']]);
+    }
+    afficherListeProgrammees();
+    afficherToast(p.actif ? 'Activée ✓' : 'Désactivée');
+  } catch(e) { afficherToast('Erreur'); p.actif = !p.actif; afficherListeProgrammees(); }
+}
+
+async function ouvrirModalProgrammee() {
+  const nom = prompt('Nom de la dépense programmée :');
+  if (!nom) return;
+  const montantStr = prompt('Montant mensuel (€) :');
+  const montant = parseFloat(montantStr);
+  if (isNaN(montant)) return;
+  const cat = prompt('Catégorie (ex: Logement, Transport…) :') || 'Autres';
+
+  const id = `prog_${Date.now()}`;
+  try {
+    await ajouterLigne('Programmees', [id, nom, cat, montant, 'Mensuel', 'TRUE']);
+    etat.programmees.push({ id, nom, categorie: cat, montant, frequence: 'Mensuel', actif: true });
+    afficherListeProgrammees();
+    afficherToast('Dépense programmée ajoutée ✓');
+  } catch(e) { afficherToast('Erreur'); }
+}
+
+// ═══════════════════════════════════════════════
+// UTILITAIRES
+// ═══════════════════════════════════════════════
+function fmt(n) {
+  return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n || 0);
+}
+
+function fermerOverlay(id) {
+  document.getElementById(id).classList.remove('visible');
+}
+
+function afficherToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('visible');
+  setTimeout(() => t.classList.remove('visible'), 2500);
+}
+
+function ouvrirParam() {
+  afficherToast('Paramètres bientôt disponibles');
+}
+</script>
+</body>
+</html>
