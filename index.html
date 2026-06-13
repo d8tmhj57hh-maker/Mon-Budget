@@ -642,16 +642,19 @@ function affBudget(){
   // REVENUS (réels + prévisionnels)
   const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
   h+=`<tr class="ch"><td colspan="${nc}">Revenus</td></tr>`;
-  cR.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
+  // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
+  const totRevMois=Array(12).fill(0);
+  cR.forEach(cat=>{let tot=0;h+=`<tr><td>${cat}</td>`;
     MOIS.forEach((_,i)=>{
-      const reel=data[i].rev[c]||0;const prev=prevMois(i,E.annee).rev[c]||0;
-      const val=reel||prev;tot+=val;
-      h+=`<td class="${reel?'tp':'prev'}">${val?fmt(val):'—'}</td>`;
+      const reel=data[i].rev[cat]||0;
+      const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
+      const val=reel+prev;tot+=val;totRevMois[i]+=val;
+      h+=`<td class="${reel?'tp':prev?'prev':''}">` + (val?fmt(val):'—') + '</td>';
     });
     h+=`<td class="tp">${fmt(tot)}</td></tr>`;
   });
   let tRA=0;h+=`<tr class="lt"><td>Total revenus</td>`;
-  MOIS.forEach((_,i)=>{const s=(Object.values(data[i].rev).reduce((a,b)=>a+b,0))||(Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0));tRA+=s;h+=`<td class="tp">${fmt(s)}</td>`;});
+  MOIS.forEach((_,i)=>{tRA+=totRevMois[i];h+=`<td class="tp">${fmt(totRevMois[i])}</td>`;});
   h+=`<td class="tp">${fmt(tRA)}</td></tr>`;
 
   // DÉPENSES FIXES
