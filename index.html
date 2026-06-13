@@ -419,11 +419,14 @@ let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
 
+// ID du Sheet codé en dur comme fallback (si pas dans l'URL ni localStorage)
+const SID_DEFAULT='1-4h0Rzbeu8yCBBsIhhS4JaCJmf0X-c71kH11CMR7ts8';
 const sidUrl=new URLSearchParams(window.location.search).get('sid');
 if(sidUrl)localStorage.setItem('sid',sidUrl);
+if(!localStorage.getItem('sid'))localStorage.setItem('sid',SID_DEFAULT);
 
 let E={
-  sid:localStorage.getItem('sid')||'',
+  sid:localStorage.getItem('sid')||SID_DEFAULT,
   annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),
   tx:[],prog:[],pts:[],epargne:[],projets:[],txc:null,tc:null,type:'depense',moisOuvert:null
 };
@@ -433,6 +436,7 @@ window.onload=()=>{
   document.getElementById('s-da').value=t;
   document.getElementById('init-d').value=t;
   document.getElementById('rec-d').value=t;
+  // Masquer le champ ID si on a déjà un sid (URL, localStorage ou défaut)
   if(E.sid){document.getElementById('zone-sid').style.display='none';document.getElementById('p-conn').textContent='Connectez-vous pour accéder à votre budget';}
   peuplerSels();peuplerCat();peuplerImpCats();
   const s1=document.createElement('script');s1.src='https://accounts.google.com/gsi/client';s1.onload=initGSI;document.head.appendChild(s1);
