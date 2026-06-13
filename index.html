@@ -325,6 +325,16 @@
         <button class="bp" onclick="recalerSolde()">Recaler</button>
       </div>
 
+      <div class="si">
+        <h3>📊 Vue lisible dans Google Sheets</h3>
+        <p>Génère un onglet <strong>Vue_XXXX</strong> dans votre Google Sheet avec le tableau complet de l'année — lisible même sans l'application, pour toujours.</p>
+        <button class="bp" id="btn-vue-sheets" onclick="genererVueSheets()">📊 Actualiser la vue Sheets</button>
+        <div id="prog-vue-sheets" style="display:none;margin-top:10px;text-align:center;font-size:.8rem;color:var(--txl)">
+          <div class="sp" style="margin:0 auto 8px"></div>
+          <span id="prog-vue-label">Génération en cours…</span>
+        </div>
+      </div>
+
     </div>
   </div>
   <button class="fab" id="fab" onclick="ouvrirSaisie()">+</button>
@@ -1112,6 +1122,144 @@ async function importerMois(){
   for(const inp of inputs){const v=parseFloat(inp.value);if(!v||v<=0)continue;const c=inp.dataset.cat;const t=inp.dataset.type;const id=`imp_${Date.now()}_${nb}`;await ajouter(`TX_${an}`,[id,d,t,c,'',`Import ${MOIS[mi]} ${an}`,v,'','TRUE',v]);E.tx.push({id,date:d,type:t,cat:c,projet:'',desc:`Import ${MOIS[mi]} ${an}`,montant:v,note:'',pointe:true,montant_reel:v,an});nb++;inp.value='';}
   if(nb>0){refresh();toast(`${nb} catégorie(s) importée(s) ✓`);}else toast('Aucun montant saisi');
 }
+async function genererVueSheets(){
+  const btn=document.getElementById('btn-vue-sheets');
+  const prog=document.getElementById('prog-vue-sheets');
+  const label=document.getElementById('prog-vue-label');
+  btn.style.display='none';prog.style.display='block';
+
+  try{
+    const an=E.annee;
+    const nomOnglet=`Vue_${an}`;
+    label.textContent="Préparation de l'onglet...";
+
+    // Créer ou vider l'onglet Vue_XXXX
+    const meta=await gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid});
+    const ex=meta.result.sheets.map(s=>({titre:s.properties.title,id:s.properties.sheetId}));
+    const existant=ex.find(s=>s.titre===nomOnglet);
+    if(existant){
+      // Vider l'onglet
+      await gapi.client.sheets.spreadsheets.values.clear({spreadsheetId:E.sid,range:`${nomOnglet}!A1:Z200`});
+    } else {
+      await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:[{addSheet:{properties:{title:nomOnglet}}}]}});
+    }
+
+    label.textContent='Construction du tableau...';
+
+    const txA=E.tx.filter(t=>t.an===an);
+    const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
+    txA.forEach(t=>{
+      const m=new Date(t.date).getMonth();
+      const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
+      const b=t.type==='revenu'?'rev':'dep';
+      if(!data[m][b][t.cat])data[m][b][t.cat]=0;
+      data[m][b][t.cat]+=v;
+    });
+
+    const entete=['Catégorie',...MOIS,'TOTAL'];
+    const lignes=[entete];
+
+    const totMoisRev=Array(12).fill(0);
+    const totMoisDep=Array(12).fill(0);
+    const totMoisFix=Array(12).fill(0);
+    const totMoisVar=Array(12).fill(0);
+
+    // ── ÉPARGNE ──
+    lignes.push(['── ÉPARGNE (soldes) ──',...Array(13).fill('')]);
+    LIVRETS.forEach(liv=>{
+      const ep=E.epargne.find(e=>e.livret===liv);
+      let der=0;
+      const vals=MOIS.map((_,i)=>{const v=ep?ep.mois[i]:null;if(v!==null&&v!==undefined)der=v;return v!==null&&v!==undefined?v:'';});
+      lignes.push([liv,...vals,der||'']);
+    });
+    // Total épargne
+    const totEpMois=MOIS.map((_,i)=>LIVRETS.reduce((a,liv)=>{const ep=E.epargne.find(e=>e.livret===liv);return a+(ep&&ep.mois[i]!==null&&ep.mois[i]!==undefined?ep.mois[i]:0);},0));
+    let derEp=0;totEpMois.forEach(v=>{if(v)derEp=v;});
+    lignes.push(['TOTAL ÉPARGNE',...totEpMois,derEp||'']);
+    lignes.push(Array(14).fill(''));
+
+    // ── REVENUS ──
+    lignes.push(['── REVENUS ──',...Array(13).fill('')]);
+    const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.actif).filter(p=>p.type==='revenu').map(p=>p.cat)])];
+    cR.forEach(cat=>{
+      let tot=0;
+      const vals=MOIS.map((_,i)=>{const v=(data[i].rev[cat]||0)||(prevMois(i,an).rev[cat]||0);tot+=v;totMoisRev[i]+=v;return v||'';});
+      lignes.push([cat,...vals,tot||'']);
+    });
+    lignes.push(['TOTAL REVENUS',...totMoisRev,totMoisRev.reduce((a,b)=>a+b,0)]);
+    lignes.push(Array(14).fill(''));
+
+    // ── DÉPENSES FIXES ──
+    lignes.push(['── DÉPENSES FIXES ──',...Array(13).fill('')]);
+    const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
+    cDF.forEach(cat=>{
+      let tot=0;
+      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]||0)||(prevMois(i,an).dep[cat]||0);tot+=v;totMoisFix[i]+=v;return v||'';});
+      lignes.push([cat,...vals,tot||'']);
+    });
+    lignes.push(['TOTAL FIXES',...totMoisFix,totMoisFix.reduce((a,b)=>a+b,0)]);
+    // Reste pour variables
+    const resteVar=MOIS.map((_,i)=>totMoisRev[i]-totMoisFix[i]);
+    lignes.push(['Reste pour variables',...resteVar,resteVar.reduce((a,b)=>a+b,0)]);
+    lignes.push(Array(14).fill(''));
+
+    // ── DÉPENSES VARIABLES ──
+    lignes.push(['── DÉPENSES VARIABLES ──',...Array(13).fill('')]);
+    const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
+    cDV.forEach(cat=>{
+      let tot=0;
+      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]||0)||(prevMois(i,an).dep[cat]||0);tot+=v;totMoisVar[i]+=v;return v||'';});
+      lignes.push([cat,...vals,tot||'']);
+    });
+    lignes.push(['TOTAL VARIABLES',...totMoisVar,totMoisVar.reduce((a,b)=>a+b,0)]);
+    lignes.push(Array(14).fill(''));
+
+    // ── RESTE AU TOTAL ──
+    const resteTotal=MOIS.map((_,i)=>totMoisRev[i]-totMoisFix[i]-totMoisVar[i]);
+    lignes.push(['RESTE AU TOTAL',...resteTotal,resteTotal.reduce((a,b)=>a+b,0)]);
+
+    // ── TRANSACTIONS DÉTAILLÉES ──
+    lignes.push(Array(14).fill(''));
+    lignes.push(['── TRANSACTIONS DÉTAILLÉES ──',...Array(13).fill('')]);
+    lignes.push(['Date','Type','Catégorie','Projet','Description','Montant','Note','Pointée','Montant réel',...Array(5).fill('')]);
+    txA.sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
+      lignes.push([t.date,t.type,t.cat,t.projet||'',t.desc||'',t.montant,t.note&&!t.note.startsWith('prog:')?t.note:'',t.pointe?'Oui':'Non',t.montant_reel||'',...Array(5).fill('')]);
+    });
+
+    label.textContent='Ecriture dans Google Sheets...';
+
+    // Écrire par blocs de 50 lignes pour éviter les timeouts
+    const bloc=50;
+    for(let i=0;i<lignes.length;i+=bloc){
+      const chunk=lignes.slice(i,i+bloc);
+      await ecrire(`${nomOnglet}!A${i+1}:N${i+bloc}`,chunk);
+      label.textContent='Ecriture... '+Math.min(i+bloc,lignes.length)+'/'+lignes.length+' lignes';
+    }
+
+    // Mise en forme : mettre les en-têtes de section en gras via batchUpdate
+    const sheetMeta=await gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid});
+    const sheetId=sheetMeta.result.sheets.find(s=>s.properties.title===nomOnglet)?.properties.sheetId;
+    if(sheetId!==undefined){
+      const boldRows=[];
+      lignes.forEach((l,i)=>{if(typeof l[0]==='string'&&l[0].startsWith('──'))boldRows.push(i);});
+      const reqs=boldRows.map(r=>({repeatCell:{range:{sheetId,startRowIndex:r,endRowIndex:r+1,startColumnIndex:0,endColumnIndex:14},cell:{userEnteredFormat:{textFormat:{bold:true},backgroundColor:{red:.1,green:.19,blue:.29}}},fields:'userEnteredFormat(textFormat,backgroundColor)'}}));
+      // En-tête colonne
+      reqs.push({repeatCell:{range:{sheetId,startRowIndex:0,endRowIndex:1,startColumnIndex:0,endColumnIndex:14},cell:{userEnteredFormat:{textFormat:{bold:true,foregroundColor:{red:1,green:1,blue:1}},backgroundColor:{red:.1,green:.19,blue:.29}}},fields:'userEnteredFormat(textFormat,backgroundColor)'}});
+      // Largeur colonne A
+      reqs.push({updateDimensionProperties:{range:{sheetId,dimension:'COLUMNS',startIndex:0,endIndex:1},properties:{pixelSize:220},fields:'pixelSize'}});
+      if(reqs.length)await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:reqs}});
+    }
+
+    prog.style.display='none';btn.style.display='block';
+    toast(`Vue_${an} mise à jour ✓`);
+
+  }catch(e){
+    console.error(e);
+    prog.style.display='none';btn.style.display='block';
+    toast('Erreur lors de la génération');
+  }
+}
+
 async function recalerSolde(){
   const s=parseFloat(document.getElementById('rec-s').value);const d=document.getElementById('rec-d').value;
   if(isNaN(s)||!d){toast('Remplissez tous les champs');return;}
