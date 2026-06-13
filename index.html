@@ -774,7 +774,7 @@ function affDm(mi){
       h+=`<div class="ltx prev-tx" onclick="ouvrirPointerProg('${p.id}')">
         <div class="itx pr">⏳</div>
         <div class="inf"><div class="de it">${p.nom}</div><div class="so">${p.cat} · prévu</div></div>
-        <div class="mtx prev-m">${fmt(p.montant)}</div>
+        <div class="mtx prev-m">${fmt(p.montantsMois[E.annee]?p.montantsMois[E.annee][mi]:0)}</div>
       </div>`;
     });
     h+=`</div>`;
@@ -821,10 +821,11 @@ function ouvrirPointerProg(pid){
   E.txc='prog:'+pid;
   document.getElementById('ov-ti').textContent=p.nom;
   document.getElementById('ov-co').innerHTML=`
-    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmt(p.montant)}</span></div>
+    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmt(p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0)}</span></div>
     <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
     <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>`;
-  document.getElementById('ov-mo').value=p.montant;
+  const montPrev=p.montantsMois&&p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0;
+  document.getElementById('ov-mo').value=montPrev||0;
   document.getElementById('ov-pr').value='';
   document.getElementById('ov-no').value='';
   document.getElementById('ov-btn').textContent='✓ Pointer comme réalisée';
