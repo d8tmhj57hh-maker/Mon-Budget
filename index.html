@@ -463,15 +463,23 @@ function validerSheet(){const v=document.getElementById('inp-sid').value.trim();
 
 async function demarrer(){
   await initOnglets();await chargerTout();
-  if(!localStorage.getItem('init_fait')){
+  // Si des points de solde existent dans Sheets → pas besoin d'init
+  if(E.pts.length>0){
+    localStorage.setItem('init_fait','1');
+    lancerApp();
+  } else if(!localStorage.getItem('init_fait')){
     document.getElementById('ec-conn').style.display='none';
     document.getElementById('ec-init').style.display='flex';
-  }else lancerApp();
+  } else {
+    lancerApp();
+  }
 }
-function validerInit(){
+async function validerInit(){
   const s=parseFloat(document.getElementById('init-s').value);const d=document.getElementById('init-d').value;
   if(isNaN(s)||!d){toast('Remplissez solde et date');return;}
-  E.pts.push({date:d,solde:s});savePts(d,s);localStorage.setItem('init_fait','1');
+  await savePts(d,s);
+  E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));
+  localStorage.setItem('init_fait','1');
   document.getElementById('ec-init').style.display='none';lancerApp();
 }
 function lancerApp(){
@@ -587,7 +595,9 @@ async function saveRecal(){
   if(isNaN(s)||!d){toast('Remplissez tous les champs');return;}
   const idx=E.pts.findIndex(p=>p.date===d);
   if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
-  await savePts(d,s);fOv('ov-sol');affBanner();toast('Solde recalé ✓');
+  await savePts(d,s);
+  localStorage.setItem('init_fait','1');
+  fOv('ov-sol');affBanner();toast('Solde recalé ✓');
 }
 
 // ── VUE BUDGET (tableau annuel) ──
