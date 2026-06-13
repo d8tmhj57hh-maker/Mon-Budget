@@ -979,11 +979,14 @@ function ouvrirEditProg(pid){
 
 function affGrilleMontantsMois(p){
   const monts=p&&p.montantsMois[E.annee]?p.montantsMois[E.annee]:Array(12).fill(null);
+  // Initialiser le tableau en mémoire avec les valeurs existantes
+  E.montsMoisEnCours=monts.map(v=>(v!==null&&v!==undefined&&v>0)?v:null);
   const el=document.getElementById('prog-mois-sel');
-  el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+E.annee+' — laissez 0 si non applicable ce mois</p>'+
+  el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+E.annee+' (€) — laissez vide si non applicable</p>'+
   MOIS.map((m,i)=>{
-    const v=monts[i]!==null&&monts[i]!==undefined&&monts[i]>0?monts[i]:'';
-    return '<div class="cii"><label>'+m+'</label><input type="number" id="pmois'+i+'" step="0.01" inputmode="decimal" placeholder="0.00" value="'+v+'"/></div>';
+    const v=E.montsMoisEnCours[i]!==null?E.montsMoisEnCours[i]:'';
+    // oninput met à jour immédiatement en mémoire à chaque frappe
+    return '<div class="cii"><label>'+m+'</label><input type="number" id="pmois'+i+'" step="0.01" inputmode="decimal" placeholder="0.00" value="'+v+'" oninput="E.montsMoisEnCours['+i+']=this.value?parseFloat(this.value):null"/></div>';
   }).join('');
 }
 
