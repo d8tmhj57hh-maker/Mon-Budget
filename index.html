@@ -378,9 +378,10 @@
       <button class="tt" onclick="setProgType('revenu',this)">💰 Revenu</button>
     </div>
     <div class="ch3"><label>Catégorie</label><select id="prog-cat"></select></div>
-    <div class="ch3 cm3"><label>Montant estimé *</label><input type="number" id="prog-mont" step="0.01" inputmode="decimal" placeholder="0.00"/></div>
-    <div class="ch3"><label>Mois concernés</label>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:4px" id="prog-mois-sel"></div>
+
+    <input type="hidden" id="prog-id-edit" value=""/>
+    <div class="ch3"><label>Montants par mois (€)</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px" id="prog-mois-sel"></div>
     </div>
     <button class="bp" onclick="saveProg()">Enregistrer</button>
     <button class="bs2" onclick="fOv('ov-prog')">Annuler</button>
@@ -423,7 +424,7 @@ window.onload=()=>{
   document.getElementById('init-d').value=t;
   document.getElementById('rec-d').value=t;
   if(E.sid){document.getElementById('zone-sid').style.display='none';document.getElementById('p-conn').textContent='Connectez-vous pour accéder à votre budget';}
-  peuplerSels();peuplerCat();peuplerImpCats();peuplerMoisProg();
+  peuplerSels();peuplerCat();peuplerImpCats();
   const s1=document.createElement('script');s1.src='https://accounts.google.com/gsi/client';s1.onload=initGSI;document.head.appendChild(s1);
   const s2=document.createElement('script');s2.src='https://apis.google.com/js/api.js';s2.onload=()=>gapi.load('client',initGAPI);document.head.appendChild(s2);
 };
@@ -481,7 +482,7 @@ async function initOnglets(){
   ['Prog','Soldes','Epargne','Parametres'].forEach(n=>{if(!ex.includes(n))req.push({addSheet:{properties:{title:n}}});});
   if(req.length)await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests:req}});
   for(const a of ANNEES){if(!ex.includes(`TX_${a}`))await ecrire(`TX_${a}!A1:J1`,[['id','date','type','cat','projet','desc','montant','note','pointe','montant_reel']]);}
-  if(!ex.includes('Prog'))await ecrire('Prog!A1:G1',[['id','nom','type','cat','montant','mois','actif']]);
+  if(!ex.includes('Prog'))await ecrire('Prog!A1:H1',[['id','nom','type','cat','annee','mois','montant','actif']]);
   if(!ex.includes('Soldes'))await ecrire('Soldes!A1:B1',[['date','solde']]);
   if(!ex.includes('Epargne'))await ecrire('Epargne!A1:N1',[['Livret','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']]);
   if(!ex.includes('Parametres'))await sauvegarderParams();
@@ -491,7 +492,19 @@ async function chargerTout(){
   await chargerParams();
   E.tx=[];
   for(const a of ANNEES){try{const rows=await lire(`TX_${a}!A2:J`);rows.forEach(r=>{if(r[0])E.tx.push({id:r[0],date:r[1],type:r[2],cat:r[3],projet:r[4],desc:r[5],montant:parseFloat(r[6])||0,note:r[7],pointe:r[8]==='TRUE',montant_reel:parseFloat(r[9])||null,an:a});});}catch(e){}}
-  try{const rows=await lire('Prog!A2:G');E.prog=rows.filter(r=>r[0]).map(r=>({id:r[0],nom:r[1],type:r[2]||'depense',cat:r[3],montant:parseFloat(r[4])||0,mois:r[5]?r[5].split(',').map(Number):[],actif:r[6]!=='FALSE'}));}catch(e){E.prog=[];}
+  // Prog : une ligne par (nom × annee × mois) → on agrège par id de base
+  try{
+    const rows=await lire('Prog!A2:H');
+    // Regrouper par id (= id_base, sans suffixe mois)
+    const map={};
+    rows.filter(r=>r[0]).forEach(r=>{
+      const bid=r[0].split('_m')[0]; // id_base
+      if(!map[bid])map[bid]={id:bid,nom:r[1],type:r[2]||'depense',cat:r[3],actif:r[7]!=='FALSE',montantsMois:{}};
+      const an=r[4]||'';const mi=r[5]!==undefined?parseInt(r[5]):-1;const mont=parseFloat(r[6])||0;
+      if(an&&mi>=0){if(!map[bid].montantsMois[an])map[bid].montantsMois[an]=Array(12).fill(null);map[bid].montantsMois[an][mi]=mont;}
+    });
+    E.prog=Object.values(map);
+  }catch(e){E.prog=[];}
   try{const rows=await lire('Soldes!A2:B');E.pts=rows.filter(r=>r[0]).map(r=>({date:r[0],solde:parseFloat(r[1])||0}));E.pts.sort((a,b)=>a.date.localeCompare(b.date));}catch(e){E.pts=[];}
   try{const rows=await lire('Epargne!A2:N');E.epargne=rows.filter(r=>r[0]).map(r=>({livret:r[0],mois:r.slice(1,13).map(v=>v?parseFloat(v):null)}));}catch(e){E.epargne=[];}
   E.projets=[...new Set(E.tx.filter(t=>t.projet).map(t=>t.projet))];majDL();
@@ -547,10 +560,7 @@ function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
 
-function peuplerMoisProg(){
-  const el=document.getElementById('prog-mois-sel');if(!el)return;
-  el.innerHTML=MOIS.map((m,i)=>`<label style="display:flex;align-items:center;gap:4px;font-size:.75rem;background:var(--fo);border-radius:8px;padding:6px 8px;cursor:pointer"><input type="checkbox" name="pm" value="${i}" style="accent-color:var(--bl)"/> ${m.substring(0,3)}</label>`).join('');
-}
+// peuplerMoisProg remplacé par affGrilleMontantsMois
 
 // ── BANNER ──
 function affBanner(){
@@ -571,14 +581,22 @@ async function saveRecal(){
 }
 
 // ── VUE BUDGET (tableau annuel) ──
-function prevMois(mi){
-  // Retourne les prévisions programmées pour un mois donné
+function prevMois(mi, an){
+  an=an||E.annee;
   const prev={rev:{},dep:{}};
-  E.prog.filter(p=>p.actif&&p.mois.includes(mi)).forEach(p=>{
+  E.prog.filter(p=>p.actif).forEach(p=>{
+    const mont=p.montantsMois[an]?p.montantsMois[an][mi]:null;
+    if(mont===null||mont===undefined||mont===0)return;
     const b=p.type==='revenu'?'rev':'dep';
-    if(!prev[b][p.cat])prev[b][p.cat]=0;prev[b][p.cat]+=p.montant;
+    if(!prev[b][p.cat])prev[b][p.cat]=0;prev[b][p.cat]+=mont;
   });
   return prev;
+}
+
+function progActifsMois(mi, an){
+  // Retourne les programmées qui ont un montant pour ce mois/année
+  an=an||E.annee;
+  return E.prog.filter(p=>p.actif&&p.montantsMois[an]&&p.montantsMois[an][mi]!==null&&p.montantsMois[an][mi]!==undefined&&p.montantsMois[an][mi]>0);
 }
 
 function affBudget(){
@@ -606,14 +624,14 @@ function affBudget(){
   h+=`<tr class="ch"><td colspan="${nc}">Revenus</td></tr>`;
   cR.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
     MOIS.forEach((_,i)=>{
-      const reel=data[i].rev[c]||0;const prev=prevMois(i).rev[c]||0;
+      const reel=data[i].rev[c]||0;const prev=prevMois(i,E.annee).rev[c]||0;
       const val=reel||prev;tot+=val;
       h+=`<td class="${reel?'tp':'prev'}">${val?fmt(val):'—'}</td>`;
     });
     h+=`<td class="tp">${fmt(tot)}</td></tr>`;
   });
   let tRA=0;h+=`<tr class="lt"><td>Total revenus</td>`;
-  MOIS.forEach((_,i)=>{const s=(Object.values(data[i].rev).reduce((a,b)=>a+b,0))||(Object.values(prevMois(i).rev).reduce((a,b)=>a+b,0));tRA+=s;h+=`<td class="tp">${fmt(s)}</td>`;});
+  MOIS.forEach((_,i)=>{const s=(Object.values(data[i].rev).reduce((a,b)=>a+b,0))||(Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0));tRA+=s;h+=`<td class="tp">${fmt(s)}</td>`;});
   h+=`<td class="tp">${fmt(tRA)}</td></tr>`;
 
   // DÉPENSES FIXES
@@ -621,19 +639,19 @@ function affBudget(){
   if(cDF.length){
     h+=`<tr class="ch"><td colspan="${nc}">Dépenses fixes</td></tr>`;
     cDF.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
+      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
       h+=`<td class="tn">${fmt(tot)}</td></tr>`;
     });
   }
   let tDF=0;h+=`<tr class="lt"><td>Total fixes</td>`;
-  MOIS.forEach((_,i)=>{const r=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i).dep[c]||0),0);tDF+=r;h+=`<td class="tn">${fmt(r)}</td>`;});
+  MOIS.forEach((_,i)=>{const r=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDF+=r;h+=`<td class="tn">${fmt(r)}</td>`;});
   h+=`<td class="tn">${fmt(tDF)}</td></tr>`;
 
   // RESTE POUR VARIABLES
   h+=`<tr class="lr"><td>Reste pour variables</td>`;
   MOIS.forEach((_,i)=>{
-    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i).rev).reduce((a,b)=>a+b,0);
-    const fix=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i).dep[c]||0),0);
+    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
+    const fix=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);
     const r=rev-fix;h+=`<td class="${r>=0?'tp':'tn'}">${fmt(r)}</td>`;
   });
   h+=`<td></td></tr>`;
@@ -643,19 +661,19 @@ function affBudget(){
   if(cDV.length){
     h+=`<tr class="ch"><td colspan="${nc}">Dépenses variables</td></tr>`;
     cDV.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
+      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
       h+=`<td class="tn">${fmt(tot)}</td></tr>`;
     });
   }
   let tDV=0;h+=`<tr class="lt"><td>Total variables</td>`;
-  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i).dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmt(s)}</td>`;});
+  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmt(s)}</td>`;});
   h+=`<td class="tn">${fmt(tDV)}</td></tr>`;
 
   // RESTE AU TOTAL
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Reste au total</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
-    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i).rev).reduce((a,b)=>a+b,0);
-    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||([...CDEP_FIXES,...CDEP_VAR].reduce((a,c)=>a+(prevMois(i).dep[c]||0),0));
+    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
+    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||([...CDEP_FIXES,...CDEP_VAR].reduce((a,c)=>a+(prevMois(i,E.annee).dep[c]||0),0));
     const r=rev-dep;rAn+=r;h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmt(r)}</strong></td>`;
   });
   h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmt(rAn)}</strong></td></tr></tbody>`;
@@ -699,7 +717,7 @@ function affDm(mi){
   const sF=calcSolde(dF);const sD=calcSolde(dD);
 
   // Programmées en attente ce mois
-  const progMois=E.prog.filter(p=>p.actif&&p.mois.includes(mi));
+  const progMois=progActifsMois(mi,E.annee);
   // IDs des programmées déjà pointées ce mois (via tx qui ont prog_id dans note ou desc)
   const pointeesIds=new Set(txM.filter(t=>t.pointe&&t.note&&t.note.startsWith('prog:')).map(t=>t.note.split(':')[1]));
 
@@ -885,46 +903,116 @@ async function saveTx(){
 function affProg(){
   const el=document.getElementById('lp');
   if(!E.prog.length){el.innerHTML=`<div class="vi" style="padding:16px 0"><div class="em">🔄</div><p style="font-size:.82rem">Aucun élément programmé</p></div>`;return;}
-  el.innerHTML=E.prog.map(p=>`
-    <div class="cp3">
+  el.innerHTML=E.prog.map(p=>{
+    const monts=p.montantsMois[E.annee]||Array(12).fill(null);
+    const defini=monts.filter(v=>v!==null&&v>0);
+    const resume=defini.length?`${defini.length} mois · moy. ${fmt(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee;
+    return `<div class="cp3" style="flex-wrap:wrap;gap:8px">
       <button class="tg ${p.actif?'on':''}" onclick="togProg('${p.id}')"></button>
-      <div class="ip" style="flex:1">
+      <div class="ip" style="flex:1;min-width:120px" onclick="ouvrirEditProg('${p.id}')">
         <div class="np">${p.nom}</div>
-        <div class="dp">${p.cat} · ${p.mois.length===12?'Tous les mois':p.mois.map(i=>MOIS[i].substring(0,3)).join(', ')}</div>
+        <div class="dp">${p.cat} · ${resume}</div>
       </div>
-      <div class="mp2" style="color:${p.type==='revenu'?'var(--ve)':'var(--ro)'}">
-        ${p.type==='revenu'?'+':'−'}${fmt(p.montant)}
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-weight:600;font-size:.85rem;color:${p.type==='revenu'?'var(--ve)':'var(--ro)'};">${p.type==='revenu'?'+':'−'}</div>
+        <button onclick="suppProg('${p.id}')" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px">🗑</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function ouvrirAjoutProg(){
   document.getElementById('ov-prog-ti').textContent='Nouvel élément programmé';
-  document.getElementById('prog-nom').value='';document.getElementById('prog-mont').value='';
-  PROG_TYPE='depense';peuplerProgCat();
-  document.querySelectorAll('#prog-mois-sel input').forEach(cb=>cb.checked=true);
+  document.getElementById('prog-nom').value='';
+  document.getElementById('prog-id-edit').value='';
+  PROG_TYPE='depense';
+  document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if(b.textContent.includes('Dépense'))b.classList.add('a');});
+  peuplerProgCat();
+  affGrilleMontantsMois(null);
   document.getElementById('ov-prog').classList.add('v');
+}
+
+function ouvrirEditProg(pid){
+  const p=E.prog.find(x=>x.id===pid);if(!p)return;
+  document.getElementById('ov-prog-ti').textContent='Modifier';
+  document.getElementById('prog-nom').value=p.nom;
+  document.getElementById('prog-id-edit').value=pid;
+  PROG_TYPE=p.type;
+  document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if((p.type==='revenu'&&b.textContent.includes('Revenu'))||(p.type==='depense'&&b.textContent.includes('Dépense')))b.classList.add('a');});
+  peuplerProgCat();
+  document.getElementById('prog-cat').value=p.cat;
+  affGrilleMontantsMois(p);
+  document.getElementById('ov-prog').classList.add('v');
+}
+
+function affGrilleMontantsMois(p){
+  const monts=p&&p.montantsMois[E.annee]?p.montantsMois[E.annee]:Array(12).fill(null);
+  const el=document.getElementById('prog-mois-sel');
+  el.innerHTML=`<p style="font-size:.72rem;color:var(--txl);margin-bottom:8px;grid-column:1/-1">Montants pour ${E.annee} — laissez vide si non applicable</p>`+
+  MOIS.map((m,i)=>`<div class="cii">
+    <label>${m.substring(0,3)}</label>
+    <input type="number" id="pm-${i}" step="0.01" inputmode="decimal" placeholder="—" value="${monts[i]!==null&&monts[i]!==undefined&&monts[i]>0?monts[i]:''}"/>
+  </div>`).join('');
 }
 
 async function saveProg(){
   const nom=document.getElementById('prog-nom').value.trim();
-  const mont=parseFloat(document.getElementById('prog-mont').value);
   const cat=document.getElementById('prog-cat').value;
-  const moisCochesCbs=document.querySelectorAll('#prog-mois-sel input:checked');
-  const mois=[...moisCochesCbs].map(cb=>parseInt(cb.value));
-  if(!nom||isNaN(mont)||!mois.length){toast('Remplissez tous les champs');return;}
-  const id=`prog_${Date.now()}`;
+  const pid=document.getElementById('prog-id-edit').value;
+  if(!nom){toast('Entrez un nom');return;}
+  // Lire les montants par mois
+  const montsMois=MOIS.map((_,i)=>{const v=parseFloat(document.getElementById(`pm-${i}`)?.value);return isNaN(v)||v<=0?null:v;});
+  const aDesMonts=montsMois.some(v=>v!==null);
+  if(!aDesMonts){toast('Saisissez au moins un montant');return;}
   try{
-    await ajouter('Prog',[id,nom,PROG_TYPE,cat,mont,mois.join(','),'TRUE']);
-    E.prog.push({id,nom,type:PROG_TYPE,cat,montant:mont,mois,actif:true});
-    fOv('ov-prog');affProg();affBudget();toast('Ajouté ✓');
-  }catch(e){toast('Erreur');}
+    if(pid){
+      // Modification : mettre à jour en mémoire + supprimer anciennes lignes Sheets pour cette année puis réinsérer
+      const p=E.prog.find(x=>x.id===pid);
+      if(p){p.nom=nom;p.cat=cat;p.type=PROG_TYPE;if(!p.montantsMois[E.annee])p.montantsMois[E.annee]=Array(12).fill(null);p.montantsMois[E.annee]=montsMois;}
+      // Supprimer lignes existantes pour cet id+annee dans Sheets
+      const rows=await lire('Prog!A2:H');
+      for(let i=rows.length-1;i>=0;i--){
+        if(rows[i][0]&&rows[i][0].startsWith(pid)&&rows[i][4]===E.annee){
+          await ecrire(`Prog!A${i+2}:H${i+2}`,[['','','','','','','','']]);
+        }
+      }
+      // Réinsérer
+      for(let mi=0;mi<12;mi++){if(montsMois[mi]===null)continue;const lid=`${pid}_m${mi}`;await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,montsMois[mi],'TRUE']);}
+      toast('Modifié ✓');
+    } else {
+      // Nouveau
+      const id=`prog_${Date.now()}`;
+      const montsMoisObj={};montsMoisObj[E.annee]=montsMois;
+      E.prog.push({id,nom,type:PROG_TYPE,cat,actif:true,montantsMois:montsMoisObj});
+      for(let mi=0;mi<12;mi++){if(montsMois[mi]===null)continue;const lid=`${id}_m${mi}`;await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,montsMois[mi],'TRUE']);}
+      toast('Ajouté ✓');
+    }
+    fOv('ov-prog');affProg();affBudget();
+  }catch(e){console.error(e);toast('Erreur');}
 }
 
 async function togProg(id){
   const p=E.prog.find(x=>x.id===id);if(!p)return;p.actif=!p.actif;
-  try{const rows=await lire('Prog!A2:G');const idx=rows.findIndex(r=>r[0]===id);if(idx>=0)await ecrire(`Prog!G${idx+2}`,[[p.actif?'TRUE':'FALSE']]);affProg();toast(p.actif?'Activé ✓':'Désactivé');}
-  catch(e){p.actif=!p.actif;affProg();}
+  try{
+    const rows=await lire('Prog!A2:H');
+    // Mettre à jour toutes les lignes de cet id
+    for(let i=0;i<rows.length;i++){
+      if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!H${i+2}`,[[p.actif?'TRUE':'FALSE']]);}
+    }
+    affProg();affBudget();toast(p.actif?'Activé ✓':'Désactivé');
+  }catch(e){p.actif=!p.actif;affProg();}
+}
+
+async function suppProg(id){
+  if(!confirm('Supprimer cet élément programmé ?'))return;
+  try{
+    const rows=await lire('Prog!A2:H');
+    for(let i=rows.length-1;i>=0;i--){
+      if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:H${i+2}`,[['','','','','','','','']]);}
+    }
+    E.prog=E.prog.filter(x=>x.id!==id);
+    affProg();affBudget();toast('Supprimé ✓');
+  }catch(e){toast('Erreur');}
 }
 
 // ── ÉPARGNE ──
