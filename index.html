@@ -391,7 +391,7 @@
 
     <input type="hidden" id="prog-id-edit" value=""/>
     <div class="ch3"><label>Montants par mois (€)</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px" id="prog-mois-sel"></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px" id="prog-mois-sel"></div>
     </div>
     <button class="bp" onclick="saveProg()">Enregistrer</button>
     <button class="bs2" onclick="fOv('ov-prog')">Annuler</button>
@@ -739,7 +739,12 @@ function affDm(mi){
   // Programmées en attente ce mois
   const progMois=progActifsMois(mi,E.annee);
   // IDs des programmées déjà pointées ce mois (via tx qui ont prog_id dans note ou desc)
-  const pointeesIds=new Set(txM.filter(t=>t.pointe&&t.note&&t.note.startsWith('prog:')).map(t=>t.note.split(':')[1]));
+  // Une programmée est considérée pointée si : 
+  // (a) une tx avec note prog:id existe et est pointée
+  // OU (b) une tx réelle existe pour cette même catégorie ce mois
+  const pointeesParNote=new Set(txM.filter(t=>t.pointe&&t.note&&t.note.startsWith('prog:')).map(t=>t.note.split(':')[1]));
+  const catsCouvertes=new Set(txM.filter(t=>t.pointe).map(t=>t.cat));
+  const pointeesIds=new Set([...pointeesParNote,...E.prog.filter(p=>catsCouvertes.has(p.cat)).map(p=>p.id)]);
 
   let h=`<h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin-bottom:11px;">${MOIS[mi]} ${E.annee}</h2>`;
   h+=`<div class="ban" style="margin-bottom:11px;"><div class="g3">
@@ -968,11 +973,11 @@ function ouvrirEditProg(pid){
 function affGrilleMontantsMois(p){
   const monts=p&&p.montantsMois[E.annee]?p.montantsMois[E.annee]:Array(12).fill(null);
   const el=document.getElementById('prog-mois-sel');
-  el.innerHTML=`<p style="font-size:.72rem;color:var(--txl);margin-bottom:8px;grid-column:1/-1">Montants pour ${E.annee} — laissez vide si non applicable</p>`+
-  MOIS.map((m,i)=>`<div class="cii">
-    <label>${m.substring(0,3)}</label>
-    <input type="number" id="pm-${i}" step="0.01" inputmode="decimal" placeholder="—" value="${monts[i]!==null&&monts[i]!==undefined&&monts[i]>0?monts[i]:''}"/>
-  </div>`).join('');
+  el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+E.annee+' — laissez 0 si non applicable ce mois</p>'+
+  MOIS.map((m,i)=>{
+    const v=monts[i]!==null&&monts[i]!==undefined&&monts[i]>0?monts[i]:'';
+    return '<div class="cii"><label>'+m+'</label><input type="number" id="pmois'+i+'" step="0.01" inputmode="decimal" placeholder="0.00" value="'+v+'"/></div>';
+  }).join('');
 }
 
 async function saveProg(){
@@ -981,7 +986,7 @@ async function saveProg(){
   const pid=document.getElementById('prog-id-edit').value;
   if(!nom){toast('Entrez un nom');return;}
   // Lire les montants par mois
-  const montsMois=MOIS.map((_,i)=>{const v=parseFloat(document.getElementById(`pm-${i}`)?.value);return isNaN(v)||v<=0?null:v;});
+  const montsMois=MOIS.map((_,i)=>{const el=document.getElementById('pmois'+i);const v=el?parseFloat(el.value):NaN;return isNaN(v)||v<=0?null:v;});
   const aDesMonts=montsMois.some(v=>v!==null);
   if(!aDesMonts){toast('Saisissez au moins un montant');return;}
   try{
@@ -1008,7 +1013,11 @@ async function saveProg(){
       toast('Ajouté ✓');
     }
     fOv('ov-prog');affProg();affBudget();
-  }catch(e){console.error(e);toast('Erreur');}
+    // Toast de confirmation avec résumé
+    const nbMois=montsMois.filter(v=>v!==null).length;
+    const total=montsMois.filter(v=>v!==null).reduce((a,b)=>a+b,0);
+    toast((pid?'Modifié':'Ajouté')+' : '+nom+' — '+nbMois+' mois, total '+fmt(total));
+  }catch(e){console.error(e);toast('Erreur enregistrement');}
 }
 
 async function togProg(id){
@@ -1193,7 +1202,7 @@ async function genererVueSheets(){
     const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.actif).filter(p=>p.type==='revenu').map(p=>p.cat)])];
     cR.forEach(cat=>{
       let tot=0;
-      const vals=MOIS.map((_,i)=>{const v=(data[i].rev[cat]||0)||(prevMois(i,an).rev[cat]||0);tot+=v;totMoisRev[i]+=v;return v||'';});
+      const vals=MOIS.map((_,i)=>{const v=(data[i].rev[cat]>0?data[i].rev[cat]:(prevMois(i,an).rev[cat]||0));tot+=v;totMoisRev[i]+=v;return v||'';});
       lignes.push([cat,...vals,tot||'']);
     });
     lignes.push(['TOTAL REVENUS',...totMoisRev,totMoisRev.reduce((a,b)=>a+b,0)]);
@@ -1204,7 +1213,7 @@ async function genererVueSheets(){
     const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
     cDF.forEach(cat=>{
       let tot=0;
-      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]||0)||(prevMois(i,an).dep[cat]||0);tot+=v;totMoisFix[i]+=v;return v||'';});
+      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]>0?data[i].dep[cat]:(prevMois(i,an).dep[cat]||0));tot+=v;totMoisFix[i]+=v;return v||'';});
       lignes.push([cat,...vals,tot||'']);
     });
     lignes.push(['TOTAL FIXES',...totMoisFix,totMoisFix.reduce((a,b)=>a+b,0)]);
@@ -1218,7 +1227,7 @@ async function genererVueSheets(){
     const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
     cDV.forEach(cat=>{
       let tot=0;
-      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]||0)||(prevMois(i,an).dep[cat]||0);tot+=v;totMoisVar[i]+=v;return v||'';});
+      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]>0?data[i].dep[cat]:(prevMois(i,an).dep[cat]||0));tot+=v;totMoisVar[i]+=v;return v||'';});
       lignes.push([cat,...vals,tot||'']);
     });
     lignes.push(['TOTAL VARIABLES',...totMoisVar,totMoisVar.reduce((a,b)=>a+b,0)]);
