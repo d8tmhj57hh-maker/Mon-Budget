@@ -181,6 +181,9 @@
   
   
   
+  <!-- Scripts Google chargés dans le head -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
 
@@ -477,12 +480,30 @@ window.onload=()=>{
     const z=document.getElementById('zone-sid');
     if(z)z.style.display='none';
   }
-  // Scripts déjà chargés dans le head - attendre qu'ils soient prêts
+  // Attendre que les scripts Google soient chargés (max 10 secondes)
+  let tentativesGSI=0;
   const attentGSI=setInterval(()=>{
-    if(window.google&&window.google.accounts){clearInterval(attentGSI);initGSI();}
+    tentativesGSI++;
+    if(window.google&&window.google.accounts&&window.google.accounts.oauth2){
+      clearInterval(attentGSI);
+      initGSI();
+      console.log('GSI pret apres',tentativesGSI*100,'ms');
+    }
+    if(tentativesGSI>100){
+      clearInterval(attentGSI);
+      console.error('GSI timeout');
+      toast('Erreur chargement - verifiez votre connexion');
+    }
   },100);
+  let tentativesGAPI=0;
   const attentGAPI=setInterval(()=>{
-    if(window.gapi){clearInterval(attentGAPI);gapi.load('client',initGAPI);}
+    tentativesGAPI++;
+    if(window.gapi){
+      clearInterval(attentGAPI);
+      gapi.load('client',initGAPI);
+      console.log('GAPI pret apres',tentativesGAPI*100,'ms');
+    }
+    if(tentativesGAPI>100){clearInterval(attentGAPI);console.error('GAPI timeout');}
   },100);
 };
 
@@ -540,7 +561,10 @@ function connexionFirebase(){
   document.getElementById('zone-chargement').textContent='Redirection vers Google...';
   window.fbSignIn();
 }
-function connexionGoogle(){if(E.tc)E.tc.requestAccessToken();}
+function connexionGoogle(){
+  if(!E.tc){toast('Chargement en cours, reessayez...');return;}
+  E.tc.requestAccessToken();
+}
 function validerSheet(){const v=document.getElementById('inp-sid').value.trim();if(!v){toast("Entrez l'ID");return;}E.sid=v;localStorage.setItem('sid',v);connexionGoogle();}
 
 async function demarrer(){
