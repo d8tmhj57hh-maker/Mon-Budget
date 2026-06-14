@@ -198,6 +198,24 @@
 
 
 
+<!-- NOUVEL UTILISATEUR -->
+<div id="ec-nouveau" class="ea" style="display:none">
+  <h2>Bienvenue ! 👋</h2>
+  <p>Votre espace budget personnel va être créé automatiquement dans votre Google Drive.</p>
+  <div class="ci2">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:3rem;margin-bottom:12px">📊</div>
+      <p style="color:rgba(255,255,255,.9);font-size:.95rem;font-weight:500;margin-bottom:6px">Connecté en tant que</p>
+      <p id="ec-nouveau-email" style="color:var(--or);font-size:.875rem;margin-bottom:20px"></p>
+    </div>
+    <button class="bo2" id="btn-creer-sheet" onclick="creerSheetAuto()">
+      ✨ Créer mon espace budget
+    </button>
+    <div id="msg-creation" style="display:none;margin-top:14px;text-align:center;color:rgba(255,255,255,.75);font-size:.83rem"></div>
+    <p style="color:rgba(255,255,255,.4);font-size:.72rem;margin-top:16px;text-align:center">Un fichier Google Sheets sera créé dans votre Drive</p>
+  </div>
+</div>
+
 <!-- INIT SOLDE -->
 <div id="ec-init" class="ea" style="display:none">
   <h2>Bienvenue !</h2>
@@ -411,7 +429,7 @@
 
 <script>
 const CID='438546104293-81acihkhskj9n95u88pupgoasl07dq4t.apps.googleusercontent.com';
-const SCOPES='https://www.googleapis.com/auth/spreadsheets';
+const SCOPES='https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 const ANNEES=['2024','2025','2026','2027','2028'];
 
@@ -490,7 +508,12 @@ function initGSI(){
     }
     localStorage.setItem('gtoken',r.access_token);
     gapi.client.setToken({access_token:r.access_token});
-    await demarrer();
+    if(E.sid){
+      await demarrer();
+    } else {
+      // Nouvel utilisateur → proposer création automatique du Sheet
+      afficherEcranNouvelUtilisateur();
+    }
   }});
 }
 async function initGAPI(){
@@ -502,13 +525,11 @@ async function initGAPI(){
     try{await demarrer();return;}
     catch(e){localStorage.removeItem('gtoken');}
   }
-  // Tentative de reconnexion silencieuse si on a un sid
-  if(E.sid&&E.tc){
+  // Tentative de reconnexion silencieuse
+  if(E.tc){
     try{
-      // prompt:'' = silencieux, sans popup
       E.tc.requestAccessToken({prompt:''});
     }catch(e){
-      // Silencieux échoue → connexion avec sélecteur de compte
       E.tc.requestAccessToken({prompt:'select_account'});
     }
   }
@@ -535,6 +556,70 @@ async function demarrer(){
     lancerApp();
   }
 }
+function afficherEcranNouvelUtilisateur(){
+  // Récupérer l'email depuis le token Google
+  const token=localStorage.getItem('gtoken');
+  if(token){
+    fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+token}})
+      .then(r=>r.json()).then(info=>{
+        const el=document.getElementById('ec-nouveau-email');
+        if(el)el.textContent=info.email||'';
+      }).catch(()=>{});
+  }
+  document.getElementById('ec-conn').style.display='none';
+  document.getElementById('ec-nouveau').style.display='flex';
+}
+
+async function creerSheetAuto(){
+  const btn=document.getElementById('btn-creer-sheet');
+  const msg=document.getElementById('msg-creation');
+  btn.disabled=true;
+  btn.textContent='Création en cours...';
+  msg.style.display='block';
+  msg.textContent='Création de votre fichier Google Sheets...';
+
+  try{
+    // Créer un nouveau Google Sheet via l'API Drive
+    const resp=await fetch('https://sheets.googleapis.com/v4/spreadsheets',{
+      method:'POST',
+      headers:{
+        'Authorization':'Bearer '+localStorage.getItem('gtoken'),
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        properties:{title:'Mon Budget'},
+        sheets:[{properties:{title:'TX_2026'}}]
+      })
+    });
+
+    if(!resp.ok)throw new Error('Erreur creation Sheet: '+resp.status);
+    const data=await resp.json();
+    const sid=data.spreadsheetId;
+
+    msg.textContent='Fichier cree ! Initialisation...';
+
+    // Sauvegarder l'ID
+    E.sid=sid;
+    setCookie('monbudget_sid',sid,3650);
+    localStorage.setItem('sid',sid);
+
+    msg.textContent='Presque pret...';
+
+    // Masquer l'écran et démarrer
+    document.getElementById('ec-nouveau').style.display='none';
+    await demarrer();
+
+    toast('Votre espace budget est pret !');
+
+  }catch(e){
+    console.error('creerSheetAuto:',e);
+    btn.disabled=false;
+    btn.textContent='Reessayer';
+    msg.textContent='Erreur : '+e.message+'. Verifiez votre connexion.';
+    msg.style.color='#ff8a8a';
+  }
+}
+
 async function validerInit(){
   const s=parseFloat(document.getElementById('init-s').value);const d=document.getElementById('init-d').value;
   if(isNaN(s)||!d){toast('Remplissez solde et date');return;}
