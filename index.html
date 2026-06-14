@@ -531,13 +531,16 @@ async function chargerTout(){
   // Prog : une ligne par (nom × annee × mois) → on agrège par id de base
   try{
     const rows=await lire('Prog!A2:H');
-    // Regrouper par id (= id_base, sans suffixe mois)
     const map={};
     rows.filter(r=>r[0]).forEach(r=>{
-      const bid=r[0].split('_m')[0]; // id_base
+      const an=r[4]||'';const mi=r[5]!==undefined?parseInt(r[5]):-1;
+      // Ignorer les lignes ancien format (sans année valide ou mois valide)
+      if(!an||isNaN(mi)||mi<0||mi>11)return;
+      const bid=r[0].split('_m')[0];
       if(!map[bid])map[bid]={id:bid,nom:r[1],type:r[2]||'depense',cat:r[3],actif:r[7]!=='FALSE',montantsMois:{}};
-      const an=r[4]||'';const mi=r[5]!==undefined?parseInt(r[5]):-1;const mont=parseFloat(r[6])||0;
-      if(an&&mi>=0){if(!map[bid].montantsMois[an])map[bid].montantsMois[an]=Array(12).fill(null);map[bid].montantsMois[an][mi]=mont;}
+      const mont=parseFloat(r[6])||0;
+      if(!map[bid].montantsMois[an])map[bid].montantsMois[an]=Array(12).fill(null);
+      map[bid].montantsMois[an][mi]=mont;
     });
     E.prog=Object.values(map);
   }catch(e){E.prog=[];}
