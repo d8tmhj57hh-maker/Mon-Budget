@@ -603,7 +603,7 @@ function affBanner(){
   const solde=soldeAuj();const txA=E.tx.filter(t=>t.an===E.annee);
   const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);const r=rev-dep;
-  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmt(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div><div class="g3"><div class="ms"><div class="v vp">${fmt(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmt(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmt(r)}</div><div class="l">Reste ${E.annee}</div></div></div><button class="brec" onclick="ouvrirRecal()">⚡ Recaler le solde</button>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
+  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div><div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div><button class="brec" onclick="ouvrirRecal()">⚡ Recaler le solde</button>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
 
@@ -656,12 +656,12 @@ function affBudget(){
       const valide=v!==null&&v!==undefined&&v>0;
       if(valide&&premier===null)premier=v;  // premier solde connu de l'année
       if(valide)dernier=v;                  // dernier solde connu
-      h+=`<td>${valide?fmt(v):'—'}</td>`;
+      h+=`<td>${valide?fmtDec(v):'—'}</td>`;
     });
     // Total = évolution (dernier - premier) : vert si épargne, rouge si pioche
     const evol=dernier!==null&&premier!==null?dernier-premier:null;
     const clEvol=evol===null?'':(evol>=0?'tp':'tn');
-    const labelEvol=evol===null?'—':(evol>=0?'+':'')+fmt(evol);
+    const labelEvol=evol===null?'—':(evol>=0?'+':'')+fmtDec(evol);
     h+=`<td class="${clEvol}">${labelEvol}</td></tr>`;
   });
   // Ligne total épargne : dernier solde connu par livret + évolution totale
@@ -669,7 +669,7 @@ function affBudget(){
   let totDernier=0;let totPremier=0;
   MOIS.forEach((_,i)=>{
     const s=LIVRETS.reduce((a,liv)=>{const ep=E.epargne.find(e=>e.livret===liv);return a+(ep&&ep.mois[i]!==null&&ep.mois[i]!==undefined&&ep.mois[i]>0?ep.mois[i]:0);},0);
-    h+=`<td class="tp">${s?fmt(s):'—'}</td>`;
+    h+=`<td class="tp">${s?fmtDec(s):'—'}</td>`;
   });
   // Calculer évolution totale
   LIVRETS.forEach(liv=>{
@@ -679,7 +679,7 @@ function affBudget(){
   });
   const evolTot=totPremier>0?totDernier-totPremier:null;
   const clEvolTot=evolTot===null?'tp':(evolTot>=0?'tp':'tn');
-  const labelEvolTot=evolTot===null?(totDernier?fmt(totDernier):'—'):(evolTot>=0?'+':'')+fmt(evolTot);
+  const labelEvolTot=evolTot===null?(totDernier?fmtDec(totDernier):'—'):(evolTot>=0?'+':'')+fmtDec(evolTot);
   h+=`<td class="${clEvolTot}">${labelEvolTot}</td></tr>`;
 
   // REVENUS (réels + prévisionnels)
@@ -692,33 +692,33 @@ function affBudget(){
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
       const val=reel+prev;tot+=val;totRevMois[i]+=val;
-      h+=`<td class="${reel?'tp':prev?'prev':''}">` + (val?fmt(val):'—') + '</td>';
+      h+=`<td class="${reel?'tp':prev?'prev':''}">` + (val?fmtDec(val):'—') + '</td>';
     });
-    h+=`<td class="tp">${fmt(tot)}</td></tr>`;
+    h+=`<td class="tp">${fmtDec(tot)}</td></tr>`;
   });
   let tRA=0;h+=`<tr class="lt"><td>Total revenus</td>`;
-  MOIS.forEach((_,i)=>{tRA+=totRevMois[i];h+=`<td class="tp">${fmt(totRevMois[i])}</td>`;});
-  h+=`<td class="tp">${fmt(tRA)}</td></tr>`;
+  MOIS.forEach((_,i)=>{tRA+=totRevMois[i];h+=`<td class="tp">${fmtDec(totRevMois[i])}</td>`;});
+  h+=`<td class="tp">${fmtDec(tRA)}</td></tr>`;
 
   // DÉPENSES FIXES
   const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
   if(cDF.length){
     h+=`<tr class="ch"><td colspan="${nc}">Dépenses fixes</td></tr>`;
     cDF.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
-      h+=`<td class="tn">${fmt(tot)}</td></tr>`;
+      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
+      h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
     });
   }
   let tDF=0;h+=`<tr class="lt"><td>Total fixes</td>`;
-  MOIS.forEach((_,i)=>{const r=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDF+=r;h+=`<td class="tn">${fmt(r)}</td>`;});
-  h+=`<td class="tn">${fmt(tDF)}</td></tr>`;
+  MOIS.forEach((_,i)=>{const r=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDF+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
+  h+=`<td class="tn">${fmtDec(tDF)}</td></tr>`;
 
   // RESTE POUR VARIABLES
   h+=`<tr class="lr"><td>Reste pour variables</td>`;
   MOIS.forEach((_,i)=>{
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
     const fix=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);
-    const r=rev-fix;h+=`<td class="${r>=0?'tp':'tn'}">${fmt(r)}</td>`;
+    const r=rev-fix;h+=`<td class="${r>=0?'tp':'tn'}">${fmtDec(r)}</td>`;
   });
   h+=`<td></td></tr>`;
 
@@ -727,13 +727,13 @@ function affBudget(){
   if(cDV.length){
     h+=`<tr class="ch"><td colspan="${nc}">Dépenses variables</td></tr>`;
     cDV.forEach(c=>{let tot=0;h+=`<tr><td>${c}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmt(val):'—'}</td>`;});
-      h+=`<td class="tn">${fmt(tot)}</td></tr>`;
+      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
+      h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
     });
   }
   let tDV=0;h+=`<tr class="lt"><td>Total variables</td>`;
-  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmt(s)}</td>`;});
-  h+=`<td class="tn">${fmt(tDV)}</td></tr>`;
+  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmtDec(s)}</td>`;});
+  h+=`<td class="tn">${fmtDec(tDV)}</td></tr>`;
 
   // RESTE AU TOTAL
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Reste au total</strong></td>`;
@@ -741,9 +741,9 @@ function affBudget(){
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
     const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||([...CDEP_FIXES,...CDEP_VAR].reduce((a,c)=>a+(prevMois(i,E.annee).dep[c]||0),0));
     const r=rev-dep;rAn+=r;
-    h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmt(r)}</strong></td>`;
+    h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmtDec(r)}</strong></td>`;
   });
-  h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmt(rAn)}</strong></td></tr>`;
+  h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmtDec(rAn)}</strong></td></tr>`;
 
   // ── LIGNE SOLDE COMPTE COURANT ──
   h+=`<tr class="lr" style="background:rgba(45,122,95,.06)!important"><td><strong>Solde compte courant</strong></td>`;
@@ -751,12 +751,12 @@ function affBudget(){
     const dF=new Date(parseInt(E.annee),i+1,0).toISOString().split('T')[0];
     const sF=calcSolde(dF);
     const cls=sF===null?'':(sF>=0?'tp':'tn');
-    h+=`<td class="${cls}">${sF!==null?fmt(sF):'—'}</td>`;
+    h+=`<td class="${cls}">${sF!==null?fmtDec(sF):'—'}</td>`;
   });
   // Colonne total = solde fin décembre (ou dernier mois connu)
   const dFDec=new Date(parseInt(E.annee),12,0).toISOString().split('T')[0];
   const sFDec=calcSolde(dFDec);
-  h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}">${sFDec!==null?fmt(sFDec):'—'}</td></tr></tbody>`;
+  h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}">${sFDec!==null?fmtDec(sFDec):'—'}</td></tr></tbody>`;
   document.getElementById('ta').innerHTML=h;
 }
 
@@ -770,7 +770,7 @@ function affGrille(){
     const r=rev-dep;const p=rev>0?Math.min((dep/rev)*100,100):0;
     const col=p>90?'var(--ro)':p>70?'var(--or2)':'var(--ve)';
     const ec=i===mA&&E.annee===new Date().getFullYear().toString();
-    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" onclick="ouvrirDm(${i})">${ec?'<div class="ba2"></div>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmt(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
+    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" onclick="ouvrirDm(${i})">${ec?'<div class="ba2"></div>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmtDec(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
   });
   document.getElementById('gm').innerHTML=h;
 }
@@ -810,15 +810,15 @@ function affDm(mi){
   const couleurEtat=sF!==null?(sF>=0?'vp':'vn'):'';
   h+=`<div class="ban" style="margin-bottom:11px;">
     <div class="g3">
-      <div class="ms"><div class="v">${sD!==null?fmt(sD):'—'}</div><div class="l">Solde début</div></div>
-      <div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmt(r)}</div><div class="l">Flux du mois</div></div>
-      <div class="ms"><div class="v ${couleurEtat}">${sF!==null?fmt(sF):'—'}</div><div class="l">Solde compte</div></div>
+      <div class="ms"><div class="v">${sD!==null?fmtDec(sD):'—'}</div><div class="l">Solde début</div></div>
+      <div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Flux du mois</div></div>
+      <div class="ms"><div class="v ${couleurEtat}">${sF!==null?fmtDec(sF):'—'}</div><div class="l">Solde compte</div></div>
     </div>
   </div>`;
   h+=`<div class="rm">
-    <div class="ri"><div class="rv" style="color:var(--ve)">${fmt(rev)}</div><div class="rl">Revenus</div></div>
-    <div class="ri"><div class="rv" style="color:var(--ro)">${fmt(dep)}</div><div class="rl">Dépenses</div></div>
-    <div class="ri"><div class="rv" style="color:${r>=0?'var(--ve)':'var(--ro)'}">${fmt(r)}</div><div class="rl">Flux</div></div>
+    <div class="ri"><div class="rv" style="color:var(--ve)">${fmtDec(rev)}</div><div class="rl">Revenus</div></div>
+    <div class="ri"><div class="rv" style="color:var(--ro)">${fmtDec(dep)}</div><div class="rl">Dépenses</div></div>
+    <div class="ri"><div class="rv" style="color:${r>=0?'var(--ve)':'var(--ro)'}">${fmtDec(r)}</div><div class="rl">Flux</div></div>
   </div>`;
 
   // Programmées en attente (italique)
@@ -830,7 +830,7 @@ function affDm(mi){
       h+=`<div class="ltx prev-tx" onclick="ouvrirPointerProg('${p.id}')">
         <div class="itx pr">⏳</div>
         <div class="inf"><div class="de it">${p.nom}</div><div class="so">${p.cat} · prévu</div></div>
-        <div class="mtx prev-m">${fmt(p.montantsMois[E.annee]?p.montantsMois[E.annee][mi]:0)}</div>
+        <div class="mtx prev-m">${fmtDec(p.montantsMois[E.annee]?p.montantsMois[E.annee][mi]:0)}</div>
       </div>`;
     });
     h+=`</div>`;
@@ -843,7 +843,7 @@ function affDm(mi){
     cD.forEach(c=>{
       const txC=txM.filter(t=>t.type==='depense'&&t.cat===c);
       const tC=txC.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmt(tC)}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -853,7 +853,7 @@ function affDm(mi){
     cR.forEach(c=>{
       const txC=txM.filter(t=>t.type==='revenu'&&t.cat===c);
       const tC=txC.reduce((a,t)=>a+t.montant,0);
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmt(tC)}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -868,7 +868,7 @@ function ltx(t){
   const cl=t.type==='revenu'?'rev':'dep';
   const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
   const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:''].filter(Boolean).join(' · ');
-  return `<div class="ltx${t.pointe?' pt':''}" onclick="ouvrirTx('${t.id}')"><div class="itx ${ty}">${ic[ty]}</div><div class="inf"><div class="de${ty==='fa'?' it':''}">${t.desc||t.cat}</div>${s?`<div class="so">${s}</div>`:''}</div><div class="mtx ${cl}">${fmt(m)}</div></div>`;
+  return `<div class="ltx${t.pointe?' pt':''}" onclick="ouvrirTx('${t.id}')"><div class="itx ${ty}">${ic[ty]}</div><div class="inf"><div class="de${ty==='fa'?' it':''}">${t.desc||t.cat}</div>${s?`<div class="so">${s}</div>`:''}</div><div class="mtx ${cl}">${fmtDec(m)}</div></div>`;
 }
 
 // ── POINTER UNE PROGRAMMÉE ──
@@ -877,7 +877,7 @@ function ouvrirPointerProg(pid){
   E.txc='prog:'+pid;
   document.getElementById('ov-ti').textContent=p.nom;
   document.getElementById('ov-co').innerHTML=`
-    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmt(p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0)}</span></div>
+    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmtDec(p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0)}</span></div>
     <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
     <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>`;
   const montPrev=p.montantsMois&&p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0;
@@ -1001,7 +1001,7 @@ function affProg(){
   el.innerHTML=E.prog.map(p=>{
     const monts=p.montantsMois[E.annee]||Array(12).fill(null);
     const defini=monts.filter(v=>v!==null&&v>0);
-    const resume=defini.length?`${defini.length} mois · moy. ${fmt(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee;
+    const resume=defini.length?`${defini.length} mois · moy. ${fmtDec(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee;
     return `<div class="cp3" style="flex-wrap:wrap;gap:8px">
       <button class="tg ${p.actif?'on':''}" onclick="togProg('${p.id}')"></button>
       <div class="ip" style="flex:1;min-width:120px" onclick="ouvrirEditProg('${p.id}')">
@@ -1110,7 +1110,7 @@ async function saveProg(){
     }
 
     const total=montsMois.filter(v=>v!==null).reduce((a,b)=>a+b,0);
-    affMsgProg('✅ Enregistré : '+nom+' — '+nbMois+' mois · total '+fmt(total),'ok');
+    affMsgProg('✅ Enregistré : '+nom+' — '+nbMois+' mois · total '+fmtDec(total),'ok');
     document.getElementById('btn-save-prog').disabled=false;
     affProg();affBudget();
     // Fermer le modal après 2 secondes
@@ -1162,13 +1162,13 @@ function affEpargne(){
   if(!el||!gel)return;
   let totEp=0;
   LIVRETS.forEach(liv=>{const ep=E.epargne.find(e=>e.livret===liv);if(ep){const vals=ep.mois.filter(v=>v!==null&&v!==undefined);if(vals.length)totEp+=vals[vals.length-1];}});
-  el.innerHTML=`<div class="lb">Total épargne</div><div class="gr">${fmt(totEp)}</div><div class="su">Derniers soldes connus</div>`;
+  el.innerHTML=`<div class="lb">Total épargne</div><div class="gr">${fmtDec(totEp)}</div><div class="su">Derniers soldes connus</div>`;
   let h='';
   LIVRETS.forEach(liv=>{
     const ep=E.epargne.find(e=>e.livret===liv);
     h+=`<div style="margin-bottom:10px"><p style="font-size:.78rem;font-weight:600;margin-bottom:6px">${liv}</p>`;
     h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">`;
-    MOIS.forEach((m,i)=>{const v=ep?ep.mois[i]:null;h+=`<div style="text-align:center;padding:5px 3px;background:${v?'var(--vec)':'rgba(0,0,0,.03)'};border-radius:7px"><div style="font-size:.6rem;color:var(--txl)">${m.substring(0,3)}</div><div style="font-weight:600;font-size:.75rem;color:${v?'var(--ve)':'var(--txl)'};">${v?fmt(v):'—'}</div></div>`;});
+    MOIS.forEach((m,i)=>{const v=ep?ep.mois[i]:null;h+=`<div style="text-align:center;padding:5px 3px;background:${v?'var(--vec)':'rgba(0,0,0,.03)'};border-radius:7px"><div style="font-size:.6rem;color:var(--txl)">${m.substring(0,3)}</div><div style="font-weight:600;font-size:.75rem;color:${v?'var(--ve)':'var(--txl)'};">${v?fmtDec(v):'—'}</div></div>`;});
     h+=`</div></div>`;
   });
   gel.innerHTML=h;
@@ -1249,10 +1249,10 @@ function chercher(q){
   const tD=res.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
   const tR=res.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   let h=`<p style="font-size:.78rem;color:var(--txl);margin-bottom:9px">${res.length} résultat(s)</p>`;
-  if(tD>0)h+=`<span class="bt" style="background:var(--ro);color:#fff">Dépenses : ${fmt(tD)}</span>`;
-  if(tR>0)h+=`<span class="bt" style="background:var(--ve);color:#fff">Revenus : ${fmt(tR)}</span>`;
+  if(tD>0)h+=`<span class="bt" style="background:var(--ro);color:#fff">Dépenses : ${fmtDec(tD)}</span>`;
+  if(tR>0)h+=`<span class="bt" style="background:var(--ve);color:#fff">Revenus : ${fmtDec(tR)}</span>`;
   h+=`<div style="margin-top:12px">`;
-  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${t.desc||t.cat} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${s}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmt(m)}</div></div>`;});
+  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${t.desc||t.cat} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${s}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
   h+=`</div>`;el.innerHTML=h;
 }
 
