@@ -980,18 +980,27 @@ async function saveTx(){
   const da=document.getElementById('s-da').value;const ca=document.getElementById('s-ca').value;
   const pr=document.getElementById('s-pr').value.trim();const no=document.getElementById('s-no').value.trim();
   const er=document.getElementById('er-s');const ok=document.getElementById('ok-s');
-  if(!de||isNaN(mo)||mo<=0||!da){er.textContent='Description, montant et date obligatoires.';er.classList.add('v');ok.classList.remove('v');return;}
-  er.classList.remove('v');
+  if(!de||isNaN(mo)||mo<=0||!da){
+    if(er){er.textContent='Description, montant et date obligatoires.';er.classList.add('v');}
+    if(ok)ok.classList.remove('v');
+    return;
+  }
+  if(er)er.classList.remove('v');
   const an=da.substring(0,4);const id=`tx_${Date.now()}`;
   try{
     // Saisie manuelle = déjà réalisée → pointée automatiquement
     await ajouter(`TX_${an}`,[id,da,E.type,ca,pr,de,mo,no,'TRUE',mo]);
     E.tx.push({id,date:da,type:E.type,cat:ca,projet:pr,desc:de,montant:mo,note:no,pointe:true,montant_reel:mo,an});
     if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
-    ok.textContent=`"${de}" enregistrée ✓`;ok.classList.add('v');
+    if(ok){ok.textContent=`"${de}" enregistrée ✓`;ok.classList.add('v');}
+    toast(`"${de}" enregistrée ✓`);
     document.getElementById('s-de').value='';document.getElementById('s-mo').value='';document.getElementById('s-pr').value='';document.getElementById('s-no').value='';
     er.classList.remove('v');refresh();
-  }catch(e){er.textContent="Erreur d'enregistrement.";er.classList.add('v');}
+  }catch(e){
+    console.error('saveTx error:',e);
+    if(er){er.textContent="Erreur : "+e.message;er.classList.add('v');}
+    else toast("Erreur d'enregistrement : "+e.message);
+  }
 }
 
 // ── PROGRAMMÉES ──
