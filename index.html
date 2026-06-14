@@ -494,7 +494,16 @@ function lancerApp(){
 // ── SHEETS ──
 async function lire(p){const r=await gapi.client.sheets.spreadsheets.values.get({spreadsheetId:E.sid,range:p});return r.result.values||[];}
 async function ecrire(p,v){await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'USER_ENTERED',resource:{values:v}});}
-async function ajouter(o,v){await gapi.client.sheets.spreadsheets.values.append({spreadsheetId:E.sid,range:`${o}!A:Z`,valueInputOption:'USER_ENTERED',insertDataOption:'INSERT_ROWS',resource:{values:[v]}});}
+async function ajouter(o,v){
+  // Utiliser A:A comme ancre pour forcer l'insertion depuis la colonne A
+  await gapi.client.sheets.spreadsheets.values.append({
+    spreadsheetId:E.sid,
+    range:`${o}!A1`,
+    valueInputOption:'USER_ENTERED',
+    insertDataOption:'INSERT_ROWS',
+    resource:{values:[v]}
+  });
+}
 
 async function initOnglets(){
   const meta=await gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid});
