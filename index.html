@@ -644,13 +644,38 @@ function affBudget(){
   h+=`<tr class="ch"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
   LIVRETS.forEach(liv=>{
     const ep=E.epargne.find(e=>e.livret===liv);
-    h+=`<tr><td>${liv}</td>`;let der=0;
-    MOIS.forEach((_,i)=>{const v=ep?ep.mois[i]:null;if(v!==null&&v!==undefined)der=v;h+=`<td>${v!==null&&v!==undefined?fmt(v):'—'}</td>`;});
-    h+=`<td class="tp">${der?fmt(der):'—'}</td></tr>`;
+    h+=`<tr><td>${liv}</td>`;
+    let premier=null;let dernier=null;
+    MOIS.forEach((_,i)=>{
+      const v=ep?ep.mois[i]:null;
+      const valide=v!==null&&v!==undefined&&v>0;
+      if(valide&&premier===null)premier=v;  // premier solde connu de l'année
+      if(valide)dernier=v;                  // dernier solde connu
+      h+=`<td>${valide?fmt(v):'—'}</td>`;
+    });
+    // Total = évolution (dernier - premier) : vert si épargne, rouge si pioche
+    const evol=dernier!==null&&premier!==null?dernier-premier:null;
+    const clEvol=evol===null?'':(evol>=0?'tp':'tn');
+    const labelEvol=evol===null?'—':(evol>=0?'+':'')+fmt(evol);
+    h+=`<td class="${clEvol}">${labelEvol}</td></tr>`;
   });
+  // Ligne total épargne : dernier solde connu par livret + évolution totale
   h+=`<tr class="lt"><td>Total épargne</td>`;
-  let totEpAn=0;MOIS.forEach((_,i)=>{const s=LIVRETS.reduce((a,liv)=>{const ep=E.epargne.find(e=>e.livret===liv);return a+(ep&&ep.mois[i]!==null&&ep.mois[i]!==undefined?ep.mois[i]:0);},0);if(s)totEpAn=s;h+=`<td class="tp">${s?fmt(s):'—'}</td>`;});
-  h+=`<td class="tp">${totEpAn?fmt(totEpAn):'—'}</td></tr>`;
+  let totDernier=0;let totPremier=0;
+  MOIS.forEach((_,i)=>{
+    const s=LIVRETS.reduce((a,liv)=>{const ep=E.epargne.find(e=>e.livret===liv);return a+(ep&&ep.mois[i]!==null&&ep.mois[i]!==undefined&&ep.mois[i]>0?ep.mois[i]:0);},0);
+    h+=`<td class="tp">${s?fmt(s):'—'}</td>`;
+  });
+  // Calculer évolution totale
+  LIVRETS.forEach(liv=>{
+    const ep=E.epargne.find(e=>e.livret===liv);if(!ep)return;
+    const vals=ep.mois.filter(v=>v!==null&&v!==undefined&&v>0);
+    if(vals.length>=1){totDernier+=vals[vals.length-1];totPremier+=vals[0];}
+  });
+  const evolTot=totPremier>0?totDernier-totPremier:null;
+  const clEvolTot=evolTot===null?'tp':(evolTot>=0?'tp':'tn');
+  const labelEvolTot=evolTot===null?(totDernier?fmt(totDernier):'—'):(evolTot>=0?'+':'')+fmt(evolTot);
+  h+=`<td class="${clEvolTot}">${labelEvolTot}</td></tr>`;
 
   // REVENUS (réels + prévisionnels)
   const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
