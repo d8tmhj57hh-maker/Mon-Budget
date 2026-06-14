@@ -348,7 +348,12 @@
     <h2 id="ov-ti"></h2>
     <div id="ov-co"></div>
     <div id="ov-ed">
-      <div class="ch3 cm3"><label>Montant réel</label><input type="number" id="ov-mo" step="0.01" inputmode="decimal"/></div>
+      <div class="ch3"><label>Description</label><input type="text" id="ov-de"/></div>
+      <div class="g2">
+        <div class="ch3 cm3"><label>Montant</label><input type="number" id="ov-mo" step="0.01" inputmode="decimal"/></div>
+        <div class="ch3"><label>Date</label><input type="date" id="ov-da"/></div>
+      </div>
+      <div class="ch3"><label>Catégorie</label><select id="ov-ca"></select></div>
       <div class="ch3"><label>Projet</label><input type="text" id="ov-pr" list="dl-proj"/></div>
       <div class="ch3"><label>Note</label><input type="text" id="ov-no"/></div>
       <button class="bp" id="ov-btn" onclick="actionTx()">✓ Pointer comme réalisée</button>
@@ -887,7 +892,7 @@ function ouvrirTx(id){
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
   const btn=document.getElementById('ov-btn');
   if(!t.pointe&&ep){btn.textContent='✓ Pointer comme réalisée';btn.dataset.mode='pointer';}
-  else{btn.textContent='✏️ Modifier';btn.dataset.mode='edit';}
+  else{btn.textContent='💾 Enregistrer les modifications';btn.dataset.mode='edit';}
   document.getElementById('ov-ed').style.display='block';
   document.getElementById('ov-tx').querySelector('.bd').style.display='block';
   document.getElementById('ov-tx').classList.add('v');
@@ -920,8 +925,13 @@ async function actionTx(){
     const rows=await lire(`TX_${t.an}!A2:J`);const idx=rows.findIndex(r=>r[0]===t.id);
     if(idx>=0){
       const pointer=mode==='pointer';
-      await ecrire(`TX_${t.an}!E${idx+2}:J${idx+2}`,[[pr,t.desc,m,no,pointer?'TRUE':(t.pointe?'TRUE':'FALSE'),pointer?m:(t.montant_reel||'')]]);
-      t.projet=pr;t.note=no;if(pointer){t.pointe=true;t.montant_reel=m;}else t.montant=m;
+      const newDesc=document.getElementById('ov-de').value.trim()||t.desc;
+      const newDate=document.getElementById('ov-da').value||t.date;
+      const newCat=document.getElementById('ov-ca').value||t.cat;
+      // Mettre à jour toute la ligne
+      await ecrire(`TX_${t.an}!B${idx+2}:J${idx+2}`,[[newDate,t.type,newCat,pr,newDesc,m,no,pointer?'TRUE':(t.pointe?'TRUE':'FALSE'),pointer?m:(t.montant_reel||'')]]);
+      t.desc=newDesc;t.date=newDate;t.cat=newCat;t.projet=pr;t.note=no;
+      if(pointer){t.pointe=true;t.montant_reel=m;}else t.montant=m;
       if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
       fOv('ov-tx');refresh();toast(pointer?'Pointée ✓':'Modifiée ✓');
     }
@@ -957,8 +967,9 @@ async function saveTx(){
   er.classList.remove('v');
   const an=da.substring(0,4);const id=`tx_${Date.now()}`;
   try{
-    await ajouter(`TX_${an}`,[id,da,E.type,ca,pr,de,mo,no,'FALSE','']);
-    E.tx.push({id,date:da,type:E.type,cat:ca,projet:pr,desc:de,montant:mo,note:no,pointe:false,montant_reel:null,an});
+    // Saisie manuelle = déjà réalisée → pointée automatiquement
+    await ajouter(`TX_${an}`,[id,da,E.type,ca,pr,de,mo,no,'TRUE',mo]);
+    E.tx.push({id,date:da,type:E.type,cat:ca,projet:pr,desc:de,montant:mo,note:no,pointe:true,montant_reel:mo,an});
     if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
     ok.textContent=`"${de}" enregistrée ✓`;ok.classList.add('v');
     document.getElementById('s-de').value='';document.getElementById('s-mo').value='';document.getElementById('s-pr').value='';document.getElementById('s-no').value='';
