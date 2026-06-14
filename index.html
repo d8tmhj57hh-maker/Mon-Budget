@@ -1121,34 +1121,69 @@ function affEpargne(){
   gel.innerHTML=h;
 }
 
-async function ouvrirSaisieEp(){
-  const mi=new Date().getMonth();
-  let html=`<div class="mh"></div><button class="bf" onclick="fOv('ov-ep')">✕</button>
-    <h2>Soldes — ${MOIS[mi]} ${E.annee}</h2>
-    <p style="font-size:.8rem;color:var(--txl);margin-bottom:14px;">Depuis votre appli bancaire.</p>`;
-  LIVRETS.forEach((liv,i)=>{
-    const ep=E.epargne.find(e=>e.livret===liv);const v=ep?ep.mois[mi]:null;
-    html+=`<div class="ch3 cm3"><label>${liv}</label><input type="number" id="ep-inp-${i}" step="0.01" inputmode="decimal" value="${v||''}" placeholder="Ex : 8235.26"/></div>`;
-  });
-  html+=`<button class="bp" onclick="saveEp(${mi})">Enregistrer</button><button class="bs2" onclick="fOv('ov-ep')">Annuler</button>`;
-  document.getElementById('ov-ep-body').innerHTML=html;
+function ouvrirSaisieEp(miInit){
+  const miDefaut=miInit!==undefined?miInit:new Date().getMonth();
+  affFormEp(miDefaut);
   document.getElementById('ov-ep').classList.add('v');
+}
+
+function affFormEp(mi){
+  const selAn=`<select id="ep-annee" onchange="affFormEp(parseInt(document.getElementById('ep-mois').value))" style="padding:8px 10px;border:1.5px solid var(--bo);border-radius:9px;font-family:Inter,sans-serif;font-size:.875rem;outline:none;margin-right:8px">${ANNEES.map(a=>`<option value="${a}" ${a===E.annee?'selected':''}>${a}</option>`).join('')}</select>`;
+  const selMois=`<select id="ep-mois" onchange="affFormEp(parseInt(this.value))" style="padding:8px 10px;border:1.5px solid var(--bo);border-radius:9px;font-family:Inter,sans-serif;font-size:.875rem;outline:none;flex:1">${MOIS.map((m,i)=>`<option value="${i}" ${i===mi?'selected':''}>${m}</option>`).join('')}</select>`;
+  const an=document.getElementById('ep-annee')?.value||E.annee;
+  let html=`<div class="mh"></div><button class="bf" onclick="fOv('ov-ep')">✕</button>
+    <h2>Soldes épargne</h2>
+    <p style="font-size:.8rem;color:var(--txl);margin-bottom:12px;">Saisissez les soldes depuis votre appli bancaire pour le mois choisi.</p>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px">${selAn}${selMois}</div>`;
+  // Lire les valeurs existantes pour ce mois
+  LIVRETS.forEach((liv,i)=>{
+    const ep=E.epargne.find(e=>e.livret===liv);
+    const v=ep&&ep.mois[mi]!==null&&ep.mois[mi]!==undefined?ep.mois[mi]:'';
+    html+=`<div class="ch3 cm3"><label>${liv}</label><input type="number" id="ep-inp-${i}" step="0.01" inputmode="decimal" value="${v}" placeholder="Ex : 8235.26"/></div>`;
+  });
+  html+=`<div id="msg-ep" style="display:none;border-radius:10px;padding:10px 13px;font-size:.82rem;margin-bottom:10px;font-weight:500;"></div>`;
+  html+=`<button class="bp" id="btn-save-ep" onclick="saveEp(parseInt(document.getElementById('ep-mois').value),document.getElementById('ep-annee').value)">Enregistrer</button>`;
+  html+=`<button class="bs2" onclick="fOv('ov-ep')">Fermer</button>`;
+  document.getElementById('ov-ep-body').innerHTML=html;
 }
 
 function colLetter(n){const L='ABCDEFGHIJKLMNOPQRSTUVWXYZ';let r='',c=n;while(c>0){r=L[(c-1)%26]+r;c=Math.floor((c-1)/26);}return r;}
 
-async function saveEp(mi){
+async function saveEp(mi,an){
+  an=an||E.annee;
+  const msgEl=document.getElementById('msg-ep');
+  const btnEl=document.getElementById('btn-save-ep');
+  if(msgEl){msgEl.style.display='block';msgEl.style.background='rgba(26,47,74,.07)';msgEl.style.color='var(--txl)';msgEl.style.border='1px solid var(--bo)';msgEl.textContent='Enregistrement en cours…';}
+  if(btnEl)btnEl.disabled=true;
   try{
     const rows=await lire('Epargne!A2:N');
+    let nb=0;
     for(let i=0;i<LIVRETS.length;i++){
-      const liv=LIVRETS[i];const val=parseFloat(document.getElementById(`ep-inp-${i}`).value);
-      if(isNaN(val))continue;
+      const liv=LIVRETS[i];
+      const val=parseFloat(document.getElementById(`ep-inp-${i}`)?.value);
+      if(isNaN(val)||val<0)continue;
+      nb++;
+      // Mettre à jour en mémoire
+      let ep=E.epargne.find(e=>e.livret===liv);
+      if(!ep){ep={livret:liv,mois:Array(12).fill(null)};E.epargne.push(ep);}
+      ep.mois[mi]=val;
+      // Mettre à jour dans Sheets
       const idx=rows.findIndex(r=>r[0]===liv);
-      if(idx>=0){await ecrire(`Epargne!${colLetter(mi+2)}${idx+2}`,[[val]]);if(!E.epargne.find(e=>e.livret===liv))E.epargne.push({livret:liv,mois:Array(12).fill(null)});E.epargne.find(e=>e.livret===liv).mois[mi]=val;}
-      else{const lg=Array(13).fill('');lg[0]=liv;lg[mi+1]=val;await ajouter('Epargne',lg);E.epargne.push({livret:liv,mois:Array(12).fill(null).map((_,j)=>j===mi?val:null)});}
+      if(idx>=0){
+        await ecrire(`Epargne!${colLetter(mi+2)}${idx+2}`,[[val]]);
+      } else {
+        const lg=Array(13).fill('');lg[0]=liv;lg[mi+1]=val;
+        await ajouter('Epargne',lg);
+        rows.push(lg); // mettre à jour le cache local
+      }
     }
-    fOv('ov-ep');affEpargne();affBudget();toast('Soldes épargne enregistrés ✓');
-  }catch(e){toast('Erreur enregistrement');}
+    if(msgEl){msgEl.style.background='var(--vec)';msgEl.style.color='var(--ve)';msgEl.style.border='1px solid #b8e4d0';msgEl.textContent='✅ Soldes enregistrés pour '+MOIS[mi]+' '+an;}
+    if(btnEl)btnEl.disabled=false;
+    affEpargne();affBudget();
+  }catch(e){
+    if(msgEl){msgEl.style.background='var(--roc)';msgEl.style.color='var(--ro)';msgEl.style.border='1px solid #f5c6c3';msgEl.textContent='❌ Erreur — réessayez';}
+    if(btnEl)btnEl.disabled=false;
+  }
 }
 
 // ── RECHERCHE ──
