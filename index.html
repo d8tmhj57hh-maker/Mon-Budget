@@ -740,9 +740,23 @@ function affBudget(){
   let rAn=0;MOIS.forEach((_,i)=>{
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
     const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||([...CDEP_FIXES,...CDEP_VAR].reduce((a,c)=>a+(prevMois(i,E.annee).dep[c]||0),0));
-    const r=rev-dep;rAn+=r;h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmt(r)}</strong></td>`;
+    const r=rev-dep;rAn+=r;
+    h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmt(r)}</strong></td>`;
   });
-  h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmt(rAn)}</strong></td></tr></tbody>`;
+  h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmt(rAn)}</strong></td></tr>`;
+
+  // ── LIGNE SOLDE COMPTE COURANT ──
+  h+=`<tr class="lr" style="background:rgba(45,122,95,.06)!important"><td><strong>Solde compte courant</strong></td>`;
+  MOIS.forEach((_,i)=>{
+    const dF=new Date(parseInt(E.annee),i+1,0).toISOString().split('T')[0];
+    const sF=calcSolde(dF);
+    const cls=sF===null?'':(sF>=0?'tp':'tn');
+    h+=`<td class="${cls}">${sF!==null?fmt(sF):'—'}</td>`;
+  });
+  // Colonne total = solde fin décembre (ou dernier mois connu)
+  const dFDec=new Date(parseInt(E.annee),12,0).toISOString().split('T')[0];
+  const sFDec=calcSolde(dFDec);
+  h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}">${sFDec!==null?fmt(sFDec):'—'}</td></tr></tbody>`;
   document.getElementById('ta').innerHTML=h;
 }
 
@@ -793,15 +807,18 @@ function affDm(mi){
   const pointeesIds=new Set([...pointeesParNote,...E.prog.filter(p=>catsCouvertes.has(p.cat)).map(p=>p.id)]);
 
   let h=`<h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin-bottom:11px;">${MOIS[mi]} ${E.annee}</h2>`;
-  h+=`<div class="ban" style="margin-bottom:11px;"><div class="g3">
-    <div class="ms"><div class="v">${sD!==null?fmt(sD):'—'}</div><div class="l">Solde début</div></div>
-    <div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmt(r)}</div><div class="l">Reste budget</div></div>
-    <div class="ms"><div class="v ${sF!==null?(sF>=0?'vp':'vn'):''}">${sF!==null?fmt(sF):'—'}</div><div class="l">Solde fin</div></div>
-  </div></div>`;
+  const couleurEtat=sF!==null?(sF>=0?'vp':'vn'):'';
+  h+=`<div class="ban" style="margin-bottom:11px;">
+    <div class="g3">
+      <div class="ms"><div class="v">${sD!==null?fmt(sD):'—'}</div><div class="l">Solde début</div></div>
+      <div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmt(r)}</div><div class="l">Flux du mois</div></div>
+      <div class="ms"><div class="v ${couleurEtat}">${sF!==null?fmt(sF):'—'}</div><div class="l">Solde compte</div></div>
+    </div>
+  </div>`;
   h+=`<div class="rm">
     <div class="ri"><div class="rv" style="color:var(--ve)">${fmt(rev)}</div><div class="rl">Revenus</div></div>
     <div class="ri"><div class="rv" style="color:var(--ro)">${fmt(dep)}</div><div class="rl">Dépenses</div></div>
-    <div class="ri"><div class="rv" style="color:${r>=0?'var(--ve)':'var(--ro)'}">${fmt(r)}</div><div class="rl">Reste</div></div>
+    <div class="ri"><div class="rv" style="color:${r>=0?'var(--ve)':'var(--ro)'}">${fmt(r)}</div><div class="rl">Flux</div></div>
   </div>`;
 
   // Programmées en attente (italique)
