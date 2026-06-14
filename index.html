@@ -474,15 +474,39 @@ function fOv(id){document.getElementById(id).classList.remove('v');}
 // ── AUTH ──
 function initGSI(){
   E.tc=google.accounts.oauth2.initTokenClient({client_id:CID,scope:SCOPES,callback:async(r)=>{
-    if(r.error){toast('Connexion annulée');return;}
-    localStorage.setItem('gtoken',r.access_token);gapi.client.setToken({access_token:r.access_token});await demarrer();
+    if(r.error){
+      if(r.error==='interaction_required'||r.error==='login_required'){
+        // Reconnexion silencieuse echouee - demander explicitement
+        E.tc.requestAccessToken({prompt:'select_account'});
+      } else {
+        toast('Connexion annulee');
+      }
+      return;
+    }
+    localStorage.setItem('gtoken',r.access_token);
+    gapi.client.setToken({access_token:r.access_token});
+    await demarrer();
   }});
 }
 async function initGAPI(){
   await gapi.client.init({discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4']});
   const t=localStorage.getItem('gtoken');
-  if(t&&E.sid){gapi.client.setToken({access_token:t});try{await demarrer();return;}catch(e){localStorage.removeItem('gtoken');}}
-  if(E.sid&&E.tc)E.tc.requestAccessToken({prompt:''});
+  // Essayer avec le token existant
+  if(t&&E.sid){
+    gapi.client.setToken({access_token:t});
+    try{await demarrer();return;}
+    catch(e){localStorage.removeItem('gtoken');}
+  }
+  // Tentative de reconnexion silencieuse si on a un sid
+  if(E.sid&&E.tc){
+    try{
+      // prompt:'' = silencieux, sans popup
+      E.tc.requestAccessToken({prompt:''});
+    }catch(e){
+      // Silencieux échoue → connexion avec sélecteur de compte
+      E.tc.requestAccessToken({prompt:'select_account'});
+    }
+  }
 }
 function connexionFirebase(){
   document.getElementById('btn-google').style.display='none';
