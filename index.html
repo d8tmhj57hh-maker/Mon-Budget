@@ -565,7 +565,9 @@ async function savePts(d,s){try{const rows=await lire('Soldes!A2:B');const idx=r
 function calcSolde(j){
   if(!E.pts.length)return null;
   const ref=[...E.pts].reverse().find(p=>p.date<=j);if(!ref)return null;
-  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j);let d=0;
+  // Exclure les tx prévisionnelles (prog:id) car elles ne sont pas des mouvements réels
+  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j&&!(t.note&&t.note.startsWith('prog:')));
+  let d=0;
   txp.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;t.type==='revenu'?d+=m:d-=m;});
   return ref.solde+d;
 }
