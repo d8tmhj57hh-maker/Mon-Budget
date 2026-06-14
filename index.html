@@ -459,8 +459,13 @@ window.onload=()=>{
     const z=document.getElementById('zone-sid');
     if(z)z.style.display='none';
   }
-  const s1=document.createElement('script');s1.src='https://accounts.google.com/gsi/client';s1.onload=initGSI;document.head.appendChild(s1);
-  const s2=document.createElement('script');s2.src='https://apis.google.com/js/api.js';s2.onload=()=>gapi.load('client',initGAPI);document.head.appendChild(s2);
+  // Scripts déjà chargés dans le head - attendre qu'ils soient prêts
+  const attentGSI=setInterval(()=>{
+    if(window.google&&window.google.accounts){clearInterval(attentGSI);initGSI();}
+  },100);
+  const attentGAPI=setInterval(()=>{
+    if(window.gapi){clearInterval(attentGAPI);gapi.load('client',initGAPI);}
+  },100);
 };
 
 
