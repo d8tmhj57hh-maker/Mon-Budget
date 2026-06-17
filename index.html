@@ -66,12 +66,13 @@
 
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
-    .ta{width:100%;min-width:760px;border-collapse:collapse;font-size:.75rem;background:var(--wh)}
+    :root{--ta-fs:1}
+    .ta{width:100%;min-width:760px;border-collapse:collapse;font-size:calc(.75rem * var(--ta-fs));background:var(--wh)}
     .ta th{background:var(--bl);color:var(--wf);padding:10px 9px;text-align:right;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2}
     .ta th:first-child{text-align:left;min-width:160px;position:sticky;left:0;top:0;z-index:3}
     .ta td{padding:9px 9px;text-align:right;border-bottom:1px solid rgba(226,221,214,.5)}
     .ta td:first-child{text-align:left;position:sticky;left:0;background:var(--wh);z-index:1}
-    .ta tr.lr td{font-weight:700;font-size:.78rem;padding:11px 9px}
+    .ta tr.lr td{font-weight:700;font-size:calc(.78rem * var(--ta-fs));padding:11px 9px}
     .ta .tp{color:var(--ve)}.ta .tn{color:var(--ro)}
     .ta .prev{color:var(--txl);font-style:italic}
     /* Revenus / dépenses fixes / variables : noir (pointé) ou gris italique (prévisionnel) — pas de vert/rouge, meilleur contraste pour tous */
@@ -107,11 +108,14 @@
     .ta tr.z-vr td:first-child{background:var(--zvr)!important}
     .ta tr.z-vr.ch td:first-child{background:var(--zvr2)!important;border-top:2px solid var(--zvr3)}
     .ta tr.z-vr.lt td:first-child{background:var(--zvr3)!important}
-    .ta tr.ch td{font-weight:600;font-size:.69rem;text-transform:uppercase;letter-spacing:.06em;padding:9px 9px}
+    .ta tr.ch td{font-weight:600;font-size:calc(.69rem * var(--ta-fs));text-transform:uppercase;letter-spacing:.06em;padding:9px 9px}
     .ta tr.lt td{font-weight:700;padding:10px 9px}
     .ta tr.lr{background:rgba(26,47,74,.09)!important}
-    .ta tr.lr td{background:rgba(26,47,74,.09)!important;font-weight:700;font-size:.78rem;padding:10px 9px;border-top:2px solid rgba(26,47,74,.18)}
+    .ta tr.lr td{background:rgba(26,47,74,.09)!important;font-weight:700;font-size:calc(.78rem * var(--ta-fs));padding:10px 9px;border-top:2px solid rgba(26,47,74,.18)}
     .ta tr.esp td{background:var(--fo)!important;border:none;padding:7px 0;height:7px}
+    .ta tbody tr.cat-row{cursor:pointer}
+    .ta tbody tr.cat-row.sel td{filter:brightness(.93)}
+    body.dark .ta tbody tr.cat-row.sel td{filter:brightness(1.35)}
 
     /* MOIS GRILLE */
     .gm{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -398,6 +402,14 @@
             <span id="tog-slider" style="position:absolute;cursor:pointer;inset:0;background:var(--bo);border-radius:28px;transition:.2s"></span>
           </label>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--bo)">
+          <p style="margin:0">Taille du texte (tableau Budget)</p>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onclick="ajusterTailleTableau(-1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">−</button>
+            <span id="lbl-taille-tableau" style="font-size:.8rem;color:var(--txl);min-width:34px;text-align:center">100%</span>
+            <button onclick="ajusterTailleTableau(1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">+</button>
+          </div>
+        </div>
       </div>
 
       <!-- ÉPARGNE -->
@@ -568,10 +580,31 @@ function toggleDark(){
   document.body.classList.toggle('dark',sombre);
   localStorage.setItem('theme',sombre?'dark':'light');
 }
+
+// ── TAILLE DE TEXTE DU TABLEAU BUDGET ──
+const PALIERS_TAILLE=[85,92,100,110,120,130];
+function appliquerTailleTableauInitiale(){
+  const sauve=parseInt(localStorage.getItem('taille-tableau'))||100;
+  document.documentElement.style.setProperty('--ta-fs', sauve/100);
+  const lbl=document.getElementById('lbl-taille-tableau');
+  if(lbl)lbl.textContent=sauve+'%';
+}
+function ajusterTailleTableau(direction){
+  const actuel=parseInt(localStorage.getItem('taille-tableau'))||100;
+  let idx=PALIERS_TAILLE.indexOf(actuel);
+  if(idx===-1)idx=2; // fallback sur 100%
+  idx=Math.max(0,Math.min(PALIERS_TAILLE.length-1,idx+direction));
+  const nouvelle=PALIERS_TAILLE[idx];
+  localStorage.setItem('taille-tableau',nouvelle);
+  document.documentElement.style.setProperty('--ta-fs', nouvelle/100);
+  document.getElementById('lbl-taille-tableau').textContent=nouvelle+'%';
+}
+appliquerTailleTableauInitiale();
 appliquerThemeInitial();
 
 window.onload=()=>{
   appliquerThemeInitial();
+  appliquerTailleTableauInitiale();
   peuplerSels();peuplerCat();peuplerImpCats();
   // Lire l'ID depuis cookie (priorité) puis localStorage puis URL
   const sidCookie=getCookie('monbudget_sid');
@@ -914,13 +947,15 @@ function affBudget(){
   const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
   txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
   const nc=MOIS.length+2;
-  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach(m=>h+=`<th>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
+  // Mois en cours (uniquement si on consulte l'année réelle d'aujourd'hui)
+  const moisActuel=(E.annee===new Date().getFullYear().toString())?new Date().getMonth():-1;
+  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach((m,i)=>h+=`<th>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
 
   // ÉPARGNE
   h+=`<tr class="ch z-ep"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
   LIVRETS.forEach(liv=>{
     const ep=E.epargne.find(e=>e.livret===liv);
-    h+=`<tr class="z-ep"><td>${liv}</td>`;
+    h+=`<tr class="z-ep cat-row" data-cat="${liv}" data-bloc="ep"><td>${liv}</td>`;
     let premier=null;let dernier=null;
     MOIS.forEach((_,i)=>{
       const v=ep?ep.mois[i]:null;
@@ -959,7 +994,7 @@ function affBudget(){
   h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
   const totRevMois=Array(12).fill(0);
-  cR.forEach(cat=>{let tot=0;h+=`<tr class="z-rv"><td>${cat}</td>`;
+  cR.forEach(cat=>{let tot=0;h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${cat}</td>`;
     MOIS.forEach((_,i)=>{
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
@@ -977,7 +1012,7 @@ function affBudget(){
   const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
   if(cDF.length){
     h+=`<tr class="ch z-fx"><td colspan="${nc}">Dépenses fixes</td></tr>`;
-    cDF.forEach(c=>{let tot=0;h+=`<tr class="z-fx"><td>${c}</td>`;
+    cDF.forEach(c=>{let tot=0;h+=`<tr class="z-fx cat-row" data-cat="${c}" data-bloc="fx"><td>${c}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
     });
@@ -1001,7 +1036,7 @@ function affBudget(){
   const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
   if(cDV.length){
     h+=`<tr class="ch z-vr"><td colspan="${nc}">Dépenses variables</td></tr>`;
-    cDV.forEach(c=>{let tot=0;h+=`<tr class="z-vr"><td>${c}</td>`;
+    cDV.forEach(c=>{let tot=0;h+=`<tr class="z-vr cat-row" data-cat="${c}" data-bloc="vr"><td>${c}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
     });
@@ -1035,6 +1070,36 @@ function affBudget(){
   const sFDec=calcSolde(dFDec);
   h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}">${sFDec!==null?fmtDec(sFDec):'—'}</td></tr></tbody>`;
   document.getElementById('ta').innerHTML=h;
+  // Surligner la colonne du mois en cours (nth-child = position de la cellule, +2 car col 1 = catégorie)
+  let styleMc=document.getElementById('style-mc');
+  if(!styleMc){styleMc=document.createElement('style');styleMc.id='style-mc';document.head.appendChild(styleMc);}
+  if(moisActuel>=0){
+    const n=moisActuel+2;
+    styleMc.textContent=`.ta th:nth-child(${n}){box-shadow:inset 0 0 0 2px var(--or)}
+      .ta tbody tr td:nth-child(${n}){box-shadow:inset 0 0 0 1px rgba(201,168,76,.5)}`;
+  } else styleMc.textContent='';
+
+  // Highlight de ligne au tap + navigation vers le mois en tapant une cellule
+  document.querySelectorAll('.ta tbody tr.cat-row').forEach(tr=>{
+    tr.addEventListener('click', e=>{
+      const td=e.target.closest('td');
+      if(!td)return;
+      const idx=Array.from(tr.children).indexOf(td);
+      // Colonne 0 = nom de catégorie → juste highlight la ligne
+      if(idx===0){
+        const dejaSel=tr.classList.contains('sel');
+        document.querySelectorAll('.ta tbody tr.cat-row.sel').forEach(r=>r.classList.remove('sel'));
+        if(!dejaSel)tr.classList.add('sel');
+        return;
+      }
+      // Colonne 1 à 12 = mois → ouvrir la vue Mois sur ce mois (colonne 13 = Total, ignorée)
+      const mi=idx-1;
+      if(mi>=0&&mi<12){
+        aller('mois');
+        ouvrirDm(mi);
+      }
+    });
+  });
 }
 
 // ── GRILLE MOIS ──
