@@ -14,9 +14,19 @@
       --zep:#e8e4f5;--zep2:#d4cce9;--zep3:#b8abd9;
       --zrv:#e1f1f5;--zrv2:#bfe3ec;--zrv3:#94cfdf;
       --zfx:#fbeceb;--zfx2:#f5d6d3;--zfx3:#ecbab6;
-      --zvr:#fdf1e6;--zvr2:#fbe2c6;--zvr3:#f6cb98;}
+      --zvr:#fdf1e6;--zvr2:#fbe2c6;--zvr3:#f6cb98;
+      --tep:#3d4a8a;--trv:#1d5a8a;--tfx:#8a2e26;--tvr:#8a4d0e;}
+    body.dark{--bl:#0e1a2b;--blc:#1c3050;--or:#d9b65f;--fo:#14181f;--wh:#1d222c;--tx:#e8e6e1;--txl:#9aa3b0;--ve:#4ad399;--vec:#163029;--ro:#f0746a;--roc:#3a2220;--or2:#e89456;--or2c:#3a2a14;--bo:#2c333f;--sh:0 2px 12px rgba(0,0,0,.4);
+      --zep:#241f38;--zep2:#2e2748;--zep3:#3d3360;
+      --zrv:#16262e;--zrv2:#1b3440;--zrv3:#1f4250;
+      --zfx:#2b1a18;--zfx2:#3a2220;--zfx3:#4a2b27;
+      --zvr:#2b2014;--zvr2:#3a2a14;--zvr3:#4a3618;
+      --tep:#c2b8e8;--trv:#7fd4e8;--tfx:#e89a92;--tvr:#e8b06a;}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-    body{font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh;overflow-x:hidden}
+    body{font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+    #tog-slider:before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--wh);border-radius:50%;transition:.2s}
+    #tog-dark:checked + #tog-slider{background:var(--or)}
+    #tog-dark:checked + #tog-slider:before{transform:translateX(20px)}
 
     /* AUTH */
     .ea{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;background:linear-gradient(160deg,var(--bl) 0%,var(--blc) 100%)}
@@ -57,29 +67,32 @@
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
     .ta{width:100%;min-width:760px;border-collapse:collapse;font-size:.75rem;background:var(--wh)}
-    .ta th{background:var(--bl);color:var(--wh);padding:10px 9px;text-align:right;font-weight:500;white-space:nowrap}
-    .ta th:first-child{text-align:left;min-width:160px;position:sticky;left:0;z-index:1}
+    .ta th{background:var(--bl);color:var(--wh);padding:10px 9px;text-align:right;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2}
+    .ta th:first-child{text-align:left;min-width:160px;position:sticky;left:0;top:0;z-index:3}
     .ta td{padding:9px 9px;text-align:right;border-bottom:1px solid rgba(226,221,214,.5)}
     .ta td:first-child{text-align:left;position:sticky;left:0;background:var(--wh);z-index:1}
     .ta tr.lr td{font-weight:700;font-size:.78rem;padding:11px 9px}
     .ta .tp{color:var(--ve)}.ta .tn{color:var(--ro)}
     .ta .prev{color:var(--txl);font-style:italic}
+    /* Revenus / dépenses fixes / variables : noir (pointé) ou gris italique (prévisionnel) — pas de vert/rouge, meilleur contraste pour tous */
+    .ta tr.z-rv td.tp,.ta tr.z-fx td.tn,.ta tr.z-vr td.tn{color:var(--tx);font-style:normal}
+    .ta tr.z-rv.lt td.tp,.ta tr.z-fx.lt td.tn,.ta tr.z-vr.lt td.tn{color:var(--tx);font-weight:700}
 
     /* ZONES DE COULEUR PAR SECTION */
     .ta tr.z-ep td{background:var(--zep)!important}
-    .ta tr.z-ep.ch td{background:var(--zep2)!important;color:#3d4a8a;border-top:2px solid var(--zep3)}
+    .ta tr.z-ep.ch td{background:var(--zep2)!important;color:var(--tep);border-top:2px solid var(--zep3)}
     .ta tr.z-ep.lt td{background:var(--zep3)!important}
 
     .ta tr.z-rv td{background:var(--zrv)!important}
-    .ta tr.z-rv.ch td{background:var(--zrv2)!important;color:#1d5a8a;border-top:2px solid var(--zrv3)}
+    .ta tr.z-rv.ch td{background:var(--zrv2)!important;color:var(--trv);border-top:2px solid var(--zrv3)}
     .ta tr.z-rv.lt td{background:var(--zrv3)!important}
 
     .ta tr.z-fx td{background:var(--zfx)!important}
-    .ta tr.z-fx.ch td{background:var(--zfx2)!important;color:#8a2e26;border-top:2px solid var(--zfx3)}
+    .ta tr.z-fx.ch td{background:var(--zfx2)!important;color:var(--tfx);border-top:2px solid var(--zfx3)}
     .ta tr.z-fx.lt td{background:var(--zfx3)!important}
 
     .ta tr.z-vr td{background:var(--zvr)!important}
-    .ta tr.z-vr.ch td{background:var(--zvr2)!important;color:#8a4d0e;border-top:2px solid var(--zvr3)}
+    .ta tr.z-vr.ch td{background:var(--zvr2)!important;color:var(--tvr);border-top:2px solid var(--zvr3)}
     .ta tr.z-vr.lt td{background:var(--zvr3)!important}
 
     .ta tr.z-ep td:first-child{background:var(--zep)!important}
@@ -375,6 +388,18 @@
     <!-- RÉGLAGES -->
     <div id="o-reglages" style="display:none">
 
+      <!-- APPARENCE -->
+      <div class="si">
+        <h3>🎨 Apparence</h3>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <p style="margin:0">Mode sombre</p>
+          <label style="position:relative;display:inline-block;width:48px;height:28px">
+            <input type="checkbox" id="tog-dark" onchange="toggleDark()" style="opacity:0;width:0;height:0">
+            <span id="tog-slider" style="position:absolute;cursor:pointer;inset:0;background:var(--bo);border-radius:28px;transition:.2s"></span>
+          </label>
+        </div>
+      </div>
+
       <!-- ÉPARGNE -->
       <div class="si">
         <h3>🏦 Épargne</h3>
@@ -529,7 +554,24 @@ function getCookie(nom){
   return '';
 }
 
+// ── MODE SOMBRE ──
+function appliquerThemeInitial(){
+  const sauve=localStorage.getItem('theme');
+  const prefereSombre=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const sombre=sauve?sauve==='dark':prefereSombre;
+  document.body.classList.toggle('dark',sombre);
+  const tog=document.getElementById('tog-dark');
+  if(tog)tog.checked=sombre;
+}
+function toggleDark(){
+  const sombre=document.getElementById('tog-dark').checked;
+  document.body.classList.toggle('dark',sombre);
+  localStorage.setItem('theme',sombre?'dark':'light');
+}
+appliquerThemeInitial();
+
 window.onload=()=>{
+  appliquerThemeInitial();
   peuplerSels();peuplerCat();peuplerImpCats();
   // Lire l'ID depuis cookie (priorité) puis localStorage puis URL
   const sidCookie=getCookie('monbudget_sid');
