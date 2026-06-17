@@ -98,6 +98,7 @@
     .ta tr.lt td{font-weight:700;padding:10px 9px}
     .ta tr.lr{background:rgba(26,47,74,.09)!important}
     .ta tr.lr td{background:rgba(26,47,74,.09)!important;font-weight:700;font-size:.78rem;padding:10px 9px;border-top:2px solid rgba(26,47,74,.18)}
+    .ta tr.esp td{background:var(--fo)!important;border:none;padding:7px 0;height:7px}
 
     /* MOIS GRILLE */
     .gm{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
@@ -911,6 +912,7 @@ function affBudget(){
   h+=`<td class="${clEvolTot}">${labelEvolTot}</td></tr>`;
 
   // REVENUS (réels + prévisionnels)
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
   h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
@@ -929,6 +931,7 @@ function affBudget(){
   h+=`<td class="tp">${fmtDec(tRA)}</td></tr>`;
 
   // DÉPENSES FIXES
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
   if(cDF.length){
     h+=`<tr class="ch z-fx"><td colspan="${nc}">Dépenses fixes</td></tr>`;
@@ -942,6 +945,7 @@ function affBudget(){
   h+=`<td class="tn">${fmtDec(tDF)}</td></tr>`;
 
   // RESTE POUR VARIABLES
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr"><td>Reste pour variables</td>`;
   MOIS.forEach((_,i)=>{
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
@@ -951,6 +955,7 @@ function affBudget(){
   h+=`<td></td></tr>`;
 
   // DÉPENSES VARIABLES
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
   if(cDV.length){
     h+=`<tr class="ch z-vr"><td colspan="${nc}">Dépenses variables</td></tr>`;
@@ -964,6 +969,7 @@ function affBudget(){
   h+=`<td class="tn">${fmtDec(tDV)}</td></tr>`;
 
   // RESTE AU TOTAL
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Reste au total</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
@@ -974,6 +980,7 @@ function affBudget(){
   h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmtDec(rAn)}</strong></td></tr>`;
 
   // ── LIGNE SOLDE COMPTE COURANT ──
+  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr" style="background:rgba(45,122,95,.06)!important"><td><strong>Solde compte courant</strong></td>`;
   MOIS.forEach((_,i)=>{
     const dF=new Date(parseInt(E.annee),i+1,0).toISOString().split('T')[0];
