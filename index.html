@@ -175,6 +175,18 @@
     .vi{text-align:center;padding:28px 0;color:var(--txl)}
     .vi .em{font-size:1.7rem;margin-bottom:8px}
     @media(max-width:380px){.gm{grid-template-columns:repeat(2,1fr)}.ban .gr{font-size:1.6rem}}
+  .touche-num{
+    background:rgba(26,47,74,.04);border:none;border-radius:14px;
+    font-size:1.4rem;font-weight:600;color:var(--tx);padding:16px 0;
+    font-family:'Inter',sans-serif;transition:background .15s;
+  }
+  .touche-num:active{background:rgba(26,47,74,.1)}
+  .cat-2t{
+    background:rgba(26,47,74,.04);border:1.5px solid transparent;border-radius:12px;
+    padding:10px 6px;font-size:.78rem;font-weight:500;color:var(--tx);
+    font-family:'Inter',sans-serif;text-align:center;line-height:1.2;
+  }
+  .cat-2t.sel{background:var(--or);color:#fff;border-color:var(--or)}
   </style>
   <!-- Firebase SDK compat (fonctionne sur Safari iOS PWA) -->
   
@@ -189,6 +201,39 @@
 
 
 <!-- CONNEXION -->
+<!-- SAISIE RAPIDE 2 TAPS -->
+<div id="ov-2taps" class="ov" style="z-index:300">
+  <div class="ovc" style="max-width:480px;display:flex;flex-direction:column;height:100%;max-height:680px">
+    <div class="mh"></div>
+    <button class="bf" onclick="fermer2Taps()">✕</button>
+    <div id="zone-montant-2t" style="text-align:center;padding:20px 0 10px">
+      <div style="font-size:.75rem;color:var(--txl);margin-bottom:4px" id="label-type-2t">DÉPENSE</div>
+      <div id="affiche-montant-2t" style="font-size:2.8rem;font-weight:700;color:var(--tx);font-family:'Inter',sans-serif">0</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 4px;margin-bottom:14px">
+      <button class="tt a" id="btn-dep-2t" onclick="setType2t('depense')" style="flex:1">💸 Dépense</button>
+      <button class="tt" id="btn-rev-2t" onclick="setType2t('revenu')" style="flex:1">💰 Revenu</button>
+    </div>
+    <div id="grille-cats-2t" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;max-height:160px;overflow-y:auto"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1">
+      <button class="touche-num" onclick="touche2t('1')">1</button>
+      <button class="touche-num" onclick="touche2t('2')">2</button>
+      <button class="touche-num" onclick="touche2t('3')">3</button>
+      <button class="touche-num" onclick="touche2t('4')">4</button>
+      <button class="touche-num" onclick="touche2t('5')">5</button>
+      <button class="touche-num" onclick="touche2t('6')">6</button>
+      <button class="touche-num" onclick="touche2t('7')">7</button>
+      <button class="touche-num" onclick="touche2t('8')">8</button>
+      <button class="touche-num" onclick="touche2t('9')">9</button>
+      <button class="touche-num" onclick="touche2t(',')">,</button>
+      <button class="touche-num" onclick="touche2t('0')">0</button>
+      <button class="touche-num" onclick="touche2t('back')">⌫</button>
+    </div>
+    <button class="bp" id="btn-valider-2t" onclick="validerSaisie2t()" style="margin-top:10px" disabled>Choisissez une catégorie</button>
+    <button class="bs2" onclick="ouvrirSaisieComplete2t()" style="margin-top:6px">Saisie détaillée →</button>
+  </div>
+</div>
+
 <div id="ec-conn" class="ea">
   <h1>Mon Budget</h1>
   <p id="p-conn">Gérez vos finances simplement</p>
@@ -362,7 +407,7 @@
 
     </div>
   </div>
-  <button class="fab" id="fab" onclick="ouvrirSaisie()">+</button>
+  <button class="fab" id="fab" onclick="ouvrirSaisie2Taps()">+</button>
 </div>
 
 <!-- OVERLAY TRANSACTION -->
@@ -1132,6 +1177,128 @@ async function suppTx(){
 }
 
 // ── SAISIE RAPIDE ──
+// ── SAISIE RAPIDE 2 TAPS ──
+let E2T={type:'depense',montant:'',cat:null};
+
+function ouvrirSaisie2Taps(){
+  if(E.moisOuvert===null){
+    aller('mois');ouvrirDm(new Date().getMonth());
+  }
+  E2T={type:'depense',montant:'',cat:null};
+  document.getElementById('btn-dep-2t').classList.add('a');
+  document.getElementById('btn-rev-2t').classList.remove('a');
+  document.getElementById('label-type-2t').textContent='DÉPENSE';
+  affMontant2t();
+  affCats2t();
+  document.getElementById('ov-2taps').classList.add('v');
+}
+
+function fermer2Taps(){
+  document.getElementById('ov-2taps').classList.remove('v');
+}
+
+function setType2t(type){
+  E2T.type=type;E2T.cat=null;
+  document.getElementById('btn-dep-2t').classList.toggle('a',type==='depense');
+  document.getElementById('btn-rev-2t').classList.toggle('a',type==='revenu');
+  document.getElementById('label-type-2t').textContent=type==='depense'?'DÉPENSE':'REVENU';
+  affCats2t();
+  majBoutonValider2t();
+}
+
+function affCats2t(){
+  // Calculer les catégories les plus utilisées (frequence) pour ce type
+  const txType=E.tx.filter(t=>t.type===E2T.type);
+  const freq={};
+  txType.forEach(t=>{freq[t.cat]=(freq[t.cat]||0)+1;});
+  const toutesCats=E2T.type==='depense'?CDEP:CREV;
+  // Trier par fréquence d'utilisation, les non utilisées à la fin
+  const triees=[...toutesCats].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
+  const top9=triees.slice(0,9);
+  const el=document.getElementById('grille-cats-2t');
+  el.innerHTML=top9.map(c=>
+    `<button class="cat-2t ${E2T.cat===c?'sel':''}" onclick="choisirCat2t('${c.replace(/'/g,"\\'")}')">${c}</button>`
+  ).join('');
+}
+
+function choisirCat2t(cat){
+  E2T.cat=cat;
+  affCats2t();
+  majBoutonValider2t();
+}
+
+function touche2t(t){
+  if(t==='back'){
+    E2T.montant=E2T.montant.slice(0,-1);
+  } else if(t===','){
+    if(!E2T.montant.includes(','))E2T.montant+=',';
+  } else {
+    // Limiter à 2 décimales
+    const parts=E2T.montant.split(',');
+    if(parts[1]&&parts[1].length>=2)return;
+    if(E2T.montant==='0')E2T.montant=t;
+    else E2T.montant+=t;
+  }
+  affMontant2t();
+  majBoutonValider2t();
+}
+
+function affMontant2t(){
+  document.getElementById('affiche-montant-2t').textContent=(E2T.montant||'0')+' €';
+}
+
+function majBoutonValider2t(){
+  const btn=document.getElementById('btn-valider-2t');
+  const montant=parseFloat(E2T.montant.replace(',','.'));
+  if(!montant||montant<=0){
+    btn.disabled=true;btn.textContent='Entrez un montant';
+  } else if(!E2T.cat){
+    btn.disabled=true;btn.textContent='Choisissez une catégorie';
+  } else {
+    btn.disabled=false;
+    btn.textContent='✓ Enregistrer '+montant.toFixed(2).replace('.',',')+' €';
+  }
+}
+
+async function validerSaisie2t(){
+  const montant=parseFloat(E2T.montant.replace(',','.'));
+  if(!montant||montant<=0||!E2T.cat)return;
+  const btn=document.getElementById('btn-valider-2t');
+  btn.disabled=true;btn.textContent='Enregistrement...';
+  try{
+    const an=E.annee;
+    const id='tx_'+Date.now();
+    const da=today();
+    await ajouter(`TX_${an}`,[id,da,E2T.type,E2T.cat,'',E2T.cat,montant,'','TRUE',montant]);
+    E.tx.push({id,date:da,type:E2T.type,cat:E2T.cat,projet:'',desc:E2T.cat,montant,note:'',pointe:true,montant_reel:montant,an});
+    fermer2Taps();
+    affDm(E.moisOuvert);affBudget();
+    toast('✓ '+E2T.cat+' — '+montant.toFixed(2).replace('.',',')+' €');
+  }catch(e){
+    console.error('validerSaisie2t:',e);
+    btn.disabled=false;
+    majBoutonValider2t();
+    toast('Erreur enregistrement');
+  }
+}
+
+function ouvrirSaisieComplete2t(){
+  fermer2Taps();
+  ouvrirSaisie();
+  // Pré-remplir avec ce qui a déjà été saisi
+  if(E2T.montant){
+    const m=parseFloat(E2T.montant.replace(',','.'));
+    if(m)document.getElementById('s-mo').value=m;
+  }
+  if(E2T.cat){
+    setType(E2T.type,document.querySelector(E2T.type==='depense'?'.tt.a':'.tt'));
+    setTimeout(()=>{
+      const sel=document.getElementById('s-ca');
+      if(sel)sel.value=E2T.cat;
+    },50);
+  }
+}
+
 function ouvrirSaisie(){
   if(E.moisOuvert===null){
     aller('mois');ouvrirDm(new Date().getMonth());
