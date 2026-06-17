@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon Budget — Politique de confidentialité</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Inter',sans-serif;
+    background:#f7f5f1;
+    color:#1a2f4a;
+    line-height:1.65;
+    padding:32px 20px 80px;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+  h1{font-family:'Playfair Display',serif;font-size:2rem;margin-bottom:6px}
+  .sub{color:#6b7a8f;font-size:.9rem;margin-bottom:36px}
+  h2{font-size:1.15rem;margin:32px 0 12px;color:#1a2f4a}
+  p,li{font-size:.95rem;color:#3a4a5f;margin-bottom:10px}
+  ul{margin-left:20px;margin-bottom:14px}
+  .card{background:#fff;border-radius:16px;padding:20px 22px;margin-bottom:16px;border:1px solid #e8e3da}
+  .tag{display:inline-block;background:#eef3ee;color:#2d7a5f;font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+  strong{color:#1a2f4a}
+  a{color:#c9933f}
+  .back{display:inline-block;margin-bottom:24px;color:#6b7a8f;text-decoration:none;font-size:.875rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="javascript:history.back()" class="back">← Retour</a>
+  <h1>Mon Budget</h1>
+  <p class="sub">Politique de confidentialité — dernière mise à jour : juin 2026</p>
+
+  <p>Mon Budget est une application personnelle de gestion budgétaire. Cette page explique simplement quelles données sont utilisées, où elles sont stockées, et comment vous gardez le contrôle.</p>
+
+  <h2>📊 Vos données financières</h2>
+  <div class="card">
+    <span class="tag">Stockage</span>
+    <p>Toutes vos données (transactions, soldes, catégories, épargne) sont stockées <strong>dans votre propre Google Sheet</strong>, dans votre Google Drive personnel. Mon Budget ne possède aucun serveur ni base de données : votre fichier vous appartient entièrement.</p>
+    <p>Personne d'autre que vous n'a accès à ce fichier, sauf si vous le partagez vous-même.</p>
+  </div>
+
+  <h2>🔐 Connexion avec Google</h2>
+  <div class="card">
+    <span class="tag">Authentification</span>
+    <p>Mon Budget utilise votre compte Google uniquement pour vous identifier et accéder à votre propre Google Sheet. Aucun mot de passe n'est jamais demandé ni stocké par l'application.</p>
+    <p>Les autorisations demandées se limitent à la lecture et l'écriture de votre fichier budget — jamais à vos e-mails, contacts, photos ou autres documents.</p>
+  </div>
+
+  <h2>📷 Import de relevés bancaires par photo</h2>
+  <div class="card">
+    <span class="tag">Fonctionnalité optionnelle</span>
+    <p>Si vous utilisez la fonction d'import par photo ou PDF, l'image de votre relevé est envoyée à l'API d'Anthropic (la société qui développe l'assistant Claude) pour en extraire automatiquement les transactions.</p>
+    <ul>
+      <li>L'image est conservée au maximum <strong>7 jours</strong> sur les serveurs d'Anthropic, à des fins de sécurité technique uniquement, puis supprimée automatiquement.</li>
+      <li>Elle n'est <strong>jamais utilisée pour entraîner des modèles d'intelligence artificielle</strong>.</li>
+      <li>Elle n'est <strong>jamais partagée avec des tiers</strong> (annonceurs, partenaires commerciaux, etc.).</li>
+      <li>Seules les données extraites (date, montant, catégorie) sont ensuite enregistrées dans votre Google Sheet — jamais l'image elle-même.</li>
+    </ul>
+    <p>Cette fonctionnalité est entièrement optionnelle : vous pouvez continuer à saisir vos dépenses manuellement sans jamais l'utiliser.</p>
+  </div>
+
+  <h2>🙋 Qui a accès à quoi</h2>
+  <div class="card">
+    <span class="tag">Transparence</span>
+    <ul>
+      <li><strong>Vous</strong> : accès complet à vos données, à tout moment, directement dans votre Google Drive.</li>
+      <li><strong>L'administratrice de l'application</strong> (la créatrice de Mon Budget) : ne peut pas consulter le contenu de votre Sheet. Elle conserve uniquement, dans un fichier privé, la liste des personnes utilisant l'application et leur identifiant de fichier technique, pour pouvoir vous aider en cas de problème.</li>
+      <li><strong>Google</strong> : héberge votre Sheet selon ses propres conditions d'utilisation (Google Drive / Google Sheets), indépendantes de Mon Budget.</li>
+    </ul>
+  </div>
+
+  <h2>🗑️ Suppression de vos données</h2>
+  <div class="card">
+    <span class="tag">Votre contrôle</span>
+    <p>Vous pouvez supprimer l'intégralité de vos données à tout moment en supprimant simplement votre Google Sheet depuis votre Google Drive. Aucune copie n'est conservée ailleurs.</p>
+  </div>
+
+  <h2>✉️ Contact</h2>
+  <p>Pour toute question concernant vos données ou cette application, vous pouvez contacter directement la personne qui vous a invité·e à utiliser Mon Budget.</p>
+
+</div>
+</body>
+</html>
