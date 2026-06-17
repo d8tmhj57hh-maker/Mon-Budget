@@ -370,23 +370,6 @@
         <button class="bs2" onclick="reinitParams()">↺ Valeurs par défaut</button>
       </div>
 
-      <!-- IMPORT PAR PHOTO/PDF -->
-      <div class="si">
-        <h3>📸 Importer un relevé bancaire</h3>
-        <p>Prenez une photo ou importez un PDF de votre relevé. Les transactions seront extraites automatiquement et ajoutées en "dépenses à classer".</p>
-        <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="analyserReleve(this)"/>
-        <button class="bp" onclick="document.getElementById('inp-photo-releve').click()">📷 Photographier ou importer un relevé</button>
-        <div id="msg-import-releve" style="display:none;margin-top:12px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
-        <div id="apercu-releve" style="margin-top:14px"></div>
-      </div>
-
-      <!-- DÉPENSES À CLASSER -->
-      <div class="si" id="zone-a-classer" style="display:none">
-        <h3>🗂️ Dépenses à classer <span id="compteur-a-classer" style="color:var(--or);font-weight:600"></span></h3>
-        <p>Vérifiez et validez chaque transaction extraite de votre relevé.</p>
-        <div id="liste-a-classer"></div>
-      </div>
-
       <!-- IMPORT & SOLDE -->
       <div class="si">
         <h3>📊 Import par totaux mensuels</h3>
@@ -1050,6 +1033,18 @@ function affDm(mi){
     <div class="ri"><div class="rv" style="color:${r>=0?'var(--ve)':'var(--ro)'}">${fmtDec(r)}</div><div class="rl">Flux</div></div>
   </div>`;
 
+  // Bouton import relevé bancaire pour ce mois
+  h+=`<div style="margin-bottom:14px">
+    <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="analyserReleve(this)"/>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
+    <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
+  </div>`;
+
+  // Dépenses à classer (extraites d'un relevé, en attente de validation)
+  if(E.aClasser&&E.aClasser.length){
+    h+=`<div class="sec"><div class="sec-ti"><span class="sn">🗂️ À classer (${E.aClasser.length})</span></div><div id="liste-a-classer-mois"></div></div>`;
+  }
+
   // Programmées en attente (italique)
   const enAttente=progMois.filter(p=>!pointeesIds.has(p.id));
   if(enAttente.length){
@@ -1088,6 +1083,7 @@ function affDm(mi){
   }
   if(!txM.length&&!enAttente.length)h+=`<div class="vi"><div class="em">📭</div><p>Aucune transaction ce mois</p></div>`;
   document.getElementById('cdm').innerHTML=h;
+  affListeAClasserMois();
 }
 
 function ltx(t){
@@ -1390,7 +1386,7 @@ Si aucune transaction n'est visible, reponds [].`;
     msg.style.background='var(--vec)';msg.style.color='var(--ve)';
     msg.textContent='✅ '+transactions.length+' transaction(s) extraite(s) ! Verifiez ci-dessous.';
     input.value='';
-    affListeAClasser();
+    if(E.moisOuvert!==null)affDm(E.moisOuvert);
 
   }catch(e){
     console.error('analyserReleve:',e);
@@ -1421,13 +1417,9 @@ function suggererCategorie(desc,type){
   return null;
 }
 
-function affListeAClasser(){
-  const zone=document.getElementById('zone-a-classer');
-  const compteur=document.getElementById('compteur-a-classer');
-  const liste=document.getElementById('liste-a-classer');
-  if(!E.aClasser.length){zone.style.display='none';return;}
-  zone.style.display='block';
-  compteur.textContent='('+E.aClasser.length+')';
+function affListeAClasserMois(){
+  const liste=document.getElementById('liste-a-classer-mois');
+  if(!liste)return; // section pas affichée (aucune dépense à classer)
   liste.innerHTML=E.aClasser.map(t=>{
     const cats=t.type==='revenu'?CREV:CDEP;
     return `<div class="ban" style="margin-bottom:10px;padding:12px">
@@ -1461,14 +1453,14 @@ async function validerAClasser(id){
     await ajouter(`TX_${an}`,[txId,t.date,t.type,cat,'',t.desc,t.montant,'','TRUE',t.montant]);
     E.tx.push({id:txId,date:t.date,type:t.type,cat,projet:'',desc:t.desc,montant:t.montant,note:'',pointe:true,montant_reel:t.montant,an});
     E.aClasser=E.aClasser.filter(x=>x.id!==id);
-    affListeAClasser();affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+    affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
     toast('✓ '+t.desc+' classee');
   }catch(e){toast('Erreur enregistrement');}
 }
 
 function supprimerAClasser(id){
   E.aClasser=E.aClasser.filter(x=>x.id!==id);
-  affListeAClasser();
+  if(E.moisOuvert!==null)affDm(E.moisOuvert);
 }
 
 function ouvrirSaisie(){
