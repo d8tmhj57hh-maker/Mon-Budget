@@ -370,22 +370,6 @@
         <button class="bs2" onclick="reinitParams()">↺ Valeurs par défaut</button>
       </div>
 
-      <!-- IMPORT & SOLDE -->
-      <div class="si">
-        <h3>📊 Import par totaux mensuels</h3>
-        <p>Saisissez les totaux par catégorie pour un mois donné.</p>
-        <div class="g2">
-          <div class="ch3"><label>Année</label><select id="imp-an"></select></div>
-          <div class="ch3"><label>Mois</label><select id="imp-mo">
-            <option value="0">Janvier</option><option value="1">Février</option><option value="2">Mars</option>
-            <option value="3">Avril</option><option value="4">Mai</option><option value="5">Juin</option>
-            <option value="6">Juillet</option><option value="7">Août</option><option value="8">Septembre</option>
-            <option value="9">Octobre</option><option value="10">Novembre</option><option value="11">Décembre</option>
-          </select></div>
-        </div>
-        <div class="gi" id="gi-cats"></div>
-        <button class="bp" onclick="importerMois()">Importer ce mois</button>
-      </div>
       <div class="si">
         <h3>⚡ Recaler le solde</h3>
         <p>Entrez votre solde bancaire exact à une date donnée.</p>
@@ -1036,8 +1020,10 @@ function affDm(mi){
   // Bouton import relevé bancaire pour ce mois
   h+=`<div style="margin-bottom:14px">
     <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="analyserReleve(this)"/>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
     <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
+    <div id="bloc-import-totaux" style="display:none;margin-top:10px"></div>
   </div>`;
 
   // Dépenses à classer (extraites d'un relevé, en attente de validation)
@@ -1787,6 +1773,39 @@ function peuplerImpCats(){
   const tout=[...CREV.map(c=>({c,t:'revenu'})),...CDEP.map(c=>({c,t:'depense'}))];
   g.innerHTML=tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('');
 }
+
+function toggleImportTotaux(mi){
+  const bloc=document.getElementById('bloc-import-totaux');
+  if(bloc.style.display==='block'){bloc.style.display='none';bloc.innerHTML='';return;}
+  const tout=[...CREV.map(c=>({c,t:'revenu'})),...CDEP.map(c=>({c,t:'depense'}))];
+  bloc.innerHTML=`<div class="ban" style="padding:14px">
+    <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Saisissez les totaux par catégorie pour ${MOIS[mi]} ${E.annee} — pratique pour rattraper un mois passé rapidement.</p>
+    <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('')}</div>
+    <button class="bp" style="margin-top:10px" onclick="importerMoisVue(${mi})">Importer ${MOIS[mi]}</button>
+  </div>`;
+  bloc.style.display='block';
+}
+
+async function importerMoisVue(mi){
+  const an=E.annee;
+  const inputs=document.querySelectorAll('#gi-cats-mois input');
+  const d=`${an}-${String(mi+1).padStart(2,'0')}-15`;let nb=0;
+  for(const inp of inputs){
+    const v=parseFloat(inp.value);if(!v||v<=0)continue;
+    const cat=inp.dataset.cat;const t=inp.dataset.type;
+    const id=`imp_${Date.now()}_${nb}`;
+    await ajouter(`TX_${an}`,[id,d,t,cat,'',`Import ${MOIS[mi]} ${an}`,v,'','TRUE',v]);
+    E.tx.push({id,date:d,type:t,cat,projet:'',desc:`Import ${MOIS[mi]} ${an}`,montant:v,note:'',pointe:true,montant_reel:v,an});
+    nb++;
+  }
+  if(nb>0){
+    document.getElementById('bloc-import-totaux').style.display='none';
+    document.getElementById('bloc-import-totaux').innerHTML='';
+    affBudget();affDm(mi);
+    toast(`${nb} catégorie(s) importée(s) ✓`);
+  } else toast('Aucun montant saisi');
+}
+
 async function importerMois(){
   const an=document.getElementById('imp-an').value;const mi=parseInt(document.getElementById('imp-mo').value);
   const inputs=document.querySelectorAll('#gi-cats input');
