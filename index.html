@@ -1298,7 +1298,7 @@ function affDm(mi){
 
   // Bouton import relevé bancaire pour ce mois
   h+=`<div style="margin-bottom:14px">
-    <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="analyserReleve(this)"/>
+    <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" style="display:none" onchange="analyserReleve(this)"/>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="ouvrirSaisieEp(${mi})">🏦 Mettre à jour l'épargne</button>
