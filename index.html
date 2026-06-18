@@ -1584,87 +1584,76 @@ function ouvrirSaisieComplete2t(){
 E.aClasser=E.aClasser||[];
 
 async function fichierEnBase64(file){
-  // file.arrayBuffer() est plus robuste que FileReader sur Safari iOS,
-  // notamment pour les PDF provenant d'apps bancaires tierces
   const buffer=await file.arrayBuffer();
   const bytes=new Uint8Array(buffer);
-  let bin='';
-  const chunk=8192;
-  for(let i=0;i<bytes.length;i+=chunk){
-    bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
-  }
+  let bin='';const chunk=8192;
+  for(let i=0;i<bytes.length;i+=chunk)bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
   return btoa(bin);
 }
 
+async function pdfVersImages(file){
+  if(!window.pdfjsLib){
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload=res;s.onerror=rej;document.head.appendChild(s);
+    });
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const buffer=await file.arrayBuffer();
+  const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
+  const images=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const vp=page.getViewport({scale:2});
+    const canvas=document.createElement('canvas');
+    canvas.width=vp.width;canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    images.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+  }
+  return images;
+}
+
 async function analyserReleve(input){
-  const file=input.files[0];
-  if(!file)return;
+  const file=input.files[0];if(!file)return;
   const msg=document.getElementById('msg-import-releve');
-  msg.style.display='block';
-  msg.style.background='rgba(26,47,74,.07)';msg.style.color='var(--txl)';
-  msg.textContent='Analyse du relevé en cours...';
-
+  msg.style.display='block';msg.style.background='rgba(26,47,74,.07)';msg.style.color='var(--txl)';
+  const annee=E.moisOuvert!==null?E.annee:new Date().getFullYear().toString();
+  const prompt=`Tu analyses une page de releve bancaire. Extrais TOUTES les transactions (debits et credits). Pour chaque transaction : date (YYYY-MM-DD, annee ${annee} si absente), description courte, montant (positif), type ("depense" ou "revenu"). Reponds UNIQUEMENT en JSON : [{"date":"2025-01-15","desc":"Carrefour","montant":45.30,"type":"depense"}]. Si pas de transaction visible : [].`;
   try{
-    const base64=await fichierEnBase64(file);
     const isPdf=file.type==='application/pdf';
-    const mediaType=isPdf?'application/pdf':file.type;
-
-    const contentBlock=isPdf
-      ? {type:'document',source:{type:'base64',media_type:mediaType,data:base64}}
-      : {type:'image',source:{type:'base64',media_type:mediaType,data:base64}};
-
-    const prompt=`Tu analyses un releve bancaire. Extrais TOUTES les transactions visibles (debits et credits).
-Pour chaque transaction, donne : date (format YYYY-MM-DD, annee ${E.annee} si non precisee), description (nom du commercant ou libelle court), montant (nombre positif), type ("depense" ou "revenu").
-Reponds UNIQUEMENT avec un tableau JSON, sans aucun texte autour, sans balises markdown. Format exact :
-[{"date":"2026-01-15","desc":"Carrefour","montant":45.30,"type":"depense"}]
-Si aucune transaction n'est visible, reponds [].`;
-
-    const response=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:4000,
-        messages:[{role:'user',content:[contentBlock,{type:'text',text:prompt}]}]
-      })
-    });
-
-    if(!response.ok)throw new Error('Erreur API: '+response.status);
-    const data=await response.json();
-    const texte=data.content.map(b=>b.text||'').join('');
-    const nettoye=texte.replace(/```json|```/g,'').trim();
-    const transactions=JSON.parse(nettoye);
-
-    if(!transactions.length){
-      msg.style.background='var(--roc)';msg.style.color='var(--ro)';
-      msg.textContent='Aucune transaction detectee. Essayez une photo plus nette.';
-      return;
+    let toutes=[];
+    if(isPdf){
+      msg.textContent='Lecture du PDF...';
+      const images=await pdfVersImages(file);
+      for(let i=0;i<images.length;i++){
+        msg.textContent='Analyse page '+(i+1)+'/'+images.length+'...';
+        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:images[i]}},{type:'text',text:prompt}]}]})});
+        if(!r.ok)throw new Error('Erreur API: '+r.status);
+        const d=await r.json();
+        const txt=d.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+        try{toutes=[...toutes,...JSON.parse(txt)];}catch(e){}
+      }
+    } else {
+      msg.textContent='Analyse de la photo...';
+      const b64=await fichierEnBase64(file);
+      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:prompt}]}]})});
+      if(!r.ok)throw new Error('Erreur API: '+r.status);
+      const d=await r.json();
+      const txt=d.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+      try{toutes=JSON.parse(txt);}catch(e){}
     }
-
-    // Ajouter à la liste "à classer" avec suggestion de catégorie
-    transactions.forEach(t=>{
-      const catSuggeree=suggererCategorie(t.desc,t.type);
-      E.aClasser.push({
-        id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
-        date:t.date||today(),
-        desc:t.desc||'Transaction',
-        montant:parseFloat(t.montant)||0,
-        type:t.type==='revenu'?'revenu':'depense',
-        catSuggeree
-      });
+    if(!toutes.length){msg.style.background='var(--roc)';msg.style.color='var(--ro)';msg.textContent='Aucune transaction détectée.';return;}
+    toutes.forEach(t=>{
+      E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date:t.date||today(),desc:t.desc||'Transaction',montant:parseFloat(t.montant)||0,type:t.type==='revenu'?'revenu':'depense',catSuggeree:suggererCategorie(t.desc,t.type)});
     });
-
     msg.style.background='var(--vec)';msg.style.color='var(--ve)';
-    msg.textContent='✅ '+transactions.length+' transaction(s) extraite(s) ! Verifiez ci-dessous.';
-    input.value='';
-    if(E.moisOuvert!==null)affDm(E.moisOuvert);
-
+    msg.textContent='✅ '+toutes.length+' transaction(s) extraite(s) !';
+    input.value='';if(E.moisOuvert!==null)affDm(E.moisOuvert);
   }catch(e){
     console.error('analyserReleve:',e);
     msg.style.background='var(--roc)';msg.style.color='var(--ro)';
-    if(e.message&&e.message.includes('API'))msg.textContent='Erreur API : '+e.message;
-    else if(e.message&&e.message.toLowerCase().includes('load'))msg.textContent='Erreur de lecture du fichier. Essayez un PDF moins volumineux ou une photo.';
-    else msg.textContent='Erreur : '+e.message;
+    msg.textContent='Erreur : '+e.message;
   }
 }
 
