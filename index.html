@@ -1960,17 +1960,23 @@ function reinitParams(){
 }
 
 // ── GESTION DES PÔLES DE DÉPENSES ──
-function toutesCategoriesConnues(){
-  // Toutes les catégories de dépense vues dans les transactions ou programmées, tous pôles confondus + non classées
+function categoriesReellementUtilisees(){
+  // Catégories de dépense ayant au moins une transaction ou une programmée réelle (pas juste listées dans un pôle)
   const vues=new Set();
   E.tx.filter(t=>t.type==='depense').forEach(t=>vues.add(t.cat));
   E.prog.filter(p=>p.type==='depense').forEach(p=>vues.add(p.cat));
+  return vues;
+}
+function toutesCategoriesConnues(){
+  // Toutes les catégories de dépense vues dans les transactions ou programmées, tous pôles confondus + non classées
+  const vues=new Set(categoriesReellementUtilisees());
   POLES.forEach(p=>p.cats.forEach(c=>vues.add(c)));
   return [...vues].sort((a,b)=>a.localeCompare(b,'fr'));
 }
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
   const toutesCats=toutesCategoriesConnues();
+  const reellementUtilisees=categoriesReellementUtilisees();
   // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
   let h=POLES.map((p,i)=>`
     <div class="ban" style="padding:13px;margin-bottom:10px">
@@ -1978,8 +1984,12 @@ function affPoles(){
         <input type="text" value="${p.nom}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
         <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        ${p.cats.length?p.cats.map(c=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:20px;padding:5px 6px 5px 12px;font-size:.78rem">${c}<button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" style="width:18px;height:18px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button></span>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
+      <div class="liste-cats-pole" data-pole="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
+          <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
+          <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
+          <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+        </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
       </div>
       <select onchange="ajouterCatAuPole(${i},this.value);this.value=''" style="width:100%;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none;color:var(--txl)">
         <option value="">+ Ajouter une catégorie existante...</option>
@@ -1994,7 +2004,7 @@ function affPoles(){
   if(nonClassees.length){
     h+=`<div class="ban" style="padding:13px;margin-bottom:10px;background:var(--pa)">
       <p style="font-weight:600;font-size:.875rem;margin-bottom:10px">📥 Autres / Non classé</p>
-      <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez le pôle pour chaque catégorie ci-dessous.</p>
+      <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez un pôle pour chaque catégorie ci-dessous.</p>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;align-items:center;gap:8px">
           <span style="flex:1;font-size:.82rem">${c}</span>
@@ -2007,6 +2017,68 @@ function affPoles(){
     </div>`;
   }
   el.innerHTML=h;
+  initDragCats();
+}
+
+// ── GLISSER-DÉPOSER TACTILE DES CATÉGORIES DANS UN PÔLE ──
+let _dragState={el:null,pole:null,offsetY:0,placeholder:null};
+function _onTouchMoveCats(e){
+  const s=_dragState;if(!s.el)return;
+  e.preventDefault();
+  const y=e.touches[0].clientY;
+  s.el.style.top=(y-s.offsetY)+'px';
+  const conteneur=s.el.parentNode;
+  const autres=[...conteneur.querySelectorAll('.cat-draggable')].filter(el2=>el2!==s.el);
+  let cible=null;
+  for(const el2 of autres){
+    const r=el2.getBoundingClientRect();
+    if(y<r.top+r.height/2){cible=el2;break;}
+  }
+  if(cible)conteneur.insertBefore(s.placeholder,cible);
+  else conteneur.appendChild(s.placeholder);
+}
+function _onTouchEndCats(){
+  const s=_dragState;if(!s.el)return;
+  const conteneur=s.el.parentNode;
+  s.placeholder.replaceWith(s.el);
+  s.el.style.position='';s.el.style.zIndex='';s.el.style.width='';s.el.style.left='';s.el.style.top='';s.el.style.boxShadow='';
+  const items=[...conteneur.querySelectorAll('.cat-draggable')];
+  const poleIdx=s.pole;
+  const ancienOrdre=POLES[poleIdx].cats;
+  const nvCats=items.map(el2=>ancienOrdre[parseInt(el2.dataset.idx)]);
+  POLES[poleIdx].cats=nvCats;
+  _dragState={el:null,pole:null,offsetY:0,placeholder:null};
+  affPoles();
+}
+document.removeEventListener('touchmove',_onTouchMoveCats);
+document.removeEventListener('touchend',_onTouchEndCats);
+document.addEventListener('touchmove',_onTouchMoveCats,{passive:false});
+document.addEventListener('touchend',_onTouchEndCats);
+
+function initDragCats(){
+  document.querySelectorAll('.cat-draggable').forEach(el=>{
+    const poignee=el.querySelector('.poignee-drag');
+    poignee.addEventListener('touchstart',e=>{
+      e.preventDefault();
+      const rect=el.getBoundingClientRect();
+      _dragState.el=el;
+      _dragState.pole=parseInt(el.dataset.pole);
+      _dragState.offsetY=e.touches[0].clientY-rect.top;
+      el.style.position='fixed';
+      el.style.zIndex='999';
+      el.style.width=rect.width+'px';
+      el.style.left=rect.left+'px';
+      el.style.top=rect.top+'px';
+      el.style.boxShadow='0 6px 18px rgba(0,0,0,.25)';
+      const placeholder=document.createElement('div');
+      placeholder.style.height=rect.height+'px';
+      placeholder.style.border='2px dashed var(--bo)';
+      placeholder.style.borderRadius='10px';
+      placeholder.style.marginBottom='6px';
+      el.parentNode.insertBefore(placeholder,el.nextSibling);
+      _dragState.placeholder=placeholder;
+    },{passive:false});
+  });
 }
 function ajouterPole(){
   POLES.push({nom:'Nouveau pôle',cats:[]});
