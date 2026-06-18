@@ -1047,7 +1047,8 @@ function affBudget(){
 
   // REVENUS (réels + prévisionnels)
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-  const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
+  const cRBrut=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
+  const cR=[...CREV.filter(c=>cRBrut.includes(c)),...cRBrut.filter(c=>!CREV.includes(c))];
   h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
   const totRevMois=Array(12).fill(0);
@@ -1250,7 +1251,8 @@ function affDm(mi){
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
-  const cR=[...new Set(txM.filter(t=>t.type==='revenu').map(t=>t.cat))];
+  const cRBrutMois=[...new Set(txM.filter(t=>t.type==='revenu').map(t=>t.cat))];
+  const cR=[...CREV.filter(c=>cRBrutMois.includes(c)),...cRBrutMois.filter(c=>!CREV.includes(c))];
   if(cR.length){
     h+=`<p style="font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txl);margin:13px 0 8px;font-weight:600;">Revenus</p>`;
     cR.forEach(c=>{
@@ -2255,7 +2257,8 @@ async function genererVueSheets(){
 
     // ── REVENUS ──
     lignes.push(['── REVENUS ──',...Array(13).fill('')]);
-    const cR=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.actif).filter(p=>p.type==='revenu').map(p=>p.cat)])];
+    const cRBrutExp=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.actif).filter(p=>p.type==='revenu').map(p=>p.cat)])];
+    const cR=[...CREV.filter(c=>cRBrutExp.includes(c)),...cRBrutExp.filter(c=>!CREV.includes(c))];
     cR.forEach(cat=>{
       let tot=0;
       const vals=MOIS.map((_,i)=>{const v=(data[i].rev[cat]>0?data[i].rev[cat]:(prevMois(i,an).rev[cat]||0));tot+=v;totMoisRev[i]+=v;return v||'';});
