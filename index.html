@@ -15,13 +15,27 @@
       --zrv:#e1f1f5;--zrv2:#bfe3ec;--zrv3:#94cfdf;
       --zfx:#fbeceb;--zfx2:#f5d6d3;--zfx3:#ecbab6;
       --zvr:#fdf1e6;--zvr2:#fbe2c6;--zvr3:#f6cb98;
-      --tep:#3d4a8a;--trv:#1d5a8a;--tfx:#8a2e26;--tvr:#8a4d0e;--wf:#fff;}
+      --tep:#3d4a8a;--trv:#1d5a8a;--tfx:#8a2e26;--tvr:#8a4d0e;--wf:#fff;
+      --p0:#fbeceb;--p0b:#f5d6d3;--p0c:#ecbab6;--p0t:#8a2e26;
+      --p1:#fdf1e6;--p1b:#fbe2c6;--p1c:#f6cb98;--p1t:#8a4d0e;
+      --p2:#eef3ea;--p2b:#dce8d3;--p2c:#c2d8af;--p2t:#3d6b1f;
+      --p3:#fbecf0;--p3b:#f5d3de;--p3c:#ecb3c5;--p3t:#9a2e52;
+      --p4:#fbf6e3;--p4b:#f3e8bd;--p4c:#e8d68a;--p4t:#7a5c0e;
+      --p5:#eaf0f5;--p5b:#d3e2ee;--p5c:#aecbe2;--p5t:#1f4d7a;
+      --pa:#f0eeec;--pab:#ddd9d4;--pac:#c2bcb4;--pat:#5a5550;}
     body.dark{--bl:#0e1a2b;--blc:#1c3050;--or:#d9b65f;--fo:#14181f;--wh:#1d222c;--tx:#e8e6e1;--txl:#9aa3b0;--ve:#4ad399;--vec:#163029;--ro:#f0746a;--roc:#3a2220;--or2:#e89456;--or2c:#3a2a14;--bo:#2c333f;--sh:0 2px 12px rgba(0,0,0,.4);
       --zep:#241f38;--zep2:#2e2748;--zep3:#3d3360;
       --zrv:#16262e;--zrv2:#1b3440;--zrv3:#1f4250;
       --zfx:#2b1a18;--zfx2:#3a2220;--zfx3:#4a2b27;
       --zvr:#2b2014;--zvr2:#3a2a14;--zvr3:#4a3618;
-      --tep:#c2b8e8;--trv:#7fd4e8;--tfx:#e89a92;--tvr:#e8b06a;}
+      --tep:#c2b8e8;--trv:#7fd4e8;--tfx:#e89a92;--tvr:#e8b06a;
+      --p0:#2b1a18;--p0b:#3a2220;--p0c:#4a2b27;--p0t:#e89a92;
+      --p1:#2b2014;--p1b:#3a2a14;--p1c:#4a3618;--p1t:#e8b06a;
+      --p2:#1c2616;--p2b:#26321c;--p2c:#324324;--p2t:#a8d480;
+      --p3:#2b1820;--p3b:#3a1f2a;--p3c:#4a2836;--p3t:#e89ab8;
+      --p4:#2a2414;--p4b:#382f18;--p4c:#473c1e;--p4t:#e0c878;
+      --p5:#161f28;--p5b:#1e2c38;--p5c:#263a48;--p5t:#7fb8e8;
+      --pa:#22201e;--pab:#2e2a27;--pac:#3a3530;--pat:#b8b0a6;}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     body{font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
     #tog-slider:before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--wh);border-radius:50%;transition:.2s}
@@ -108,6 +122,25 @@
     .ta tr.z-vr td:first-child{background:var(--zvr)!important}
     .ta tr.z-vr.ch td:first-child{background:var(--zvr2)!important;border-top:2px solid var(--zvr3)}
     .ta tr.z-vr.lt td:first-child{background:var(--zvr3)!important}
+
+    /* PÔLES DYNAMIQUES (remplacent fixes/variables) */
+    .ta tr.z-p0 td{background:var(--p0)!important}.ta tr.z-p0.ch td{background:var(--p0b)!important;color:var(--p0t);border-top:2px solid var(--p0c)}.ta tr.z-p0.lt td{background:var(--p0c)!important}
+    .ta tr.z-p1 td{background:var(--p1)!important}.ta tr.z-p1.ch td{background:var(--p1b)!important;color:var(--p1t);border-top:2px solid var(--p1c)}.ta tr.z-p1.lt td{background:var(--p1c)!important}
+    .ta tr.z-p2 td{background:var(--p2)!important}.ta tr.z-p2.ch td{background:var(--p2b)!important;color:var(--p2t);border-top:2px solid var(--p2c)}.ta tr.z-p2.lt td{background:var(--p2c)!important}
+    .ta tr.z-p3 td{background:var(--p3)!important}.ta tr.z-p3.ch td{background:var(--p3b)!important;color:var(--p3t);border-top:2px solid var(--p3c)}.ta tr.z-p3.lt td{background:var(--p3c)!important}
+    .ta tr.z-p4 td{background:var(--p4)!important}.ta tr.z-p4.ch td{background:var(--p4b)!important;color:var(--p4t);border-top:2px solid var(--p4c)}.ta tr.z-p4.lt td{background:var(--p4c)!important}
+    .ta tr.z-p5 td{background:var(--p5)!important}.ta tr.z-p5.ch td{background:var(--p5b)!important;color:var(--p5t);border-top:2px solid var(--p5c)}.ta tr.z-p5.lt td{background:var(--p5c)!important}
+    .ta tr.z-pa td{background:var(--pa)!important}.ta tr.z-pa.ch td{background:var(--pab)!important;color:var(--pat);border-top:2px solid var(--pac)}.ta tr.z-pa.lt td{background:var(--pac)!important}
+    .ta tr.z-p0 td:first-child{background:var(--p0)!important}.ta tr.z-p0.ch td:first-child{background:var(--p0b)!important;border-top:2px solid var(--p0c)}.ta tr.z-p0.lt td:first-child{background:var(--p0c)!important}
+    .ta tr.z-p1 td:first-child{background:var(--p1)!important}.ta tr.z-p1.ch td:first-child{background:var(--p1b)!important;border-top:2px solid var(--p1c)}.ta tr.z-p1.lt td:first-child{background:var(--p1c)!important}
+    .ta tr.z-p2 td:first-child{background:var(--p2)!important}.ta tr.z-p2.ch td:first-child{background:var(--p2b)!important;border-top:2px solid var(--p2c)}.ta tr.z-p2.lt td:first-child{background:var(--p2c)!important}
+    .ta tr.z-p3 td:first-child{background:var(--p3)!important}.ta tr.z-p3.ch td:first-child{background:var(--p3b)!important;border-top:2px solid var(--p3c)}.ta tr.z-p3.lt td:first-child{background:var(--p3c)!important}
+    .ta tr.z-p4 td:first-child{background:var(--p4)!important}.ta tr.z-p4.ch td:first-child{background:var(--p4b)!important;border-top:2px solid var(--p4c)}.ta tr.z-p4.lt td:first-child{background:var(--p4c)!important}
+    .ta tr.z-p5 td:first-child{background:var(--p5)!important}.ta tr.z-p5.ch td:first-child{background:var(--p5b)!important;border-top:2px solid var(--p5c)}.ta tr.z-p5.lt td:first-child{background:var(--p5c)!important}
+    .ta tr.z-pa td:first-child{background:var(--pa)!important}.ta tr.z-pa.ch td:first-child{background:var(--pab)!important;border-top:2px solid var(--pac)}.ta tr.z-pa.lt td:first-child{background:var(--pac)!important}
+    /* Texte noir/gris (pas vert/rouge) pour toutes les lignes de pôle, cohérent avec l'accessibilité déjà en place */
+    .ta tr.z-p0 td.tn,.ta tr.z-p1 td.tn,.ta tr.z-p2 td.tn,.ta tr.z-p3 td.tn,.ta tr.z-p4 td.tn,.ta tr.z-p5 td.tn,.ta tr.z-pa td.tn{color:var(--tx);font-style:normal}
+    .ta tr.z-p0.lt td.tn,.ta tr.z-p1.lt td.tn,.ta tr.z-p2.lt td.tn,.ta tr.z-p3.lt td.tn,.ta tr.z-p4.lt td.tn,.ta tr.z-p5.lt td.tn,.ta tr.z-pa.lt td.tn{color:var(--tx);font-weight:700}
     .ta tr.ch td{font-weight:600;font-size:calc(.69rem * var(--ta-fs));text-transform:uppercase;letter-spacing:.06em;padding:9px 9px}
     .ta tr.lt td{font-weight:700;padding:10px 9px}
     .ta tr.lr{background:rgba(26,47,74,.09)!important}
@@ -412,14 +445,6 @@
         </div>
       </div>
 
-      <!-- ÉPARGNE -->
-      <div class="si">
-        <h3>🏦 Épargne</h3>
-        <div class="ban" id="ban-ep" style="margin-bottom:10px"></div>
-        <div id="grille-ep"></div>
-        <button class="bp" onclick="ouvrirSaisieEp()">✏️ Mettre à jour les soldes</button>
-      </div>
-
       <!-- PROGRAMMÉES -->
       <div class="si">
         <h3>🔄 Dépenses & revenus programmés</h3>
@@ -434,10 +459,17 @@
         <p>Personnalisez vos catégories. Un élément par ligne.</p>
         <div class="ch3"><label>🏦 Livrets d'épargne</label><textarea id="p-livrets" style="min-height:80px"></textarea></div>
         <div class="ch3"><label>💰 Revenus</label><textarea id="p-rev" style="min-height:90px"></textarea></div>
-        <div class="ch3"><label>🏠 Dépenses fixes</label><textarea id="p-fixes" style="min-height:110px"></textarea></div>
-        <div class="ch3"><label>🛒 Dépenses variables</label><textarea id="p-var" style="min-height:130px"></textarea></div>
         <button class="bp" onclick="sauvegarderParamsUI()">💾 Enregistrer</button>
         <button class="bs2" onclick="reinitParams()">↺ Valeurs par défaut</button>
+      </div>
+
+      <!-- PÔLES DE DÉPENSES -->
+      <div class="si">
+        <h3>🗂️ Pôles de dépenses</h3>
+        <p>Regroupez vos catégories par pôle de vie (ex : Maison Migennes, Voiture Suzuki...). Une catégorie par ligne dans chaque pôle. Les catégories non assignées apparaîtront automatiquement dans "Autres / Non classé".</p>
+        <div id="liste-poles"></div>
+        <button class="bs2" onclick="ajouterPole()">+ Ajouter un pôle</button>
+        <button class="bp" style="margin-top:10px" onclick="sauvegarderPolesUI()">💾 Enregistrer les pôles</button>
       </div>
 
       <div class="si">
@@ -537,17 +569,31 @@ const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','
 const ANNEES=['2024','2025','2026','2027','2028'];
 
 // Valeurs par défaut
-const DEF_FIXES=['Logement','Transport','Impôts','Abonnements et cotisations'];
-const DEF_VAR=['Courses alimentaires','Loisirs / Musique','Vêtements','Bricolage et jardinage','Restaurants / bars','Spectacles / concerts','Esthétique','Sport','Vacances / voyages','Cadeaux','Frais de santé','Autres divers'];
+const DEF_POLES=[
+  {nom:'Logement',cats:['Logement']},
+  {nom:'Transport',cats:['Transport']},
+  {nom:'Quotidien',cats:['Courses alimentaires','Loisirs / Musique','Vêtements','Bricolage et jardinage','Restaurants / bars','Spectacles / concerts','Esthétique','Sport','Vacances / voyages','Cadeaux','Frais de santé','Autres divers']},
+  {nom:'Impôts et abonnements',cats:['Impôts','Abonnements et cotisations']}
+];
 const DEF_REV=["Salaire","Prime d'activité","Vente d'objets","Aide famille","Virements internes","Autres revenus"];
 const DEF_LIVRETS=["Livret d'Épargne Populaire","Livret A","Compte Parts Sociales"];
 
-let CDEP_FIXES=[...DEF_FIXES];
-let CDEP_VAR=[...DEF_VAR];
-let CDEP=[...CDEP_FIXES,...CDEP_VAR];
+let POLES=JSON.parse(JSON.stringify(DEF_POLES)); // [{nom, cats:[...]}]
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
+
+// Toutes les catégories de dépense, tous pôles confondus (utilisé par les sélecteurs)
+function toutesCatsDepense(){
+  const cats=[];
+  POLES.forEach(p=>p.cats.forEach(c=>{if(!cats.includes(c))cats.push(c);}));
+  return cats;
+}
+// Pôle d'une catégorie donnée, ou "Autres / Non classé" si introuvable
+function poleDeCategorie(cat){
+  const p=POLES.find(p=>p.cats.includes(cat));
+  return p?p.nom:'Autres / Non classé';
+}
 
 let E={
   sid:localStorage.getItem('sid')||'',
@@ -850,15 +896,26 @@ async function chargerTout(){
 
 async function chargerParams(){
   try{
-    const rows=await lire('Parametres!A1:B50');if(!rows.length)return;
+    const rows=await lire('Parametres!A1:B100');if(!rows.length)return;
     const get=(cle)=>{const row=rows.find(r=>r[0]===cle);return row&&row[1]?row[1].split('|').map(s=>s.trim()).filter(Boolean):null;};
-    const f=get('FIXES'),v=get('VARIABLES'),r=get('REVENUS'),l=get('LIVRETS');
-    if(f)CDEP_FIXES=f;if(v)CDEP_VAR=v;if(r)CREV=r;if(l)LIVRETS=l;
-    CDEP=[...CDEP_FIXES,...CDEP_VAR];
+    const r=get('REVENUS'),l=get('LIVRETS');
+    if(r)CREV=r;if(l)LIVRETS=l;
+    // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
+    const ordre=get('POLES_ORDRE');
+    if(ordre&&ordre.length){
+      const nvPoles=[];
+      ordre.forEach(nom=>{
+        const cats=get('POLE_'+nom)||[];
+        nvPoles.push({nom,cats});
+      });
+      POLES=nvPoles;
+    }
   }catch(e){}
 }
 async function sauvegarderParams(){
-  await ecrire('Parametres!A1:B4',[['FIXES',CDEP_FIXES.join('|')],['VARIABLES',CDEP_VAR.join('|')],['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')]]);
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')]];
+  POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
+  await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
 
 async function savePts(d,s){try{const rows=await lire('Soldes!A2:B');const idx=rows.findIndex(r=>r[0]===d);if(idx>=0)await ecrire(`Soldes!A${idx+2}:B${idx+2}`,[[d,s]]);else await ajouter('Soldes',[d,s]);}catch(e){}}
@@ -894,8 +951,8 @@ function peuplerSels(){
   const i=document.getElementById('imp-an');if(i)i.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
 }
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
-function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:CDEP;s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
-function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:CDEP;s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
+function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCatsDepense();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
+function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCatsDepense();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
 function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=E.projets.map(p=>`<option value="${p}">`).join('');}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
@@ -1007,50 +1064,39 @@ function affBudget(){
   MOIS.forEach((_,i)=>{tRA+=totRevMois[i];h+=`<td class="tp">${fmtDec(totRevMois[i])}</td>`;});
   h+=`<td class="tp">${fmtDec(tRA)}</td></tr>`;
 
-  // DÉPENSES FIXES
-  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-  const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
-  if(cDF.length){
-    h+=`<tr class="ch z-fx"><td colspan="${nc}">Dépenses fixes</td></tr>`;
-    cDF.forEach(c=>{let tot=0;h+=`<tr class="z-fx cat-row" data-cat="${c}" data-bloc="fx"><td>${c}</td>`;
+  // PÔLES DE DÉPENSES (Maison, Voiture, etc. + Autres/Non classé en dernier)
+  const catsAssignees=new Set();
+  POLES.forEach(p=>p.cats.forEach(c=>catsAssignees.add(c)));
+  // Catégories vues dans les transactions/programmées mais non assignées à un pôle
+  const catsNonAssignees=[...new Set([
+    ...txA.filter(t=>t.type==='depense').map(t=>t.cat),
+    ...E.prog.filter(p=>p.type==='depense'&&p.actif).map(p=>p.cat)
+  ])].filter(c=>!catsAssignees.has(c));
+  const polesAffiches=[...POLES];
+  if(catsNonAssignees.length)polesAffiches.push({nom:'Autres / Non classé',cats:catsNonAssignees,auto:true});
+
+  let totGlobalDep=Array(12).fill(0);
+  polesAffiches.forEach((pole,idxPole)=>{
+    const zcls=pole.auto?'z-pa':('z-p'+(idxPole%6));
+    h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
+    const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
+    if(!catsDuPole.length)return; // pôle vide cette année, on ne l'affiche pas
+    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${pole.nom}</td></tr>`;
+    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${c}" data-bloc="pole"><td>${c}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
     });
-  }
-  let tDF=0;h+=`<tr class="lt z-fx"><td>Total fixes</td>`;
-  MOIS.forEach((_,i)=>{const r=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDF+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
-  h+=`<td class="tn">${fmtDec(tDF)}</td></tr>`;
-
-  // RESTE POUR VARIABLES
-  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-  h+=`<tr class="lr"><td>Reste pour variables</td>`;
-  MOIS.forEach((_,i)=>{
-    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
-    const fix=CDEP_FIXES.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);
-    const r=rev-fix;h+=`<td class="${r>=0?'tp':'tn'}">${fmtDec(r)}</td>`;
+    let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${pole.nom}</td>`;
+    MOIS.forEach((_,i)=>{const r=catsDuPole.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
+    h+=`<td class="tn">${fmtDec(totPole)}</td></tr>`;
   });
-  h+=`<td></td></tr>`;
-
-  // DÉPENSES VARIABLES
-  h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-  const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
-  if(cDV.length){
-    h+=`<tr class="ch z-vr"><td colspan="${nc}">Dépenses variables</td></tr>`;
-    cDV.forEach(c=>{let tot=0;h+=`<tr class="z-vr cat-row" data-cat="${c}" data-bloc="vr"><td>${c}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
-      h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
-    });
-  }
-  let tDV=0;h+=`<tr class="lt z-vr"><td>Total variables</td>`;
-  MOIS.forEach((_,i)=>{const s=CDEP_VAR.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);tDV+=s;h+=`<td class="tn">${fmtDec(s)}</td>`;});
-  h+=`<td class="tn">${fmtDec(tDV)}</td></tr>`;
 
   // RESTE AU TOTAL
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Reste au total</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
     const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
-    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||([...CDEP_FIXES,...CDEP_VAR].reduce((a,c)=>a+(prevMois(i,E.annee).dep[c]||0),0));
+    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||totGlobalDep[i]||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
     const r=rev-dep;rAn+=r;
     h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmtDec(r)}</strong></td>`;
   });
@@ -1167,7 +1213,8 @@ function affDm(mi){
   h+=`<div style="margin-bottom:14px">
     <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" capture="environment" style="display:none" onchange="analyserReleve(this)"/>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="ouvrirSaisieEp(${mi})">🏦 Mettre à jour l'épargne</button>
     <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
     <div id="bloc-import-totaux" style="display:none;margin-top:10px"></div>
   </div>`;
@@ -1357,7 +1404,7 @@ function affCats2t(){
   const txType=E.tx.filter(t=>t.type===E2T.type);
   const freq={};
   txType.forEach(t=>{freq[t.cat]=(freq[t.cat]||0)+1;});
-  const toutesCats=E2T.type==='depense'?CDEP:CREV;
+  const toutesCats=E2T.type==='depense'?toutesCatsDepense():CREV;
   // Trier par fréquence d'utilisation, les non utilisées à la fin
   const triees=[...toutesCats].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
   const top9=triees.slice(0,9);
@@ -1542,7 +1589,7 @@ function suggererCategorie(desc,type){
   ];
   for(const [mots,cat] of regles){
     if(mots.some(m=>d.includes(m))){
-      const toutesCats=type==='revenu'?CREV:CDEP;
+      const toutesCats=type==='revenu'?CREV:toutesCatsDepense();
       if(toutesCats.includes(cat))return cat;
     }
   }
@@ -1553,7 +1600,7 @@ function affListeAClasserMois(){
   const liste=document.getElementById('liste-a-classer-mois');
   if(!liste)return; // section pas affichée (aucune dépense à classer)
   liste.innerHTML=E.aClasser.map(t=>{
-    const cats=t.type==='revenu'?CREV:CDEP;
+    const cats=t.type==='revenu'?CREV:toutesCatsDepense();
     return `<div class="ban" style="margin-bottom:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
@@ -1898,32 +1945,64 @@ function chercher(q){
 function remplirParams(){
   document.getElementById('p-livrets').value=LIVRETS.join('\n');
   document.getElementById('p-rev').value=CREV.join('\n');
-  document.getElementById('p-fixes').value=CDEP_FIXES.join('\n');
-  document.getElementById('p-var').value=CDEP_VAR.join('\n');
+  affPoles();
 }
 async function sauvegarderParamsUI(){
   const parse=id=>document.getElementById(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const liv=parse('p-livrets'),rev=parse('p-rev'),fix=parse('p-fixes'),vari=parse('p-var');
-  if(!liv.length||!rev.length||!fix.length||!vari.length){toast('Remplissez toutes les sections');return;}
-  LIVRETS=liv;CREV=rev;CDEP_FIXES=fix;CDEP_VAR=vari;CDEP=[...fix,...vari];
+  const liv=parse('p-livrets'),rev=parse('p-rev');
+  if(!liv.length||!rev.length){toast('Remplissez toutes les sections');return;}
+  LIVRETS=liv;CREV=rev;
   await sauvegarderParams();peuplerCat();peuplerImpCats();refresh();toast('Paramètres enregistrés ✓');
 }
 function reinitParams(){
-  CDEP_FIXES=[...DEF_FIXES];CDEP_VAR=[...DEF_VAR];CREV=[...DEF_REV];LIVRETS=[...DEF_LIVRETS];
-  CDEP=[...CDEP_FIXES,...CDEP_VAR];remplirParams();toast('Valeurs par défaut restaurées');
+  CREV=[...DEF_REV];LIVRETS=[...DEF_LIVRETS];POLES=JSON.parse(JSON.stringify(DEF_POLES));
+  remplirParams();toast('Valeurs par défaut restaurées');
+}
+
+// ── GESTION DES PÔLES DE DÉPENSES ──
+function affPoles(){
+  const el=document.getElementById('liste-poles');if(!el)return;
+  el.innerHTML=POLES.map((p,i)=>`
+    <div class="ban" style="padding:13px;margin-bottom:10px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input type="text" value="${p.nom}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
+        <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
+      </div>
+      <textarea oninput="majCatsPole(${i},this.value)" placeholder="Une catégorie par ligne" style="width:100%;min-height:80px;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none">${p.cats.join('\n')}</textarea>
+    </div>`).join('');
+}
+function ajouterPole(){
+  POLES.push({nom:'Nouveau pôle',cats:[]});
+  affPoles();
+}
+function supprimerPole(i){
+  POLES.splice(i,1);
+  affPoles();
+}
+function renommerPole(i,val){
+  POLES[i].nom=val.replace(/\|/g,'/'); // le | est réservé au stockage interne
+}
+function majCatsPole(i,val){
+  POLES[i].cats=val.split('\n').map(s=>s.trim()).filter(Boolean);
+}
+async function sauvegarderPolesUI(){
+  // Retirer les pôles vides de nom
+  POLES=POLES.filter(p=>p.nom.trim());
+  await sauvegarderParams();peuplerCat();peuplerImpCats();refresh();affPoles();
+  toast('Pôles enregistrés ✓');
 }
 
 // ── IMPORT ──
 function peuplerImpCats(){
   const g=document.getElementById('gi-cats');if(!g)return;
-  const tout=[...CREV.map(c=>({c,t:'revenu'})),...CDEP.map(c=>({c,t:'depense'}))];
+  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCatsDepense().map(c=>({c,t:'depense'}))];
   g.innerHTML=tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('');
 }
 
 function toggleImportTotaux(mi){
   const bloc=document.getElementById('bloc-import-totaux');
   if(bloc.style.display==='block'){bloc.style.display='none';bloc.innerHTML='';return;}
-  const tout=[...CREV.map(c=>({c,t:'revenu'})),...CDEP.map(c=>({c,t:'depense'}))];
+  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCatsDepense().map(c=>({c,t:'depense'}))];
   bloc.innerHTML=`<div class="ban" style="padding:14px">
     <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Saisissez les totaux par catégorie pour ${MOIS[mi]} ${E.annee} — pratique pour rattraper un mois passé rapidement.</p>
     <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('')}</div>
@@ -1997,9 +2076,6 @@ async function genererVueSheets(){
     const lignes=[entete];
 
     const totMoisRev=Array(12).fill(0);
-    const totMoisDep=Array(12).fill(0);
-    const totMoisFix=Array(12).fill(0);
-    const totMoisVar=Array(12).fill(0);
 
     // ── ÉPARGNE ──
     lignes.push(['── ÉPARGNE (soldes) ──',...Array(13).fill('')]);
@@ -2026,33 +2102,33 @@ async function genererVueSheets(){
     lignes.push(['TOTAL REVENUS',...totMoisRev,totMoisRev.reduce((a,b)=>a+b,0)]);
     lignes.push(Array(14).fill(''));
 
-    // ── DÉPENSES FIXES ──
-    lignes.push(['── DÉPENSES FIXES ──',...Array(13).fill('')]);
-    const cDF=[...new Set([...CDEP_FIXES.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_FIXES.includes(p.cat)).map(p=>p.cat)])];
-    cDF.forEach(cat=>{
-      let tot=0;
-      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]>0?data[i].dep[cat]:(prevMois(i,an).dep[cat]||0));tot+=v;totMoisFix[i]+=v;return v||'';});
-      lignes.push([cat,...vals,tot||'']);
-    });
-    lignes.push(['TOTAL FIXES',...totMoisFix,totMoisFix.reduce((a,b)=>a+b,0)]);
-    // Reste pour variables
-    const resteVar=MOIS.map((_,i)=>totMoisRev[i]-totMoisFix[i]);
-    lignes.push(['Reste pour variables',...resteVar,resteVar.reduce((a,b)=>a+b,0)]);
-    lignes.push(Array(14).fill(''));
+    // ── PÔLES DE DÉPENSES ──
+    const catsAssigneesExp=new Set();
+    POLES.forEach(p=>p.cats.forEach(c=>catsAssigneesExp.add(c)));
+    const catsNonAssigneesExp=[...new Set([
+      ...txA.filter(t=>t.type==='depense').map(t=>t.cat),
+      ...E.prog.filter(p=>p.actif&&p.type==='depense').map(p=>p.cat)
+    ])].filter(c=>!catsAssigneesExp.has(c));
+    const polesExp=[...POLES];
+    if(catsNonAssigneesExp.length)polesExp.push({nom:'Autres / Non classé',cats:catsNonAssigneesExp});
 
-    // ── DÉPENSES VARIABLES ──
-    lignes.push(['── DÉPENSES VARIABLES ──',...Array(13).fill('')]);
-    const cDV=[...new Set([...CDEP_VAR.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&CDEP_VAR.includes(p.cat)).map(p=>p.cat)])];
-    cDV.forEach(cat=>{
-      let tot=0;
-      const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]>0?data[i].dep[cat]:(prevMois(i,an).dep[cat]||0));tot+=v;totMoisVar[i]+=v;return v||'';});
-      lignes.push([cat,...vals,tot||'']);
+    const totMoisDepGlobal=Array(12).fill(0);
+    polesExp.forEach(pole=>{
+      const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
+      if(!catsDuPole.length)return;
+      lignes.push([`── ${pole.nom.toUpperCase()} ──`,...Array(13).fill('')]);
+      const totMoisPole=Array(12).fill(0);
+      catsDuPole.forEach(cat=>{
+        let tot=0;
+        const vals=MOIS.map((_,i)=>{const v=(data[i].dep[cat]>0?data[i].dep[cat]:(prevMois(i,an).dep[cat]||0));tot+=v;totMoisPole[i]+=v;totMoisDepGlobal[i]+=v;return v||'';});
+        lignes.push([cat,...vals,tot||'']);
+      });
+      lignes.push([`TOTAL ${pole.nom.toUpperCase()}`,...totMoisPole,totMoisPole.reduce((a,b)=>a+b,0)]);
+      lignes.push(Array(14).fill(''));
     });
-    lignes.push(['TOTAL VARIABLES',...totMoisVar,totMoisVar.reduce((a,b)=>a+b,0)]);
-    lignes.push(Array(14).fill(''));
 
     // ── RESTE AU TOTAL ──
-    const resteTotal=MOIS.map((_,i)=>totMoisRev[i]-totMoisFix[i]-totMoisVar[i]);
+    const resteTotal=MOIS.map((_,i)=>totMoisRev[i]-totMoisDepGlobal[i]);
     lignes.push(['RESTE AU TOTAL',...resteTotal,resteTotal.reduce((a,b)=>a+b,0)]);
 
     // ── TRANSACTIONS DÉTAILLÉES ──
