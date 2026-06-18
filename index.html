@@ -44,6 +44,13 @@
 
     /* AUTH */
     .ea{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;background:linear-gradient(160deg,var(--bl) 0%,var(--blc) 100%)}
+    .tuto-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:.2s}
+    .tuto-dot.actif{background:var(--or);width:22px;border-radius:4px}
+    .tuto-slide h2{font-family:'DM Serif Display',serif;color:var(--wf);font-size:1.5rem;margin-bottom:14px}
+    .tuto-slide p{color:rgba(255,255,255,.85);font-size:.92rem;line-height:1.55;margin-bottom:12px}
+    .tuto-slide .tuto-emoji{font-size:2.6rem;margin-bottom:18px;text-align:center}
+    .tuto-slide ul{margin:0 0 12px 18px;color:rgba(255,255,255,.85);font-size:.88rem;line-height:1.6}
+    .tuto-slide li{margin-bottom:6px}
     .ea h1{font-family:'DM Serif Display',serif;font-size:2.4rem;color:var(--wf);margin-bottom:8px;text-align:center}
     .ea h2{font-family:'DM Serif Display',serif;font-size:1.8rem;color:var(--wf);margin-bottom:8px;text-align:center}
     .ea p{color:rgba(255,255,255,.65);font-size:.875rem;margin-bottom:32px;text-align:center;line-height:1.5}
@@ -359,6 +366,20 @@
   </div>
 </div>
 
+<!-- TUTORIEL -->
+<div id="ec-tuto" class="ea" style="display:none;align-items:stretch;justify-content:flex-start;padding:0">
+  <div style="flex:1;display:flex;flex-direction:column;padding:32px 24px;overflow-y:auto">
+    <div id="tuto-contenu" style="flex:1"></div>
+    <div style="display:flex;justify-content:center;gap:6px;margin:20px 0">
+      <span class="tuto-dot" id="tuto-dot-0"></span><span class="tuto-dot" id="tuto-dot-1"></span><span class="tuto-dot" id="tuto-dot-2"></span><span class="tuto-dot" id="tuto-dot-3"></span><span class="tuto-dot" id="tuto-dot-4"></span><span class="tuto-dot" id="tuto-dot-5"></span>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="bs2" id="tuto-passer" onclick="fermerTuto()" style="flex:1">Passer</button>
+      <button class="bo2" id="tuto-suivant" onclick="tutoSuivant()" style="flex:2;margin:0">Suivant →</button>
+    </div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app">
   <div class="hd">
@@ -443,6 +464,13 @@
             <button onclick="ajusterTailleTableau(1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">+</button>
           </div>
         </div>
+      </div>
+
+      <!-- AIDE -->
+      <div class="si">
+        <h3>📖 Aide</h3>
+        <button class="bp" onclick="afficherTuto()">🎬 Revoir le tutoriel de bienvenue</button>
+        <button class="bs2" style="margin-top:8px" onclick="ouvrirPageAide()">📋 Consulter le guide complet</button>
       </div>
 
       <!-- PROGRAMMÉES -->
@@ -536,6 +564,16 @@
 <!-- OVERLAY ÉPARGNE -->
 <div class="ov" id="ov-ep">
   <div class="modal"><div id="ov-ep-body"></div></div>
+</div>
+
+<!-- OVERLAY AIDE -->
+<div class="ov" id="ov-aide">
+  <div class="modal">
+    <div class="mh"></div>
+    <button class="bf" onclick="fermerPageAide()">✕</button>
+    <h2 style="margin-bottom:14px">📖 Guide complet</h2>
+    <div id="contenu-aide"></div>
+  </div>
 </div>
 
 <!-- OVERLAY AJOUT PROGRAMMÉ -->
@@ -757,7 +795,8 @@ async function demarrer(){
   // Si des points de solde existent dans Sheets → pas besoin d'init
   if(E.pts.length>0){
     localStorage.setItem('init_fait','1');
-    lancerApp();
+    if(!localStorage.getItem('tuto_vu'))afficherTuto();
+    else lancerApp();
   } else if(!localStorage.getItem('init_fait')){
     document.getElementById('ec-conn').style.display='none';
     document.getElementById('ec-init').style.display='flex';
@@ -835,12 +874,58 @@ async function validerInit(){
   await savePts(d,s);
   E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));
   localStorage.setItem('init_fait','1');
-  document.getElementById('ec-init').style.display='none';lancerApp();
+  document.getElementById('ec-init').style.display='none';
+  if(!localStorage.getItem('tuto_vu'))afficherTuto();
+  else lancerApp();
 }
 function lancerApp(){
   document.getElementById('ec-conn').style.display='none';document.getElementById('ec-init').style.display='none';
   document.getElementById('app').style.display='flex';majSelAnnee();refresh();
 }
+
+// ── TUTORIEL ──
+const TUTO_SLIDES=[
+  {emoji:'👋',titre:'Bienvenue dans Mon Budget',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases en quelques écrans. Vous pourrez le revoir à tout moment depuis Réglages.</p>`},
+  {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><ul><li>Choisissez Dépense ou Revenu</li><li>Indiquez le montant, la date et la catégorie</li><li>Une fois saisie, la transaction est automatiquement marquée comme pointée</li></ul>`},
+  {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année en un coup d'œil, organisée par pôles de vie (par exemple "Maison", "Voiture") plutôt que par grandes catégories impersonnelles.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris indique un montant prévisionnel, pas encore réel</li><li>La ligne "Reste au total" indique votre marge du mois</li></ul><p>Vous pouvez organiser vos pôles depuis Réglages → Pôles de dépenses.</p>`},
+  {emoji:'🔁',titre:'Les dépenses programmées',html:`<p>Pour vos charges qui reviennent chaque mois (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages.</p><p>Chaque mois, elle apparaît automatiquement en italique dans le tableau, et vous n'avez plus qu'à la "pointer" une fois le prélèvement réellement effectué, depuis la vue Mois.</p>`},
+  {emoji:'📷',titre:"Importer un relevé bancaire",html:`<p>Dans la vue <strong>Mois</strong>, vous pouvez prendre en photo ou importer en PDF un relevé bancaire.</p><p>Les transactions sont extraites automatiquement, puis apparaissent dans une zone "À classer" où vous choisissez la bonne catégorie avant de valider chacune.</p><p>Vous pouvez aussi importer des totaux mensuels par catégorie, pratique pour rattraper un mois en une seule fois.</p>`},
+  {emoji:'🎉',titre:'Vous êtes prête !',html:`<p>Vous connaissez maintenant les bases. N'hésitez pas à explorer Réglages pour personnaliser vos pôles, votre épargne, et l'apparence de l'application (mode sombre, taille du texte).</p><p>Bonne gestion de budget !</p>`}
+];
+let _tutoIdx=0;
+function afficherTuto(){
+  _tutoIdx=0;
+  document.getElementById('app').style.display='none';
+  document.getElementById('ec-conn').style.display='none';
+  document.getElementById('ec-init').style.display='none';
+  document.getElementById('ec-tuto').style.display='flex';
+  renderTutoSlide();
+}
+function renderTutoSlide(){
+  const s=TUTO_SLIDES[_tutoIdx];
+  document.getElementById('tuto-contenu').innerHTML=`<div class="tuto-slide"><div class="tuto-emoji">${s.emoji}</div><h2>${s.titre}</h2>${s.html}</div>`;
+  for(let i=0;i<TUTO_SLIDES.length;i++)document.getElementById('tuto-dot-'+i).classList.toggle('actif',i===_tutoIdx);
+  document.getElementById('tuto-suivant').textContent=_tutoIdx===TUTO_SLIDES.length-1?'Terminer ✓':'Suivant →';
+  document.getElementById('tuto-passer').style.display=_tutoIdx===TUTO_SLIDES.length-1?'none':'block';
+}
+function tutoSuivant(){
+  if(_tutoIdx<TUTO_SLIDES.length-1){_tutoIdx++;renderTutoSlide();}
+  else fermerTuto();
+}
+function fermerTuto(){
+  localStorage.setItem('tuto_vu','1');
+  document.getElementById('ec-tuto').style.display='none';
+  document.getElementById('app').style.display='flex';
+  majSelAnnee();refresh();
+}
+function ouvrirPageAide(){
+  let h='';
+  TUTO_SLIDES.forEach(s=>{h+=`<div class="ban" style="margin-bottom:14px;padding:16px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
+  document.getElementById('contenu-aide').innerHTML=h;
+  document.getElementById('ov-aide').classList.add('v');
+}
+function fermerPageAide(){fOv('ov-aide');}
+
 
 // ── SHEETS ──
 async function lire(p){const r=await gapi.client.sheets.spreadsheets.values.get({spreadsheetId:E.sid,range:p});return r.result.values||[];}
