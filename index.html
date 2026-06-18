@@ -1960,16 +1960,53 @@ function reinitParams(){
 }
 
 // ── GESTION DES PÔLES DE DÉPENSES ──
+function toutesCategoriesConnues(){
+  // Toutes les catégories de dépense vues dans les transactions ou programmées, tous pôles confondus + non classées
+  const vues=new Set();
+  E.tx.filter(t=>t.type==='depense').forEach(t=>vues.add(t.cat));
+  E.prog.filter(p=>p.type==='depense').forEach(p=>vues.add(p.cat));
+  POLES.forEach(p=>p.cats.forEach(c=>vues.add(c)));
+  return [...vues].sort((a,b)=>a.localeCompare(b,'fr'));
+}
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
-  el.innerHTML=POLES.map((p,i)=>`
+  const toutesCats=toutesCategoriesConnues();
+  // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
+  let h=POLES.map((p,i)=>`
     <div class="ban" style="padding:13px;margin-bottom:10px">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
         <input type="text" value="${p.nom}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
         <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
       </div>
-      <textarea oninput="majCatsPole(${i},this.value)" placeholder="Une catégorie par ligne" style="width:100%;min-height:80px;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none">${p.cats.join('\n')}</textarea>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        ${p.cats.length?p.cats.map(c=>`<span style="display:inline-flex;align-items:center;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:20px;padding:5px 6px 5px 12px;font-size:.78rem">${c}<button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" style="width:18px;height:18px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button></span>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
+      </div>
+      <select onchange="ajouterCatAuPole(${i},this.value);this.value=''" style="width:100%;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none;color:var(--txl)">
+        <option value="">+ Ajouter une catégorie existante...</option>
+        ${toutesCats.filter(c=>!p.cats.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join('')}
+      </select>
     </div>`).join('');
+
+  // Catégories non assignées à aucun pôle = "Autres / Non classé"
+  const catsAssignees=new Set();
+  POLES.forEach(p=>p.cats.forEach(c=>catsAssignees.add(c)));
+  const nonClassees=toutesCats.filter(c=>!catsAssignees.has(c));
+  if(nonClassees.length){
+    h+=`<div class="ban" style="padding:13px;margin-bottom:10px;background:var(--pa)">
+      <p style="font-weight:600;font-size:.875rem;margin-bottom:10px">📥 Autres / Non classé</p>
+      <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez le pôle pour chaque catégorie ci-dessous.</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${nonClassees.map(c=>`<div style="display:flex;align-items:center;gap:8px">
+          <span style="flex:1;font-size:.82rem">${c}</span>
+          <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none">
+            <option value="">→ Choisir un pôle</option>
+            ${POLES.map((p,i)=>`<option value="${i}">${p.nom}</option>`).join('')}
+          </select>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+  el.innerHTML=h;
 }
 function ajouterPole(){
   POLES.push({nom:'Nouveau pôle',cats:[]});
@@ -1981,9 +2018,21 @@ function supprimerPole(i){
 }
 function renommerPole(i,val){
   POLES[i].nom=val.replace(/\|/g,'/'); // le | est réservé au stockage interne
+  // Pas de ré-affichage immédiat pour ne pas perdre le focus du champ pendant la frappe
 }
-function majCatsPole(i,val){
-  POLES[i].cats=val.split('\n').map(s=>s.trim()).filter(Boolean);
+function ajouterCatAuPole(i,cat){
+  if(!cat)return;
+  if(!POLES[i].cats.includes(cat))POLES[i].cats.push(cat);
+  affPoles();
+}
+function retirerCatDePole(i,cat){
+  POLES[i].cats=POLES[i].cats.filter(c=>c!==cat);
+  affPoles();
+}
+function deplacerCatVersPole(cat,idxPole){
+  if(idxPole==='')return;
+  POLES[parseInt(idxPole)].cats.push(cat);
+  affPoles();
 }
 async function sauvegarderPolesUI(){
   // Retirer les pôles vides de nom
