@@ -1586,9 +1586,18 @@ E.aClasser=E.aClasser||[];
 function fichierEnBase64(file){
   return new Promise((res,rej)=>{
     const r=new FileReader();
-    r.onload=()=>res(r.result.split(',')[1]);
+    r.onload=()=>{
+      // Conversion ArrayBuffer → base64 compatible Safari iOS (readAsDataURL peut échouer sur gros PDF)
+      const bytes=new Uint8Array(r.result);
+      let bin='';
+      const chunk=8192;
+      for(let i=0;i<bytes.length;i+=chunk){
+        bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+      }
+      res(btoa(bin));
+    };
     r.onerror=rej;
-    r.readAsDataURL(file);
+    r.readAsArrayBuffer(file);
   });
 }
 
@@ -1658,7 +1667,9 @@ Si aucune transaction n'est visible, reponds [].`;
   }catch(e){
     console.error('analyserReleve:',e);
     msg.style.background='var(--roc)';msg.style.color='var(--ro)';
-    msg.textContent='Erreur : '+e.message;
+    if(e.message&&e.message.includes('API'))msg.textContent='Erreur API : '+e.message;
+    else if(e.message&&e.message.toLowerCase().includes('load'))msg.textContent='Erreur de lecture du fichier. Essayez un PDF moins volumineux ou une photo.';
+    else msg.textContent='Erreur : '+e.message;
   }
 }
 
