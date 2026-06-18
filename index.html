@@ -1988,14 +1988,16 @@ function affPoles(){
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
           <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
           <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
+          <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
           <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
         </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
       </div>
-      <select onchange="ajouterCatAuPole(${i},this.value);this.value=''" style="width:100%;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none;color:var(--txl)">
-        <option value="">+ Ajouter une catégorie existante...</option>
-        ${toutesCats.filter(c=>!p.cats.includes(c)).map(c=>`<option value="${c}">${c}</option>`).join('')}
-      </select>
+      <div style="display:flex;gap:8px">
+        <input type="text" list="suggestions-cats" placeholder="+ Ajouter une catégorie..." onkeydown="if(event.key==='Enter'){ajouterCatAuPole(${i},this.value);this.value='';event.preventDefault();}" id="champ-nouvelle-cat-${i}" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none"/>
+        <button onclick="ajouterCatAuPole(${i},document.getElementById('champ-nouvelle-cat-${i}').value);document.getElementById('champ-nouvelle-cat-${i}').value=''" style="padding:9px 14px;border-radius:9px;border:none;background:var(--bl);color:var(--wf);font-size:.82rem;cursor:pointer">Ajouter</button>
+      </div>
     </div>`).join('');
+  h+=`<datalist id="suggestions-cats">${toutesCats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
 
   // Catégories non assignées à aucun pôle = "Autres / Non classé"
   const catsAssignees=new Set();
@@ -2008,6 +2010,7 @@ function affPoles(){
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;align-items:center;gap:8px">
           <span style="flex:1;font-size:.82rem">${c}</span>
+          <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
           <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none">
             <option value="">→ Choisir un pôle</option>
             ${POLES.map((p,i)=>`<option value="${i}">${p.nom}</option>`).join('')}
@@ -2093,6 +2096,7 @@ function renommerPole(i,val){
   // Pas de ré-affichage immédiat pour ne pas perdre le focus du champ pendant la frappe
 }
 function ajouterCatAuPole(i,cat){
+  cat=(cat||'').trim();
   if(!cat)return;
   if(!POLES[i].cats.includes(cat))POLES[i].cats.push(cat);
   affPoles();
@@ -2100,6 +2104,43 @@ function ajouterCatAuPole(i,cat){
 function retirerCatDePole(i,cat){
   POLES[i].cats=POLES[i].cats.filter(c=>c!==cat);
   affPoles();
+}
+async function renommerCategorie(ancienNom){
+  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
+  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
+  const nv=nouveauNom.trim();
+  toast('Renommage en cours...');
+  try{
+    // 1. Mettre à jour le nom dans le(s) pôle(s) qui la contiennent
+    POLES.forEach(p=>{p.cats=p.cats.map(c=>c===ancienNom?nv:c);});
+
+    // 2. Mettre à jour toutes les transactions concernées, année par année, sur Google Sheets
+    const anneesConcernees=[...new Set(E.tx.filter(t=>t.cat===ancienNom).map(t=>t.an))];
+    for(const an of anneesConcernees){
+      const rows=await lire(`TX_${an}!A2:J`);
+      let modif=false;
+      rows.forEach((r,idx)=>{
+        if(r[3]===ancienNom){r[3]=nv;modif=true;}
+      });
+      if(modif)await ecrire(`TX_${an}!A2:J${rows.length+1}`,rows);
+    }
+    E.tx.forEach(t=>{if(t.cat===ancienNom)t.cat=nv;});
+
+    // 3. Mettre à jour les programmées concernées sur Google Sheets
+    const rowsProg=await lire('Prog!A2:H');
+    let modifProg=false;
+    rowsProg.forEach(r=>{if(r[3]===ancienNom){r[3]=nv;modifProg=true;}});
+    if(modifProg)await ecrire(`Prog!A2:H${rowsProg.length+1}`,rowsProg);
+    E.prog.forEach(p=>{if(p.cat===ancienNom)p.cat=nv;});
+
+    // 4. Sauvegarder les pôles avec le nouveau nom et tout rafraîchir
+    await sauvegarderParams();
+    peuplerCat();peuplerImpCats();
+    affPoles();affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+    toast('"'+ancienNom+'" renommée en "'+nv+'" ✓');
+  }catch(e){
+    toast('Erreur lors du renommage');
+  }
 }
 function deplacerCatVersPole(cat,idxPole){
   if(idxPole==='')return;
