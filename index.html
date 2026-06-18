@@ -1592,31 +1592,28 @@ async function fichierEnBase64(file){
 }
 
 async function pdfVersImages(file){
+  // Charge PDF.js si absent, avec disableWorker pour éviter les restrictions Safari
   if(!window.pdfjsLib){
-    const CDN='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
-    const CDN2='https://unpkg.com/pdfjs-dist@3.11.174/build/';
     await new Promise((res,rej)=>{
-      const charger=(src,onOk,onErr)=>{const s=document.createElement('script');s.src=src;s.onload=onOk;s.onerror=onErr;document.head.appendChild(s);};
-      charger(CDN+'pdf.min.js',()=>{
-        // Worker inline via blob pour éviter restriction Safari cross-origin
-        fetch(CDN+'pdf.worker.min.js').then(r=>r.text()).then(code=>{
-          const blob=new Blob([code],{type:'application/javascript'});
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(blob);
-          res();
-        }).catch(()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.worker.min.js';res();});
-      },()=>{
-        charger(CDN2+'pdf.min.js',()=>{
-          fetch(CDN2+'pdf.worker.min.js').then(r=>r.text()).then(code=>{
-            const blob=new Blob([code],{type:'application/javascript'});
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(blob);
-            res();
-          }).catch(()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=CDN2+'pdf.worker.min.js';res();});
-        },rej);
+      const essayer=(src)=>new Promise((ok,ko)=>{
+        const s=document.createElement('script');s.src=src;
+        s.onload=ok;s.onerror=ko;document.head.appendChild(s);
       });
+      // Liste de CDN à essayer dans l'ordre
+      const srcs=[
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+        'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+        'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+      ];
+      srcs.reduce((p,src)=>p.catch(()=>essayer(src)),Promise.reject())
+        .then(res).catch(rej);
     });
+    // Désactiver le worker — traitement dans le thread principal, OK pour petits PDF
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='';
   }
   const buffer=await file.arrayBuffer();
-  const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
+  // disableWorker:true évite tout chargement externe de worker
+  const pdf=await window.pdfjsLib.getDocument({data:buffer,disableWorker:true}).promise;
   const images=[];
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p);
