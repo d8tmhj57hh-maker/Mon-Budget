@@ -1862,10 +1862,34 @@ function affListeAClasserMois(){
       </select>
       <div style="display:flex;gap:8px">
         <button class="bp" style="flex:1;padding:9px;font-size:.85rem" onclick="validerAClasser('${t.id}')">✓ Valider</button>
-        <button class="bs2" style="flex:1;padding:9px;font-size:.85rem" onclick="supprimerAClasser('${t.id}')">✕ Ignorer</button>
+        <button class="bs2" style="flex:1;padding:9px;font-size:.85rem;margin-top:0" onclick="modifierAClasser('${t.id}')">✏️ Modifier</button>
+        <button class="bs2" style="flex:1;padding:9px;font-size:.85rem;margin-top:0" onclick="supprimerAClasser('${t.id}')">✕ Ignorer</button>
       </div>
     </div>`;
   }).join('');
+}
+
+// Ouvre le formulaire de saisie standard (le même que le bouton +),
+// pré-rempli avec les valeurs de la ligne importée. Permet de corriger
+// l'intitulé, le montant, la date, la catégorie, et d'ajouter un projet.
+let _aClasserEnEdition=null;
+function modifierAClasser(id){
+  const t=E.aClasser.find(x=>x.id===id);
+  if(!t)return;
+  _aClasserEnEdition=id;
+  E.type=t.type;
+  document.querySelectorAll('#saisie-rapide .tt').forEach(b=>{
+    b.classList.remove('a');
+    if((t.type==='revenu')===b.textContent.includes('Revenu'))b.classList.add('a');
+  });
+  peuplerCat();
+  document.getElementById('s-de').value=t.desc;
+  document.getElementById('s-mo').value=t.montant;
+  document.getElementById('s-da').value=t.date;
+  document.getElementById('s-ca').value=t.catSuggeree||'';
+  document.getElementById('s-pr').value='';
+  document.getElementById('s-no').value='';
+  ouvrirSaisie();
 }
 
 async function validerAClasser(id){
@@ -1896,7 +1920,7 @@ function ouvrirSaisie(){
   document.getElementById('saisie-rapide').style.display='block';
   document.getElementById('saisie-rapide').scrollIntoView({behavior:'smooth'});
 }
-function fermerSaisie(){document.getElementById('saisie-rapide').style.display='none';}
+function fermerSaisie(){document.getElementById('saisie-rapide').style.display='none';_aClasserEnEdition=null;}
 
 async function saveTx(){
   const de=document.getElementById('s-de').value.trim();const mo=parseFloat(document.getElementById('s-mo').value);
@@ -1917,6 +1941,11 @@ async function saveTx(){
     if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
     if(ok){ok.textContent=`"${de}" enregistrée ✓`;ok.classList.add('v');}
     toast(`"${de}" enregistrée ✓`);
+    if(_aClasserEnEdition){
+      E.aClasser=E.aClasser.filter(x=>x.id!==_aClasserEnEdition);
+      _aClasserEnEdition=null;
+      fermerSaisie();
+    }
     document.getElementById('s-de').value='';document.getElementById('s-mo').value='';document.getElementById('s-pr').value='';document.getElementById('s-no').value='';
     er.classList.remove('v');refresh();
   }catch(e){
