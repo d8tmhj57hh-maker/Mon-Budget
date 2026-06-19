@@ -1616,11 +1616,12 @@ async function pdfVersImages(file){
   const images=[];
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p);
-    const vp=page.getViewport({scale:2});
+    // Résolution modérée : suffisante pour lire un relevé, sans alourdir l'appel API
+    const vp=page.getViewport({scale:1.5});
     const canvas=document.createElement('canvas');
     canvas.width=vp.width;canvas.height=vp.height;
     await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-    images.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+    images.push(canvas.toDataURL('image/jpeg',0.7).split(',')[1]);
   }
   return images;
 }
@@ -1639,8 +1640,16 @@ async function analyserReleve(input){
       const images=await pdfVersImages(file);
       for(let i=0;i<images.length;i++){
         msg.textContent='Analyse page '+(i+1)+'/'+images.length+'...';
-        const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:images[i]}},{type:'text',text:prompt}]}]})});
-        if(!r.ok)throw new Error('Erreur API: '+r.status);
+        let r;
+        try{
+          r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:images[i]}},{type:'text',text:prompt}]}]})});
+        }catch(netErr){
+          throw new Error('Connexion à l\'IA impossible (page '+(i+1)+'). Image peut-être trop lourde. Détail : '+netErr.message);
+        }
+        if(!r.ok){
+          let det='';try{det=' — '+(await r.text()).slice(0,200);}catch(e){}
+          throw new Error('API a répondu '+r.status+det);
+        }
         const d=await r.json();
         const txt=d.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
         try{toutes=[...toutes,...JSON.parse(txt)];}catch(e){}
