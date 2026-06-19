@@ -49,16 +49,16 @@
     <p>Les autorisations demandées se limitent à la lecture et l'écriture de votre fichier budget — jamais à vos e-mails, contacts, photos ou autres documents.</p>
   </div>
 
-  <h2>📷 Import de relevés bancaires par photo</h2>
+  <h2>📄 Import de relevés bancaires</h2>
   <div class="card">
     <span class="tag">Fonctionnalité optionnelle</span>
-    <p>Si vous utilisez la fonction d'import par photo ou PDF, l'image de votre relevé est envoyée à l'API d'Anthropic (la société qui développe l'assistant Claude) pour en extraire automatiquement les transactions.</p>
+    <p>L'import de relevé PDF se fait <strong>entièrement dans votre navigateur</strong>, sur votre appareil. Le fichier n'est envoyé à aucun serveur, à aucune intelligence artificielle, ni à aucun tiers.</p>
     <ul>
-      <li>L'image est conservée au maximum <strong>7 jours</strong> sur les serveurs d'Anthropic, à des fins de sécurité technique uniquement, puis supprimée automatiquement.</li>
-      <li>Elle n'est <strong>jamais utilisée pour entraîner des modèles d'intelligence artificielle</strong>.</li>
-      <li>Elle n'est <strong>jamais partagée avec des tiers</strong> (annonceurs, partenaires commerciaux, etc.).</li>
-      <li>Seules les données extraites (date, montant, catégorie) sont ensuite enregistrées dans votre Google Sheet — jamais l'image elle-même.</li>
+      <li>La lecture du PDF et la reconnaissance des transactions sont effectuées localement par votre appareil.</li>
+      <li>Votre relevé bancaire ne quitte jamais votre appareil : aucune copie n'est conservée où que ce soit en dehors de celui-ci.</li>
+      <li>Seules les transactions que vous validez sont ensuite enregistrées dans votre Google Sheet.</li>
     </ul>
+    <p>Pour les relevés papier (photo), une saisie manuelle assistée est proposée : vous renseignez vous-même chaque opération, qui est alors enregistrée directement dans votre Google Sheet, sans passer par aucun service externe.</p>
     <p>Cette fonctionnalité est entièrement optionnelle : vous pouvez continuer à saisir vos dépenses manuellement sans jamais l'utiliser.</p>
   </div>
 
