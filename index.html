@@ -1593,23 +1593,19 @@ async function fichierEnBase64(file){
 
 async function pdfVersImages(file){
   if(!window.pdfjsLib){
-    const base='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
-    // 1. Charger la bibliothèque principale
+    // PDF.js hébergé sur le dépôt lui-même (même domaine → jamais bloqué par le réseau)
     await new Promise((res,rej)=>{
       const s=document.createElement('script');
-      s.src=base+'pdf.min.js';
-      s.onload=res;s.onerror=()=>rej(new Error('Chargement de PDF.js impossible (vérifiez votre connexion)'));
+      s.src='pdf.min.js';
+      s.onload=res;s.onerror=()=>rej(new Error('pdf.min.js introuvable sur le dépôt'));
       document.head.appendChild(s);
     });
-    // 2. Récupérer le worker comme texte puis le transformer en blob local
-    //    (évite le blocage Safari sur les workers cross-origin)
     try{
-      const code=await (await fetch(base+'pdf.worker.min.js')).text();
+      const code=await (await fetch('pdf.worker.min.js')).text();
       const blob=new Blob([code],{type:'application/javascript'});
       window.pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(blob);
     }catch(e){
-      // Fallback : pointer directement le worker sur le CDN
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.js';
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js';
     }
   }
   const buffer=await file.arrayBuffer();
