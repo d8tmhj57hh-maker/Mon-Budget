@@ -566,6 +566,11 @@
   <div class="modal"><div id="ov-ep-body"></div></div>
 </div>
 
+<!-- OVERLAY SAISIE MANUELLE (relevé papier) -->
+<div class="ov" id="ov-saisie">
+  <div class="modal"><div id="ov-saisie-body"></div></div>
+</div>
+
 <!-- OVERLAY AIDE -->
 <div class="ov" id="ov-aide">
   <div class="modal">
@@ -1299,7 +1304,8 @@ function affDm(mi){
   // Bouton import relevé bancaire pour ce mois
   h+=`<div style="margin-bottom:14px">
     <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" style="display:none" onchange="analyserReleve(this)"/>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📷 Importer un relevé bancaire (photo/PDF)</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF (lecture auto)</button>
+    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="ouvrirSaisieManuelle()">⌨️ Saisir un relevé papier (manuel)</button>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
     <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="ouvrirSaisieEp(${mi})">🏦 Mettre à jour l'épargne</button>
     <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
@@ -1601,29 +1607,114 @@ function chargerScript(src){
   });
 }
 
-async function pdfVersImages(file){
+// Extrait le texte d'un PDF, ligne par ligne, en s'appuyant sur la position
+// verticale des fragments pour reconstituer les lignes du relevé.
+async function pdfVersTexte(file){
   if(!window.pdfjsLib){
-    // 1. Charger la bibliothèque principale (même domaine → jamais bloqué)
     await chargerScript('pdf.min.js');
-    // 2. Charger le worker comme script global classique.
-    //    PDF.js détecte alors window.pdfjsWorker et l'exécute sur le thread
-    //    principal, sans créer de Web Worker (évite le "load failed" sur Safari).
     await chargerScript('pdf.worker.min.js');
     window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js';
   }
   const buffer=await file.arrayBuffer();
   const pdf=await window.pdfjsLib.getDocument({data:buffer,disableWorker:true}).promise;
-  const images=[];
+  let lignes=[];
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p);
-    // Résolution modérée : suffisante pour lire un relevé, sans alourdir l'appel API
-    const vp=page.getViewport({scale:1.5});
-    const canvas=document.createElement('canvas');
-    canvas.width=vp.width;canvas.height=vp.height;
-    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
-    images.push(canvas.toDataURL('image/jpeg',0.7).split(',')[1]);
+    const contenu=await page.getTextContent();
+    // Regrouper les fragments par ligne (même position Y, à 2px près)
+    const parY={};
+    contenu.items.forEach(it=>{
+      if(!it.str || !it.str.trim())return;
+      const y=Math.round(it.transform[5]);
+      // chercher une clé Y proche existante
+      let cle=Object.keys(parY).find(k=>Math.abs(k-y)<=2);
+      if(cle===undefined)cle=y;
+      (parY[cle]=parY[cle]||[]).push({x:it.transform[4],s:it.str});
+    });
+    // Trier les lignes de haut en bas, et dans chaque ligne de gauche à droite
+    Object.keys(parY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const txt=parY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim();
+      if(txt)lignes.push(txt);
+    });
   }
-  return images;
+  return lignes;
+}
+
+function parseMontantCA(s){
+  return parseFloat(s.replace(/\s/g,'').replace(',','.'));
+}
+
+// Analyse un relevé Crédit Agricole : reconstruit les transactions et déduit
+// débit/crédit grâce aux totaux annoncés (garantie d'exactitude des montants).
+function analyserReleveCA(lignes, annee){
+  const tx=[];
+  let totalDebit=null, totalCredit=null;
+  const reDate=/^(\d{2})\.(\d{2})\s+(\d{2})\.(\d{2})\s+(.*)$/;
+  const reMontantFin=/(\d{1,3}(?:\s\d{3})*,\d{2})\s*$/;
+  let i=0;
+  while(i<lignes.length){
+    const ligne=lignes[i];
+    const mTot=ligne.match(/Total des op[ée]rations\s+(\d[\d\s]*,\d{2})\s+(\d[\d\s]*,\d{2})/i);
+    if(mTot){totalDebit=parseMontantCA(mTot[1]);totalCredit=parseMontantCA(mTot[2]);i++;continue;}
+    if(/solde (cr[ée]diteur|d[ée]biteur)/i.test(ligne)){i++;continue;}
+    const m=ligne.match(reDate);
+    if(m){
+      const jour=m[1],mois=m[2];
+      let reste=m[5];
+      reste=reste.replace(/\d{1,2}H\d{2}/g,' ').replace(/\d{2}\/\d{2}(\/\d{2,4})?/g,' ').replace(/\s+/g,' ').trim();
+      let mm=reste.match(reMontantFin);
+      let montant=null;
+      if(mm){montant=parseMontantCA(mm[1]);reste=reste.slice(0,mm.index).trim();}
+      else{
+        let j=i+1;
+        while(j<lignes.length){
+          const ls=lignes[j];
+          const ms=ls.match(/^(\d{1,3}(?:\s\d{3})*,\d{2})$/);
+          if(ms){montant=parseMontantCA(ms[1]);j++;break;}
+          if(ls.match(reDate))break;
+          j++;
+        }
+        i=j-1;
+      }
+      if(montant!==null){
+        // Libellé essentiel : retirer les références techniques, garder le début lisible
+        let lib=reste.split(/\s{2,}/)[0].trim();
+        lib=lib.replace(/\bDép\b.*$/i,'').trim()||reste.trim();
+        tx.push({jour,mois,libelle:lib||'Opération',montant});
+      }
+    }
+    i++;
+  }
+  // Déduire débit/crédit
+  const estCredit=lib=>/versement|virement.*\bde\b|caf |remboursement|salaire|\bpaie\b|\bpaye\b/i.test(lib);
+  const sum=arr=>Math.round(arr.reduce((s,t)=>s+t.montant,0)*100)/100;
+  let methode='heuristique';
+  if(totalDebit!==null){
+    // Tenter subset-sum sur le total des débits (le plus fiable)
+    const cibleC=Math.round(totalDebit*100);
+    const mC=tx.map(t=>Math.round(t.montant*100));
+    let sol=null;
+    const n=tx.length;
+    (function bt(idx,acc,ch){
+      if(sol)return;
+      if(acc===cibleC){sol=ch.slice();return;}
+      if(acc>cibleC||idx>=n)return;
+      bt(idx+1,acc+mC[idx],[...ch,idx]);
+      bt(idx+1,acc,ch);
+    })(0,0,[]);
+    if(sol){
+      const sd=new Set(sol);
+      tx.forEach((t,idx)=>t.type=sd.has(idx)?'depense':'revenu');
+      methode='totaux';
+    } else {
+      tx.forEach(t=>t.type=estCredit(t.libelle)?'revenu':'depense');
+    }
+  } else {
+    tx.forEach(t=>t.type=estCredit(t.libelle)?'revenu':'depense');
+  }
+  // Construire la date complète YYYY-MM-DD
+  tx.forEach(t=>{t.date=annee+'-'+t.mois+'-'+t.jour;});
+  return {tx,totalDebit,totalCredit,methode};
 }
 
 async function analyserReleve(input){
@@ -1631,50 +1722,103 @@ async function analyserReleve(input){
   const msg=document.getElementById('msg-import-releve');
   msg.style.display='block';msg.style.background='rgba(26,47,74,.07)';msg.style.color='var(--txl)';
   const annee=E.moisOuvert!==null?E.annee:new Date().getFullYear().toString();
-  const prompt=`Tu analyses une page de releve bancaire. Extrais TOUTES les transactions (debits et credits). Pour chaque transaction : date (YYYY-MM-DD, annee ${annee} si absente), description courte, montant (positif), type ("depense" ou "revenu"). Reponds UNIQUEMENT en JSON : [{"date":"2025-01-15","desc":"Carrefour","montant":45.30,"type":"depense"}]. Si pas de transaction visible : [].`;
+  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+
+  // Une photo n'a pas de texte extractible -> saisie manuelle assistée
+  if(!isPdf){
+    input.value='';
+    ouvrirSaisieManuelle();
+    return;
+  }
+
   try{
-    const isPdf=file.type==='application/pdf';
-    let toutes=[];
-    if(isPdf){
-      msg.textContent='Lecture du PDF...';
-      const images=await pdfVersImages(file);
-      for(let i=0;i<images.length;i++){
-        msg.textContent='Analyse page '+(i+1)+'/'+images.length+'...';
-        let r;
-        try{
-          r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:'image/jpeg',data:images[i]}},{type:'text',text:prompt}]}]})});
-        }catch(netErr){
-          throw new Error('Connexion à l\'IA impossible (page '+(i+1)+'). Image peut-être trop lourde. Détail : '+netErr.message);
-        }
-        if(!r.ok){
-          let det='';try{det=' — '+(await r.text()).slice(0,200);}catch(e){}
-          throw new Error('API a répondu '+r.status+det);
-        }
-        const d=await r.json();
-        const txt=d.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
-        try{toutes=[...toutes,...JSON.parse(txt)];}catch(e){}
-      }
-    } else {
-      msg.textContent='Analyse de la photo...';
-      const b64=await fichierEnBase64(file);
-      const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:4000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:file.type,data:b64}},{type:'text',text:prompt}]}]})});
-      if(!r.ok)throw new Error('Erreur API: '+r.status);
-      const d=await r.json();
-      const txt=d.content.map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
-      try{toutes=JSON.parse(txt);}catch(e){}
+    msg.textContent='Lecture du PDF...';
+    const lignes=await pdfVersTexte(file);
+    const res=analyserReleveCA(lignes,annee);
+    if(!res.tx.length){
+      msg.style.background='var(--roc)';msg.style.color='var(--ro)';
+      msg.textContent='Aucune transaction trouvée. Ce relevé a peut-être un format différent.';
+      return;
     }
-    if(!toutes.length){msg.style.background='var(--roc)';msg.style.color='var(--ro)';msg.textContent='Aucune transaction détectée.';return;}
-    toutes.forEach(t=>{
-      E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date:t.date||today(),desc:t.desc||'Transaction',montant:parseFloat(t.montant)||0,type:t.type==='revenu'?'revenu':'depense',catSuggeree:suggererCategorie(t.desc,t.type)});
+    res.tx.forEach(t=>{
+      E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date:t.date,desc:t.libelle,montant:t.montant,type:t.type,catSuggeree:suggererCategorie(t.libelle,t.type)});
     });
     msg.style.background='var(--vec)';msg.style.color='var(--ve)';
-    msg.textContent='✅ '+toutes.length+' transaction(s) extraite(s) !';
+    let verif='';
+    if(res.totalDebit!==null){
+      const sd=res.tx.filter(t=>t.type==='depense').reduce((s,t)=>s+t.montant,0);
+      const sc=res.tx.filter(t=>t.type==='revenu').reduce((s,t)=>s+t.montant,0);
+      const ok=Math.abs(sd-res.totalDebit)<0.01&&Math.abs(sc-res.totalCredit)<0.01;
+      verif=ok?' (montants vérifiés ✓)':' (à vérifier)';
+    }
+    msg.textContent='✅ '+res.tx.length+' opération(s) extraite(s)'+verif+' !';
     input.value='';if(E.moisOuvert!==null)affDm(E.moisOuvert);
   }catch(e){
     console.error('analyserReleve:',e);
     msg.style.background='var(--roc)';msg.style.color='var(--ro)';
-    msg.textContent='Erreur : '+e.message;
+    msg.textContent='Erreur de lecture : '+e.message;
   }
+}
+
+// ===== Saisie manuelle ligne par ligne (pour relevés papier) =====
+let _saisieAnnee=null;
+function ouvrirSaisieManuelle(){
+  _saisieAnnee=E.moisOuvert!==null?E.annee:new Date().getFullYear().toString();
+  const mois=E.moisOuvert!==null?String(E.moisOuvert+1).padStart(2,'0'):String(new Date().getMonth()+1).padStart(2,'0');
+  _saisieDateDefaut=_saisieAnnee+'-'+mois+'-01';
+  renderSaisieManuelle('');
+  document.getElementById('ov-saisie').classList.add('v');
+}
+let _saisieDateDefaut=null;
+function renderSaisieManuelle(infoLigne){
+  const cats=toutesCatsDepense();
+  const dlCats=cats.map(c=>`<option value="${c}">`).join('');
+  const crevOpts=CREV.map(c=>`<option value="${c}">`).join('');
+  const nbAjoutees=E.aClasser.filter(t=>t._manuelle).length;
+  const body=`
+    <button class="bf" onclick="fOv('ov-saisie');if(E.moisOuvert!==null)affDm(E.moisOuvert)">✕</button>
+    <h2 style="margin:0 0 6px">⌨️ Saisie d'un relevé</h2>
+    <p style="font-size:.8rem;color:var(--txl);margin:0 0 14px">Saisissez chaque ligne de votre relevé papier. Validez, puis passez à la suivante.${nbAjoutees?` <b>${nbAjoutees} déjà saisie(s).</b>`:''}</p>
+    <div class="ch3"><label>Type</label>
+      <div style="display:flex;gap:8px">
+        <button id="sm-type-dep" class="bs2" style="flex:1;margin-top:0;padding:10px" onclick="setSmType('depense')">💳 Dépense</button>
+        <button id="sm-type-rev" class="bs2" style="flex:1;margin-top:0;padding:10px" onclick="setSmType('revenu')">💰 Revenu</button>
+      </div>
+    </div>
+    <div class="ch3"><label>Montant (€)</label><input type="number" id="sm-montant" step="0.01" inputmode="decimal" placeholder="Ex : 45.30"/></div>
+    <div class="ch3"><label>Description</label><input type="text" id="sm-desc" placeholder="Ex : Carrefour"/></div>
+    <div class="ch3"><label>Date</label><input type="date" id="sm-date" value="${_saisieDateDefaut}"/></div>
+    <div class="ch3"><label>Catégorie</label><input type="text" id="sm-cat" list="sm-dl-cat" placeholder="Tapez ou choisissez"/><datalist id="sm-dl-cat">${dlCats}</datalist></div>
+    <datalist id="sm-dl-crev">${crevOpts}</datalist>
+    <div id="sm-info" style="font-size:.82rem;min-height:18px;margin:4px 0 10px;color:var(--ve)">${infoLigne}</div>
+    <button class="bp" onclick="validerSaisieLigne()">✓ Ajouter cette ligne</button>
+    <button class="bs2" onclick="fOv('ov-saisie');if(E.moisOuvert!==null)affDm(E.moisOuvert)">Terminé</button>
+  `;
+  document.getElementById('ov-saisie-body').innerHTML=body;
+  setSmType(_smType||'depense');
+}
+let _smType='depense';
+function setSmType(t){
+  _smType=t;
+  const d=document.getElementById('sm-type-dep'),r=document.getElementById('sm-type-rev');
+  if(!d||!r)return;
+  const cat=document.getElementById('sm-cat');
+  if(cat)cat.setAttribute('list',t==='depense'?'sm-dl-cat':'sm-dl-crev');
+  if(t==='depense'){d.style.background='var(--bl)';d.style.color='#fff';d.style.borderColor='var(--bl)';r.style.background='';r.style.color='';r.style.borderColor='';}
+  else{r.style.background='var(--bl)';r.style.color='#fff';r.style.borderColor='var(--bl)';d.style.background='';d.style.color='';d.style.borderColor='';}
+}
+function validerSaisieLigne(){
+  const montant=parseFloat(document.getElementById('sm-montant').value);
+  const desc=document.getElementById('sm-desc').value.trim();
+  const date=document.getElementById('sm-date').value;
+  const cat=document.getElementById('sm-cat').value.trim();
+  if(!montant||montant<=0){toast('Indiquez un montant');return;}
+  if(!desc){toast('Indiquez une description');return;}
+  if(!date){toast('Indiquez une date');return;}
+  E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,desc,montant,type:_smType,catSuggeree:cat||suggererCategorie(desc,_smType),_manuelle:true});
+  // Réafficher le formulaire vide, prêt pour la ligne suivante, en gardant la date
+  _saisieDateDefaut=date;
+  renderSaisieManuelle('✓ « '+desc+' » ajoutée. Ligne suivante :');
 }
 
 function suggererCategorie(desc,type){
