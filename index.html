@@ -1591,25 +1591,28 @@ async function fichierEnBase64(file){
   return btoa(bin);
 }
 
+function chargerScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=src;
+    s.onload=res;
+    s.onerror=()=>rej(new Error(src+' introuvable sur le dépôt'));
+    document.head.appendChild(s);
+  });
+}
+
 async function pdfVersImages(file){
   if(!window.pdfjsLib){
-    // PDF.js hébergé sur le dépôt lui-même (même domaine → jamais bloqué par le réseau)
-    await new Promise((res,rej)=>{
-      const s=document.createElement('script');
-      s.src='pdf.min.js';
-      s.onload=res;s.onerror=()=>rej(new Error('pdf.min.js introuvable sur le dépôt'));
-      document.head.appendChild(s);
-    });
-    try{
-      const code=await (await fetch('pdf.worker.min.js')).text();
-      const blob=new Blob([code],{type:'application/javascript'});
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(blob);
-    }catch(e){
-      window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js';
-    }
+    // 1. Charger la bibliothèque principale (même domaine → jamais bloqué)
+    await chargerScript('pdf.min.js');
+    // 2. Charger le worker comme script global classique.
+    //    PDF.js détecte alors window.pdfjsWorker et l'exécute sur le thread
+    //    principal, sans créer de Web Worker (évite le "load failed" sur Safari).
+    await chargerScript('pdf.worker.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='pdf.worker.min.js';
   }
   const buffer=await file.arrayBuffer();
-  const pdf=await window.pdfjsLib.getDocument({data:buffer}).promise;
+  const pdf=await window.pdfjsLib.getDocument({data:buffer,disableWorker:true}).promise;
   const images=[];
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p);
