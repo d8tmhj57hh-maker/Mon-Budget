@@ -426,7 +426,14 @@
           <div class="ch3"><label>Description *</label><input type="text" id="s-de" placeholder="Ex : Courses, Restaurant..."/></div>
           <div class="g2">
             <div class="ch3 cm3"><label>Montant *</label><input type="number" id="s-mo" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
-            <div class="ch3"><label>Date *</label><input type="date" id="s-da"/></div>
+            <div class="ch3"><label>Date *</label><input type="date" id="s-da" oninput="checkDateFutureSaisie()"/></div>
+          </div>
+          <div class="ch3" id="bloc-recur-saisie" style="display:none;background:rgba(26,47,74,.06);border-radius:10px;padding:10px 12px;margin-bottom:0">
+            <div style="display:flex;align-items:center;gap:9px">
+              <input type="checkbox" id="s-recur" onchange="onToggleRecurSaisie()" style="width:18px;height:18px"/>
+              <label for="s-recur" style="font-size:.82rem;font-weight:500;margin:0">🔁 Ça se répète (chaque mois, chaque année...)</label>
+            </div>
+            <p style="font-size:.7rem;color:var(--txl);margin:5px 0 0">Cette date est dans le futur — cochez si cet élément revient régulièrement, pour le programmer une fois pour toutes.</p>
           </div>
           <div class="ch3"><label>Catégorie</label><select id="s-ca"></select></div>
           <div class="ch3"><label>Projet</label><input type="text" id="s-pr" placeholder="Ex : Salle de bain..." list="dl-proj"/><datalist id="dl-proj"></datalist></div>
@@ -1949,8 +1956,39 @@ function ouvrirSaisie(){
   }
   document.getElementById('saisie-rapide').style.display='block';
   document.getElementById('saisie-rapide').scrollIntoView({behavior:'smooth'});
+  checkDateFutureSaisie();
 }
 function fermerSaisie(){document.getElementById('saisie-rapide').style.display='none';_aClasserEnEdition=null;}
+
+// Affiche la case "ça se répète" uniquement si la date saisie est future
+function checkDateFutureSaisie(){
+  const da=document.getElementById('s-da').value;
+  const bloc=document.getElementById('bloc-recur-saisie');
+  if(da&&da>today()){bloc.style.display='block';}
+  else{bloc.style.display='none';document.getElementById('s-recur').checked=false;}
+}
+
+// Si on coche "ça se répète", on redirige vers le formulaire Programmé,
+// pré-rempli avec ce qui a déjà été saisi (nom, montant, catégorie, type, mois).
+function onToggleRecurSaisie(){
+  if(!document.getElementById('s-recur').checked)return;
+  const de=document.getElementById('s-de').value.trim();
+  const mo=parseFloat(document.getElementById('s-mo').value);
+  const da=document.getElementById('s-da').value;
+  const ca=document.getElementById('s-ca').value;
+  fermerSaisie();
+  ouvrirAjoutProg();
+  if(de)document.getElementById('prog-nom').value=de;
+  if(ca)document.getElementById('prog-cat').value=ca;
+  document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if((E.type==='revenu'&&b.textContent.includes('Revenu'))||(E.type==='depense'&&b.textContent.includes('Dépense')))b.classList.add('a');});
+  PROG_TYPE=E.type;
+  if(da&&!isNaN(mo)&&mo>0){
+    const mi=new Date(da).getMonth();
+    E.montsMoisEnCours[mi]=mo;
+    const inp=document.getElementById('pmois'+mi);if(inp)inp.value=mo;
+  }
+  toast('Complétez les autres mois si besoin, puis enregistrez 🔁');
+}
 
 async function saveTx(){
   const de=document.getElementById('s-de').value.trim();const mo=parseFloat(document.getElementById('s-mo').value);
@@ -1964,13 +2002,17 @@ async function saveTx(){
   }
   if(er)er.classList.remove('v');
   const an=da.substring(0,4);const id=`tx_${Date.now()}`;
+  // Une date dans le futur reste "prévisible" (non pointée) tant qu'elle n'est
+  // pas validée manuellement ; une date passée ou du jour est considérée réalisée.
+  const estFuture=da>today();
+  const pointee=!estFuture;
   try{
-    // Saisie manuelle = déjà réalisée → pointée automatiquement
-    await ajouter(`TX_${an}`,[id,da,E.type,ca,pr,de,mo,no,'TRUE',mo]);
-    E.tx.push({id,date:da,type:E.type,cat:ca,projet:pr,desc:de,montant:mo,note:no,pointe:true,montant_reel:mo,an});
+    await ajouter(`TX_${an}`,[id,da,E.type,ca,pr,de,mo,no,pointee?'TRUE':'FALSE',pointee?mo:'']);
+    E.tx.push({id,date:da,type:E.type,cat:ca,projet:pr,desc:de,montant:mo,note:no,pointe:pointee,montant_reel:pointee?mo:null,an});
     if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
-    if(ok){ok.textContent=`"${de}" enregistrée ✓`;ok.classList.add('v');}
-    toast(`"${de}" enregistrée ✓`);
+    const suffixe=estFuture?' (prévisible)':'';
+    if(ok){ok.textContent=`"${de}" enregistrée ✓${suffixe}`;ok.classList.add('v');}
+    toast(`"${de}" enregistrée ✓${suffixe}`);
     if(_aClasserEnEdition){
       E.aClasser=E.aClasser.filter(x=>x.id!==_aClasserEnEdition);
       _aClasserEnEdition=null;
