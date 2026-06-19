@@ -595,6 +595,15 @@
     <div class="ch3"><label>Catégorie</label><select id="prog-cat"></select></div>
 
     <input type="hidden" id="prog-id-edit" value=""/>
+    <div class="ch3"><label>Récurrence</label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+        <input type="checkbox" id="prog-recur-active" onchange="toggleRecurProg()" style="width:18px;height:18px"/>
+        <label for="prog-recur-active" style="font-size:.85rem;font-weight:400;margin:0">Se répète tous les</label>
+        <input type="number" id="prog-recur-n" min="2" max="10" value="2" style="width:55px;padding:6px;border-radius:8px;border:1.5px solid var(--bo);text-align:center" disabled/>
+        <label for="prog-recur-n" style="font-size:.85rem;font-weight:400;margin:0">an(s)</label>
+      </div>
+      <p style="font-size:.7rem;color:var(--txl);margin:4px 0 0">Les montants saisis ci-dessous pour <span id="prog-recur-annee-ref"></span> se reproduiront automatiquement aux années suivantes selon ce cycle (ex : tous les 2 ans pour un contrôle technique).</p>
+    </div>
     <div class="ch3"><label>Montants par mois (€)</label>
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px" id="prog-mois-sel"></div>
     </div>
@@ -966,17 +975,19 @@ async function chargerTout(){
   for(const a of ANNEES){try{const rows=await lire(`TX_${a}!A2:J`);rows.forEach(r=>{if(r[0])E.tx.push({id:r[0],date:r[1],type:r[2],cat:r[3],projet:r[4],desc:r[5],montant:parseFloat(r[6])||0,note:r[7],pointe:r[8]==='TRUE',montant_reel:parseFloat(r[9])||null,an:a});});}catch(e){}}
   // Prog : une ligne par (nom × annee × mois) → on agrège par id de base
   try{
-    const rows=await lire('Prog!A2:H');
+    const rows=await lire('Prog!A2:I');
     const map={};
     rows.filter(r=>r[0]).forEach(r=>{
       const an=r[4]||'';const mi=r[5]!==undefined?parseInt(r[5]):-1;
       // Ignorer les lignes ancien format (sans année valide ou mois valide)
       if(!an||isNaN(mi)||mi<0||mi>11)return;
       const bid=r[0].split('_m')[0];
-      if(!map[bid])map[bid]={id:bid,nom:r[1],type:r[2]||'depense',cat:r[3],actif:r[7]!=='FALSE',montantsMois:{}};
+      const recurAns=r[8]?parseInt(r[8]):0;
+      if(!map[bid])map[bid]={id:bid,nom:r[1],type:r[2]||'depense',cat:r[3],actif:r[7]!=='FALSE',montantsMois:{},recurAns:0,recurAnneeRef:null};
       const mont=parseFloat(r[6])||0;
       if(!map[bid].montantsMois[an])map[bid].montantsMois[an]=Array(12).fill(null);
       map[bid].montantsMois[an][mi]=mont;
+      if(recurAns>0){map[bid].recurAns=recurAns;map[bid].recurAnneeRef=an;}
     });
     E.prog=Object.values(map);
   }catch(e){E.prog=[];}
@@ -1071,11 +1082,30 @@ async function saveRecal(){
 }
 
 // ── VUE BUDGET (tableau annuel) ──
+// Calcule le montant prévu pour un élément programmé p, à une année/mois donnés.
+// Si l'élément a une récurrence (ex: tous les 2 ans), le montant de l'année de
+// référence se reporte automatiquement sur les années suivant le même cycle,
+// même si aucune ligne n'existe explicitement pour cette année dans la feuille.
+function montantProgPour(p,an,mi){
+  if(p.montantsMois[an]){
+    const v=p.montantsMois[an][mi];
+    if(v!==null&&v!==undefined&&v>0)return v;
+  }
+  if(p.recurAns&&p.recurAns>1&&p.recurAnneeRef&&p.montantsMois[p.recurAnneeRef]){
+    const diff=parseInt(an)-parseInt(p.recurAnneeRef);
+    if(diff>0&&diff%p.recurAns===0){
+      const v=p.montantsMois[p.recurAnneeRef][mi];
+      if(v!==null&&v!==undefined&&v>0)return v;
+    }
+  }
+  return null;
+}
+
 function prevMois(mi, an){
   an=an||E.annee;
   const prev={rev:{},dep:{}};
   E.prog.filter(p=>p.actif).forEach(p=>{
-    const mont=p.montantsMois[an]?p.montantsMois[an][mi]:null;
+    const mont=montantProgPour(p,an,mi);
     if(mont===null||mont===undefined||mont===0)return;
     const b=p.type==='revenu'?'rev':'dep';
     if(!prev[b][p.cat])prev[b][p.cat]=0;prev[b][p.cat]+=mont;
@@ -1084,9 +1114,9 @@ function prevMois(mi, an){
 }
 
 function progActifsMois(mi, an){
-  // Retourne les programmées qui ont un montant pour ce mois/année
+  // Retourne les programmées qui ont un montant pour ce mois/année (saisi ou reporté par récurrence)
   an=an||E.annee;
-  return E.prog.filter(p=>p.actif&&p.montantsMois[an]&&p.montantsMois[an][mi]!==null&&p.montantsMois[an][mi]!==undefined&&p.montantsMois[an][mi]>0);
+  return E.prog.filter(p=>p.actif&&montantProgPour(p,an,mi)>0);
 }
 
 function affBudget(){
@@ -1326,7 +1356,7 @@ function affDm(mi){
       h+=`<div class="ltx prev-tx" onclick="ouvrirPointerProg('${p.id}')">
         <div class="itx pr">⏳</div>
         <div class="inf"><div class="de it">${p.nom}</div><div class="so">${p.cat} · prévu</div></div>
-        <div class="mtx prev-m">${fmtDec(p.montantsMois[E.annee]?p.montantsMois[E.annee][mi]:0)}</div>
+        <div class="mtx prev-m">${fmtDec(montantProgPour(p,E.annee,mi)||0)}</div>
       </div>`;
     });
     h+=`</div>`;
@@ -1375,10 +1405,10 @@ function ouvrirPointerProg(pid){
   E.txc='prog:'+pid;
   document.getElementById('ov-ti').textContent=p.nom;
   document.getElementById('ov-co').innerHTML=`
-    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmtDec(p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0)}</span></div>
+    <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmtDec(montantProgPour(p,E.annee,E.moisOuvert)||0)}</span></div>
     <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
     <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>`;
-  const montPrev=p.montantsMois&&p.montantsMois[E.annee]?p.montantsMois[E.annee][E.moisOuvert]:0;
+  const montPrev=montantProgPour(p,E.annee,E.moisOuvert)||0;
   document.getElementById('ov-mo').value=montPrev||0;
   document.getElementById('ov-pr').value='';
   document.getElementById('ov-no').value='';
@@ -1960,9 +1990,10 @@ function affProg(){
   const el=document.getElementById('lp');
   if(!E.prog.length){el.innerHTML=`<div class="vi" style="padding:16px 0"><div class="em">🔄</div><p style="font-size:.82rem">Aucun élément programmé</p></div>`;return;}
   el.innerHTML=E.prog.map(p=>{
-    const monts=p.montantsMois[E.annee]||Array(12).fill(null);
+    const monts=MOIS.map((m,mi)=>montantProgPour(p,E.annee,mi));
     const defini=monts.filter(v=>v!==null&&v>0);
-    const resume=defini.length?`${defini.length} mois · moy. ${fmtDec(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee;
+    const badgeRecur=(p.recurAns&&p.recurAns>1)?` · 🔁 tous les ${p.recurAns} ans`:'';
+    const resume=(defini.length?`${defini.length} mois · moy. ${fmtDec(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee)+badgeRecur;
     return `<div class="cp3" style="flex-wrap:wrap;gap:8px">
       <button class="tg ${p.actif?'on':''}" onclick="togProg('${p.id}')"></button>
       <div class="ip" style="flex:1;min-width:120px" onclick="ouvrirEditProg('${p.id}')">
@@ -1986,6 +2017,10 @@ function ouvrirAjoutProg(){
   PROG_TYPE='depense';
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if(b.textContent.includes('Dépense'))b.classList.add('a');});
   peuplerProgCat();
+  document.getElementById('prog-recur-active').checked=false;
+  document.getElementById('prog-recur-n').value=2;
+  toggleRecurProg();
+  document.getElementById('prog-recur-annee-ref').textContent=E.annee;
   affGrilleMontantsMois(null);
   document.getElementById('ov-prog').classList.add('v');
 }
@@ -2001,16 +2036,30 @@ function ouvrirEditProg(pid){
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if((p.type==='revenu'&&b.textContent.includes('Revenu'))||(p.type==='depense'&&b.textContent.includes('Dépense')))b.classList.add('a');});
   peuplerProgCat();
   document.getElementById('prog-cat').value=p.cat;
-  affGrilleMontantsMois(p);
+  // L'édition se fait toujours sur l'année de référence de la récurrence si elle existe,
+  // sinon sur l'année actuellement affichée, pour ne pas créer une seconde référence ambiguë.
+  const anneeEdit=(p.recurAns&&p.recurAnneeRef)?p.recurAnneeRef:E.annee;
+  document.getElementById('prog-recur-active').checked=!!(p.recurAns&&p.recurAns>1);
+  document.getElementById('prog-recur-n').value=p.recurAns>1?p.recurAns:2;
+  toggleRecurProg();
+  document.getElementById('prog-recur-annee-ref').textContent=anneeEdit;
+  affGrilleMontantsMois(p,anneeEdit);
   document.getElementById('ov-prog').classList.add('v');
 }
 
-function affGrilleMontantsMois(p){
-  const monts=p&&p.montantsMois[E.annee]?p.montantsMois[E.annee]:Array(12).fill(null);
+function toggleRecurProg(){
+  document.getElementById('prog-recur-n').disabled=!document.getElementById('prog-recur-active').checked;
+  document.getElementById('prog-recur-annee-ref').textContent=E.progAnneeEdit||E.annee;
+}
+
+function affGrilleMontantsMois(p,anneeRef){
+  anneeRef=anneeRef||E.annee;
+  E.progAnneeEdit=anneeRef;
+  const monts=p&&p.montantsMois[anneeRef]?p.montantsMois[anneeRef]:Array(12).fill(null);
   // Initialiser le tableau en mémoire avec les valeurs existantes
   E.montsMoisEnCours=monts.map(v=>(v!==null&&v!==undefined&&v>0)?v:null);
   const el=document.getElementById('prog-mois-sel');
-  el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+E.annee+' (€) — laissez vide si non applicable</p>'+
+  el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+anneeRef+' (€) — laissez vide si non applicable</p>'+
   MOIS.map((m,i)=>{
     const v=E.montsMoisEnCours[i]!==null?E.montsMoisEnCours[i]:'';
     // oninput met à jour immédiatement en mémoire à chaque frappe
@@ -2023,6 +2072,10 @@ async function saveProg(){
   const cat=document.getElementById('prog-cat').value;
   const pid=document.getElementById('prog-id-edit').value;
   if(!nom){affMsgProg('Entrez un nom','er');return;}
+
+  const anneeRef=E.progAnneeEdit||E.annee;
+  const recurActive=document.getElementById('prog-recur-active').checked;
+  const recurAns=recurActive?(parseInt(document.getElementById('prog-recur-n').value)||2):0;
 
   // Lire depuis le tableau en mémoire (plus fiable que getElementById sur mobile)
   const montsMois=E.montsMoisEnCours.map(v=>v&&v>0?v:null);
@@ -2040,18 +2093,19 @@ async function saveProg(){
     let p=E.prog.find(x=>x.id===id);
     if(p){
       p.nom=nom;p.cat=cat;p.type=PROG_TYPE;
-      if(!p.montantsMois[E.annee])p.montantsMois[E.annee]=Array(12).fill(null);
-      p.montantsMois[E.annee]=montsMois;
+      if(!p.montantsMois[anneeRef])p.montantsMois[anneeRef]=Array(12).fill(null);
+      p.montantsMois[anneeRef]=montsMois;
+      p.recurAns=recurAns;p.recurAnneeRef=recurAns>0?anneeRef:null;
     } else {
-      const obj={};obj[E.annee]=montsMois;
-      p={id,nom,type:PROG_TYPE,cat,actif:true,montantsMois:obj};
+      const obj={};obj[anneeRef]=montsMois;
+      p={id,nom,type:PROG_TYPE,cat,actif:true,montantsMois:obj,recurAns,recurAnneeRef:recurAns>0?anneeRef:null};
       E.prog.push(p);
     }
 
     // Stratégie SAFE : lire toutes les lignes existantes, 
     // mettre à jour celles qui existent, ajouter celles qui manquent
     // JAMAIS de suppression
-    const rows=await lire('Prog!A2:H');
+    const rows=await lire('Prog!A2:I');
     for(let mi=0;mi<12;mi++){
       const lid=`${id}_m${mi}`;
       const val=montsMois[mi];
@@ -2059,19 +2113,20 @@ async function saveProg(){
       if(idxExist>=0){
         // Mettre à jour la ligne existante
         if(val!==null){
-          await ecrire(`Prog!A${idxExist+2}:H${idxExist+2}`,[[lid,nom,PROG_TYPE,cat,E.annee,mi,val,'TRUE']]);
+          await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[[lid,nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']]);
         } else {
           // Effacer seulement cette ligne précise (montant nul = pas prévu ce mois)
-          await ecrire(`Prog!A${idxExist+2}:H${idxExist+2}`,[['','','','','','','','']]);
+          await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[['','','','','','','','','']]);
         }
       } else if(val!==null){
         // Ajouter nouvelle ligne
-        await ajouter('Prog',[lid,nom,PROG_TYPE,cat,E.annee,mi,val,'TRUE']);
+        await ajouter('Prog',[lid,nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']);
       }
     }
 
     const total=montsMois.filter(v=>v!==null).reduce((a,b)=>a+b,0);
-    affMsgProg('✅ Enregistré : '+nom+' — '+nbMois+' mois · total '+fmtDec(total),'ok');
+    const suffixeRecur=recurAns>0?(' · se répète tous les '+recurAns+' ans'):'';
+    affMsgProg('✅ Enregistré : '+nom+' — '+nbMois+' mois · total '+fmtDec(total)+suffixeRecur,'ok');
     document.getElementById('btn-save-prog').disabled=false;
     affProg();affBudget();
     // Fermer le modal après 2 secondes
