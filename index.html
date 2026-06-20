@@ -1509,7 +1509,13 @@ function ouvrirTx(id){
     ${t.projet?`<div class="rd"><span class="la">Projet</span><span class="va">${t.projet}</span></div>`:''}
     ${t.note&&!t.note.startsWith('prog:')?`<div class="rd"><span class="la">Note</span><span class="va">${t.note}</span></div>`:''}
     <div class="rd"><span class="la">Statut</span><span class="va">${t.pointe?'✓ Réalisée':'En attente'}</span></div>`;
+  document.getElementById('ov-de').value=t.desc||'';
   document.getElementById('ov-mo').value=m;
+  document.getElementById('ov-da').value=t.date;
+  // Remplir la liste de catégories selon le type de la transaction, puis sélectionner la sienne
+  const selCa=document.getElementById('ov-ca');
+  const catsDisponibles=t.type==='revenu'?CREV:toutesCategoriesConnues();
+  selCa.innerHTML=catsDisponibles.map(c=>`<option ${c===t.cat?'selected':''}>${c}</option>`).join('');
   document.getElementById('ov-pr').value=t.projet||'';
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
   const btn=document.getElementById('ov-btn');
