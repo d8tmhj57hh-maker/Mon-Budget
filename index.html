@@ -1066,6 +1066,40 @@ function calcSolde(j){
 }
 function soldeAuj(){return calcSolde(today());}
 
+// Solde prévisionnel à une date donnée : part du solde réel actuel et ajoute
+// les mouvements à venir avant cette date — transactions futures déjà saisies
+// (non pointées) et éléments programmés actifs pas encore réalisés ce mois-ci.
+// Sert à répondre à "si tout se passe comme prévu, où en serai-je fin de mois ?"
+function calcSoldePrevisionnel(dateLimite){
+  const base=soldeAuj();
+  if(base===null)return null;
+  const aj=today();
+  let d=0;
+  // Transactions déjà saisies, futures, pas encore pointées
+  E.tx.filter(t=>t.date>aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
+    t.type==='revenu'?d+=t.montant:d-=t.montant;
+  });
+  // Éléments programmés actifs, pour les mois restants jusqu'à dateLimite,
+  // en excluant ceux déjà transformés en vraie transaction pointée ce mois
+  const anLim=dateLimite.substring(0,4);
+  const moisLim=parseInt(dateLimite.substring(5,7))-1;
+  const moisAuj=new Date().getMonth();
+  const anAuj=String(new Date().getFullYear());
+  if(anLim===anAuj){
+    for(let mi=moisAuj;mi<=moisLim;mi++){
+      progActifsMois(mi,anLim).forEach(p=>{
+        // Si une transaction pointée existe déjà pour ce prog ce mois-ci, ne pas compter deux fois
+        const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&new Date(t.date).getMonth()===mi&&t.an===anLim);
+        if(dejaPointe)return;
+        const m=montantProgPour(p,anLim,mi)||0;
+        if(m<=0)return;
+        p.type==='revenu'?d+=m:d-=m;
+      });
+    }
+  }
+  return base+d;
+}
+
 // ── NAVIGATION ──
 function aller(id,btn){
   ['budget','mois','recherche','reglages'].forEach(o=>{const el=document.getElementById(`o-${o}`);if(el)el.style.display=o===id?'block':'none';});
@@ -1098,7 +1132,12 @@ function affBanner(){
   const solde=soldeAuj();const txA=E.tx.filter(t=>t.an===E.annee);
   const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);const r=rev-dep;
-  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div><div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div><button class="brec" onclick="ouvrirRecal()">⚡ Recaler le solde</button>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
+  // Solde prévisionnel à la fin du mois en cours, affiché en complément discret
+  const finMois=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).toISOString().split('T')[0];
+  const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
+  const nomMoisAuj=MOIS[new Date().getMonth()];
+  const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
+  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}<div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div><button class="brec" onclick="ouvrirRecal()">⚡ Recaler le solde</button>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
 
@@ -1982,8 +2021,13 @@ function supprimerAClasser(id){
 }
 
 function ouvrirSaisie(){
-  if(E.moisOuvert===null){
-    aller('mois');ouvrirDm(new Date().getMonth());
+  // Le formulaire de saisie vit dans la vue Mois (#o-mois) ; si on est sur une
+  // autre vue (Budget, Recherche...) il faut d'abord y basculer, peu importe
+  // l'état mémorisé de E.moisOuvert (qui peut être obsolète après navigation).
+  const vueMoisVisible=document.getElementById('o-mois')?.style.display!=='none';
+  if(!vueMoisVisible||E.moisOuvert===null){
+    aller('mois');
+    if(E.moisOuvert===null)ouvrirDm(new Date().getMonth());
   }
   document.getElementById('saisie-rapide').style.display='block';
   document.getElementById('saisie-rapide').scrollIntoView({behavior:'smooth'});
