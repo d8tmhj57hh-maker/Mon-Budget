@@ -950,13 +950,13 @@ function fermerPageAide(){fOv('ov-aide');}
 
 // ── SHEETS ──
 async function lire(p){const r=await gapi.client.sheets.spreadsheets.values.get({spreadsheetId:E.sid,range:p});return r.result.values||[];}
-async function ecrire(p,v){await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'USER_ENTERED',resource:{values:v}});}
+async function ecrire(p,v){await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'RAW',resource:{values:v}});}
 async function ajouter(o,v){
   // Utiliser A:A comme ancre pour forcer l'insertion depuis la colonne A
   await gapi.client.sheets.spreadsheets.values.append({
     spreadsheetId:E.sid,
     range:`${o}!A1`,
-    valueInputOption:'USER_ENTERED',
+    valueInputOption:'RAW',
     insertDataOption:'INSERT_ROWS',
     resource:{values:[v]}
   });
@@ -1033,10 +1033,12 @@ async function savePts(d,s){try{const rows=await lire('Soldes!A2:B');const idx=r
 function calcSolde(j){
   if(!E.pts.length)return null;
   const ref=[...E.pts].reverse().find(p=>p.date<=j);if(!ref)return null;
-  // Exclure les tx prévisionnelles (prog:id) car elles ne sont pas des mouvements réels
-  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j&&!(t.note&&t.note.startsWith('prog:')));
+  // Seules les transactions réellement pointées comptent comme de vrais mouvements
+  // d'argent (qu'elles viennent d'une saisie manuelle ou d'un élément programmé validé).
+  // Une transaction non pointée reste prévisionnelle et ne doit pas affecter le solde.
+  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j&&t.pointe);
   let d=0;
-  txp.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;t.type==='revenu'?d+=m:d-=m;});
+  txp.forEach(t=>{const m=t.montant_reel||t.montant;t.type==='revenu'?d+=m:d-=m;});
   return ref.solde+d;
 }
 function soldeAuj(){return calcSolde(today());}
@@ -1060,8 +1062,8 @@ function peuplerSels(){
   const i=document.getElementById('imp-an');if(i)i.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
 }
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
-function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCatsDepense();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
-function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCatsDepense();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
+function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
+function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
 function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=E.projets.map(p=>`<option value="${p}">`).join('');}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
@@ -1535,7 +1537,7 @@ function affCats2t(){
   const txType=E.tx.filter(t=>t.type===E2T.type);
   const freq={};
   txType.forEach(t=>{freq[t.cat]=(freq[t.cat]||0)+1;});
-  const toutesCats=E2T.type==='depense'?toutesCatsDepense():CREV;
+  const toutesCats=E2T.type==='depense'?toutesCategoriesConnues():CREV;
   // Trier par fréquence d'utilisation, les non utilisées à la fin
   const triees=[...toutesCats].sort((a,b)=>(freq[b]||0)-(freq[a]||0));
   const top9=triees.slice(0,9);
@@ -1808,7 +1810,7 @@ function ouvrirSaisieManuelle(){
 }
 let _saisieDateDefaut=null;
 function renderSaisieManuelle(infoLigne){
-  const cats=toutesCatsDepense();
+  const cats=toutesCategoriesConnues();
   const dlCats=cats.map(c=>`<option value="${c}">`).join('');
   const crevOpts=CREV.map(c=>`<option value="${c}">`).join('');
   const nbAjoutees=E.aClasser.filter(t=>t._manuelle).length;
@@ -1884,7 +1886,7 @@ function affListeAClasserMois(){
   const liste=document.getElementById('liste-a-classer-mois');
   if(!liste)return; // section pas affichée (aucune dépense à classer)
   liste.innerHTML=E.aClasser.map(t=>{
-    const cats=t.type==='revenu'?CREV:toutesCatsDepense();
+    const cats=t.type==='revenu'?CREV:toutesCategoriesConnues();
     return `<div class="ban" style="margin-bottom:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
@@ -2542,14 +2544,14 @@ async function sauvegarderPolesUI(){
 // ── IMPORT ──
 function peuplerImpCats(){
   const g=document.getElementById('gi-cats');if(!g)return;
-  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCatsDepense().map(c=>({c,t:'depense'}))];
+  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCategoriesConnues().map(c=>({c,t:'depense'}))];
   g.innerHTML=tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('');
 }
 
 function toggleImportTotaux(mi){
   const bloc=document.getElementById('bloc-import-totaux');
   if(bloc.style.display==='block'){bloc.style.display='none';bloc.innerHTML='';return;}
-  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCatsDepense().map(c=>({c,t:'depense'}))];
+  const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCategoriesConnues().map(c=>({c,t:'depense'}))];
   bloc.innerHTML=`<div class="ban" style="padding:14px">
     <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Saisissez les totaux par catégorie pour ${MOIS[mi]} ${E.annee} — pratique pour rattraper un mois passé rapidement.</p>
     <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('')}</div>
