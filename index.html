@@ -754,6 +754,15 @@ window.onload=()=>{
 
 
 function today(){return new Date().toISOString().split('T')[0];}
+// Convertit en nombre une valeur venant de Google Sheets, qu'elle soit déjà
+// numérique ou une chaîne avec virgule décimale française (ex: "183,23").
+// parseFloat() seul s'arrête à la virgule et tronque le résultat (183,23 -> 183),
+// d'où l'utilité de cette fonction partout où l'on lit un montant depuis Sheets.
+function parseNum(v){
+  if(v===null||v===undefined||v==='')return 0;
+  if(typeof v==='number')return v;
+  return parseFloat(String(v).replace(',','.'))||0;
+}
 function fmt(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n||0);}
 function fmtDec(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('v');setTimeout(()=>t.classList.remove('v'),2500);}
@@ -892,12 +901,17 @@ async function creerSheetAuto(){
 async function validerInit(){
   const s=parseFloat(document.getElementById('init-s').value);const d=document.getElementById('init-d').value;
   if(isNaN(s)||!d){toast('Remplissez solde et date');return;}
-  await savePts(d,s);
-  E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));
-  localStorage.setItem('init_fait','1');
-  document.getElementById('ec-init').style.display='none';
-  if(!localStorage.getItem('tuto_vu'))afficherTuto();
-  else lancerApp();
+  try{
+    await savePts(d,s);
+    E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));
+    localStorage.setItem('init_fait','1');
+    document.getElementById('ec-init').style.display='none';
+    if(!localStorage.getItem('tuto_vu'))afficherTuto();
+    else lancerApp();
+  }catch(e){
+    console.error('validerInit:',e);
+    toast('❌ Erreur : impossible d\'enregistrer le solde initial. Vérifiez votre connexion et réessayez.');
+  }
 }
 function lancerApp(){
   document.getElementById('ec-conn').style.display='none';document.getElementById('ec-init').style.display='none';
@@ -979,7 +993,7 @@ async function initOnglets(){
 async function chargerTout(){
   await chargerParams();
   E.tx=[];
-  for(const a of ANNEES){try{const rows=await lire(`TX_${a}!A2:J`);rows.forEach(r=>{if(r[0])E.tx.push({id:r[0],date:r[1],type:r[2],cat:r[3],projet:r[4],desc:r[5],montant:parseFloat(r[6])||0,note:r[7],pointe:r[8]==='TRUE',montant_reel:parseFloat(r[9])||null,an:a});});}catch(e){}}
+  for(const a of ANNEES){try{const rows=await lire(`TX_${a}!A2:J`);rows.forEach(r=>{if(r[0])E.tx.push({id:r[0],date:r[1],type:r[2],cat:r[3],projet:r[4],desc:r[5],montant:parseNum(r[6]),note:r[7],pointe:r[8]==='TRUE',montant_reel:r[9]?parseNum(r[9]):null,an:a});});}catch(e){}}
   // Prog : une ligne par (nom × annee × mois) → on agrège par id de base
   try{
     const rows=await lire('Prog!A2:I');
@@ -991,16 +1005,20 @@ async function chargerTout(){
       const bid=r[0].split('_m')[0];
       const recurAns=r[8]?parseInt(r[8]):0;
       if(!map[bid])map[bid]={id:bid,nom:r[1],type:r[2]||'depense',cat:r[3],actif:r[7]!=='FALSE',montantsMois:{},recurAns:0,recurAnneeRef:null};
-      const mont=parseFloat(r[6])||0;
+      const mont=parseNum(r[6]);
       if(!map[bid].montantsMois[an])map[bid].montantsMois[an]=Array(12).fill(null);
       map[bid].montantsMois[an][mi]=mont;
       if(recurAns>0){map[bid].recurAns=recurAns;map[bid].recurAnneeRef=an;}
     });
     E.prog=Object.values(map);
   }catch(e){E.prog=[];}
-  try{const rows=await lire('Soldes!A2:B');E.pts=rows.filter(r=>r[0]).map(r=>({date:r[0],solde:parseFloat(r[1])||0}));E.pts.sort((a,b)=>a.date.localeCompare(b.date));}catch(e){E.pts=[];}
-  try{const rows=await lire('Epargne!A2:N');E.epargne=rows.filter(r=>r[0]).map(r=>({livret:r[0],mois:r.slice(1,13).map(v=>v?parseFloat(v):null)}));}catch(e){E.epargne=[];}
+  try{const rows=await lire('Soldes!A2:B');E.pts=rows.filter(r=>r[0]).map(r=>({date:r[0],solde:parseNum(r[1])}));E.pts.sort((a,b)=>a.date.localeCompare(b.date));}catch(e){E.pts=[];}
+  try{const rows=await lire('Epargne!A2:N');E.epargne=rows.filter(r=>r[0]).map(r=>({livret:r[0],mois:r.slice(1,13).map(v=>v?parseNum(v):null)}));}catch(e){E.epargne=[];}
   E.projets=[...new Set(E.tx.filter(t=>t.projet).map(t=>t.projet))];majDL();
+  // Les catégories réellement utilisées (ex: dans les éléments programmés comme EDF)
+  // ne sont connues qu'une fois E.prog et POLES chargés ; on régénère donc ici
+  // les listes déroulantes qui avaient été pré-remplies trop tôt au démarrage.
+  peuplerCat();peuplerProgCat();peuplerImpCats();
 }
 
 async function chargerParams(){
@@ -1027,7 +1045,12 @@ async function sauvegarderParams(){
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
 
-async function savePts(d,s){try{const rows=await lire('Soldes!A2:B');const idx=rows.findIndex(r=>r[0]===d);if(idx>=0)await ecrire(`Soldes!A${idx+2}:B${idx+2}`,[[d,s]]);else await ajouter('Soldes',[d,s]);}catch(e){}}
+async function savePts(d,s){
+  const rows=await lire('Soldes!A2:B');
+  const idx=rows.findIndex(r=>r[0]===d);
+  if(idx>=0)await ecrire(`Soldes!A${idx+2}:B${idx+2}`,[[d,s]]);
+  else await ajouter('Soldes',[d,s]);
+}
 
 // ── SOLDE ──
 function calcSolde(j){
@@ -1083,11 +1106,17 @@ function ouvrirRecal(){document.getElementById('qs-s').value='';document.getElem
 async function saveRecal(){
   const s=parseFloat(document.getElementById('qs-s').value);const d=document.getElementById('qs-d').value;
   if(isNaN(s)||!d){toast('Remplissez tous les champs');return;}
-  const idx=E.pts.findIndex(p=>p.date===d);
-  if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
-  await savePts(d,s);
-  localStorage.setItem('init_fait','1');
-  fOv('ov-sol');affBanner();toast('Solde recalé ✓');
+  try{
+    await savePts(d,s);
+    // On ne met à jour l'état en mémoire qu'après confirmation réelle de l'écriture
+    const idx=E.pts.findIndex(p=>p.date===d);
+    if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
+    localStorage.setItem('init_fait','1');
+    fOv('ov-sol');affBanner();toast('Solde recalé ✓');
+  }catch(e){
+    console.error('saveRecal:',e);
+    toast('❌ Erreur : le solde n\'a pas pu être enregistré. Vérifiez votre connexion et réessayez.');
+  }
 }
 
 // ── VUE BUDGET (tableau annuel) ──
@@ -2726,9 +2755,15 @@ async function genererVueSheets(){
 async function recalerSolde(){
   const s=parseFloat(document.getElementById('rec-s').value);const d=document.getElementById('rec-d').value;
   if(isNaN(s)||!d){toast('Remplissez tous les champs');return;}
-  const idx=E.pts.findIndex(p=>p.date===d);
-  if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
-  await savePts(d,s);affBanner();toast('Solde recalé ✓');
+  try{
+    await savePts(d,s);
+    const idx=E.pts.findIndex(p=>p.date===d);
+    if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
+    affBanner();toast('Solde recalé ✓');
+  }catch(e){
+    console.error('recalerSolde:',e);
+    toast('❌ Erreur : le solde n\'a pas pu être enregistré. Vérifiez votre connexion et réessayez.');
+  }
 }
 </script>
 </body>
