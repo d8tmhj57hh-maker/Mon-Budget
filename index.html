@@ -794,6 +794,14 @@ function fmt(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:
 function fmtDec(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('v');setTimeout(()=>t.classList.remove('v'),2500);}
 function fOv(id){document.getElementById(id).classList.remove('v');}
+// Échappe tout texte avant injection dans le HTML, pour empêcher l'exécution
+// de code si une description, note, projet ou nom de catégorie/pôle contient
+// des caractères HTML/script (ex: <script>, onerror=...). À utiliser
+// systématiquement pour tout texte saisi par l'utilisateur affiché via innerHTML.
+function esc(s){
+  if(s===null||s===undefined)return '';
+  return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // ── AUTH ──
 function initGSI(){
@@ -1211,8 +1219,8 @@ function peuplerSels(){
   const i=document.getElementById('imp-an');if(i)i.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
 }
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
-function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${x}">${iconePourCategorie(x)} ${x}</option>`).join('');}
-function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${x}">${iconePourCategorie(x)} ${x}</option>`).join('');}
+function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${esc(x)}">${iconePourCategorie(x)} ${esc(x)}</option>`).join('');}
+function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${esc(x)}">${iconePourCategorie(x)} ${esc(x)}</option>`).join('');}
 function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=[...new Set([...E.projets,...PROJETS_DECLARES])].map(p=>`<option value="${p}">`).join('');}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
@@ -1336,7 +1344,7 @@ function affBudget(){
   h+=`<tr class="ch z-ep"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
   LIVRETS.forEach(liv=>{
     const ep=E.epargne.find(e=>e.livret===liv);
-    h+=`<tr class="z-ep cat-row" data-cat="${liv}" data-bloc="ep"><td>${liv}</td>`;
+    h+=`<tr class="z-ep cat-row" data-cat="${esc(liv)}" data-bloc="ep"><td>${esc(liv)}</td>`;
     let premier=null;let dernier=null;
     MOIS.forEach((_,i)=>{
       const v=ep?ep.mois[i]:null;
@@ -1406,8 +1414,8 @@ function affBudget(){
     h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
     const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
     if(!catsDuPole.length)return; // pôle vide cette année, on ne l'affiche pas
-    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${pole.nom}</td></tr>`;
-    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${c}" data-bloc="pole"><td>${iconePourCategorie(c)} ${c}</td>`;
+    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}</td></tr>`;
+    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
       let badgeAn='';
@@ -1418,7 +1426,7 @@ function affBudget(){
       }
       h+=`<td class="tn">${fmtDec(tot)}${badgeAn}</td></tr>`;
     });
-    let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${pole.nom}</td>`;
+    let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${esc(pole.nom)}</td>`;
     MOIS.forEach((_,i)=>{const r=catsDuPole.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
     h+=`<td class="tn">${fmtDec(totPole)}</td></tr>`;
   });
@@ -1622,7 +1630,7 @@ function affDm(mi){
       const cl=p.type==='revenu'?'rev':'dep';
       h+=`<div class="ltx prev-tx" onclick="ouvrirPointerProg('${p.id}')">
         <div class="itx pr">⏳</div>
-        <div class="inf"><div class="de it">${p.nom}</div><div class="so">${p.cat} · prévu</div></div>
+        <div class="inf"><div class="de it">${esc(p.nom)}</div><div class="so">${esc(p.cat)} · prévu</div></div>
         <div class="mtx prev-m">${fmtDec(montantProgPour(p,E.annee,mi)||0)}</div>
       </div>`;
     });
@@ -1643,7 +1651,7 @@ function affDm(mi){
         if(tC>budget)badge=`<span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">⚠️ ${pct}% du budget</span>`;
         else if(pct>=80)badge=`<span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">${pct}% du budget</span>`;
       }
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${c}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${esc(c)}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -1654,7 +1662,7 @@ function affDm(mi){
     cR.forEach(c=>{
       const txC=txM.filter(t=>t.type==='revenu'&&t.cat===c);
       const tC=txC.reduce((a,t)=>a+t.montant,0);
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${esc(c)}</span><span class="st">${fmtDec(tC)}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -1676,7 +1684,7 @@ function ltx(t){
   const cl=t.type==='revenu'?'rev':'dep';
   const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
   const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:''].filter(Boolean).join(' · ');
-  return `<div class="ltx${t.pointe?' pt':''}" onclick="ouvrirTx('${t.id}')"><div class="itx ${ty}">${ic[ty]}</div><div class="inf"><div class="de${ty==='fa'?' it':''}">${t.desc||t.cat}</div>${s?`<div class="so">${s}</div>`:''}</div><div class="mtx ${cl}">${fmtDec(m)}</div></div>`;
+  return `<div class="ltx${t.pointe?' pt':''}" onclick="ouvrirTx('${t.id}')"><div class="itx ${ty}">${ic[ty]}</div><div class="inf"><div class="de${ty==='fa'?' it':''}">${esc(t.desc||t.cat)}</div>${s?`<div class="so">${esc(s)}</div>`:''}</div><div class="mtx ${cl}">${fmtDec(m)}</div></div>`;
 }
 
 // ── POINTER UNE PROGRAMMÉE ──
@@ -1686,7 +1694,7 @@ function ouvrirPointerProg(pid){
   document.getElementById('ov-ti').textContent=p.nom;
   document.getElementById('ov-co').innerHTML=`
     <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmtDec(montantProgPour(p,E.annee,E.moisOuvert)||0)}</span></div>
-    <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
+    <div class="rd"><span class="la">Catégorie</span><span class="va">${esc(p.cat)}</span></div>
     <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>
     <p style="font-size:.72rem;color:var(--txl);margin:8px 0 0">Cette ligne est une <strong>prévision</strong>, pas encore une dépense réelle. Ajustez si besoin, puis choisissez une action ci-dessous.</p>`;
   const montPrev=montantProgPour(p,E.annee,E.moisOuvert)||0;
@@ -1695,7 +1703,7 @@ function ouvrirPointerProg(pid){
   document.getElementById('ov-da').value=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}-15`;
   const selCa=document.getElementById('ov-ca');
   const catsDisponibles=p.type==='revenu'?CREV:toutesCategoriesConnues();
-  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===p.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
+  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${esc(c)}" ${c===p.cat?'selected':''}>${iconePourCategorie(c)} ${esc(c)}</option>`).join('');
   document.getElementById('ov-pr').value='';
   document.getElementById('ov-no').value='';
   document.getElementById('bloc-pointe-ov').style.display='none';
@@ -1782,9 +1790,9 @@ function ouvrirTx(id){
   document.getElementById('ov-co').innerHTML=`
     <div class="rd"><span class="la">Montant</span><span class="va">${fmtDec(m)}</span></div>
     <div class="rd"><span class="la">Date</span><span class="va">${new Date(t.date).toLocaleDateString('fr-FR')}</span></div>
-    <div class="rd"><span class="la">Catégorie</span><span class="va">${t.cat}</span></div>
-    ${t.projet?`<div class="rd"><span class="la">Projet</span><span class="va">${t.projet}</span></div>`:''}
-    ${t.note&&!t.note.startsWith('prog:')?`<div class="rd"><span class="la">Note</span><span class="va">${t.note}</span></div>`:''}
+    <div class="rd"><span class="la">Catégorie</span><span class="va">${esc(t.cat)}</span></div>
+    ${t.projet?`<div class="rd"><span class="la">Projet</span><span class="va">${esc(t.projet)}</span></div>`:''}
+    ${t.note&&!t.note.startsWith('prog:')?`<div class="rd"><span class="la">Note</span><span class="va">${esc(t.note)}</span></div>`:''}
     <div class="rd"><span class="la">Statut</span><span class="va">${t.pointe?'✓ Réalisée':'En attente'}</span></div>`;
   document.getElementById('ov-de').value=t.desc||'';
   document.getElementById('ov-mo').value=m;
@@ -1792,7 +1800,7 @@ function ouvrirTx(id){
   // Remplir la liste de catégories selon le type de la transaction, puis sélectionner la sienne
   const selCa=document.getElementById('ov-ca');
   const catsDisponibles=t.type==='revenu'?CREV:toutesCategoriesConnues();
-  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===t.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
+  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${esc(c)}" ${c===t.cat?'selected':''}>${iconePourCategorie(c)} ${esc(c)}</option>`).join('');
   document.getElementById('ov-pr').value=t.projet||'';
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
   const blocPointe=document.getElementById('bloc-pointe-ov');
@@ -2128,14 +2136,14 @@ function affListeAClasserMois(){
     return `<div class="ban" style="margin-bottom:10px;padding:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
-          <div style="font-weight:600;font-size:.9rem">${t.desc}</div>
-          <div style="font-size:.75rem;color:var(--txl)">${t.date} · ${t.type==='revenu'?'Revenu':'Dépense'}</div>
+          <div style="font-weight:600;font-size:.9rem">${esc(t.desc)}</div>
+          <div style="font-size:.75rem;color:var(--txl)">${esc(t.date)} · ${t.type==='revenu'?'Revenu':'Dépense'}</div>
         </div>
         <div style="font-weight:700;font-size:1.05rem;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'}">${fmtDec(t.montant)}</div>
       </div>
       <select id="cat-aclasser-${t.id}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--bo);margin-bottom:8px;font-family:Inter,sans-serif">
         <option value="">Choisir une catégorie...</option>
-        ${cats.map(c=>`<option value="${c}" ${c===t.catSuggeree?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('')}
+        ${cats.map(c=>`<option value="${esc(c)}" ${c===t.catSuggeree?'selected':''}>${iconePourCategorie(c)} ${esc(c)}</option>`).join('')}
       </select>
       <div style="display:flex;gap:8px">
         <button class="bp" style="flex:1;padding:9px;font-size:.85rem" onclick="validerAClasser('${t.id}')">✓ Valider</button>
@@ -2303,8 +2311,8 @@ function affProg(){
     return `<div class="cp3" style="flex-wrap:wrap;gap:8px">
       <button class="tg ${p.actif?'on':''}" onclick="togProg('${p.id}')"></button>
       <div class="ip" style="flex:1;min-width:120px" onclick="ouvrirEditProg('${p.id}')">
-        <div class="np">${p.nom}</div>
-        <div class="dp">${p.cat} · ${resume}</div>
+        <div class="np">${esc(p.nom)}</div>
+        <div class="dp">${esc(p.cat)} · ${resume}</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div style="font-weight:600;font-size:.85rem;color:${p.type==='revenu'?'var(--ve)':'var(--ro)'};">${p.type==='revenu'?'+':'−'}</div>
@@ -2490,7 +2498,7 @@ function affEpargne(){
   let h='';
   LIVRETS.forEach(liv=>{
     const ep=E.epargne.find(e=>e.livret===liv);
-    h+=`<div style="margin-bottom:10px"><p style="font-size:.78rem;font-weight:600;margin-bottom:6px">${liv}</p>`;
+    h+=`<div style="margin-bottom:10px"><p style="font-size:.78rem;font-weight:600;margin-bottom:6px">${esc(liv)}</p>`;
     h+=`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">`;
     MOIS.forEach((m,i)=>{const v=ep?ep.mois[i]:null;h+=`<div style="text-align:center;padding:5px 3px;background:${v?'var(--vec)':'rgba(0,0,0,.03)'};border-radius:7px"><div style="font-size:.6rem;color:var(--txl)">${m.substring(0,3)}</div><div style="font-weight:600;font-size:.75rem;color:${v?'var(--ve)':'var(--txl)'};">${v?fmtDec(v):'—'}</div></div>`;});
     h+=`</div></div>`;
@@ -2516,7 +2524,7 @@ function affFormEp(mi){
   LIVRETS.forEach((liv,i)=>{
     const ep=E.epargne.find(e=>e.livret===liv);
     const v=ep&&ep.mois[mi]!==null&&ep.mois[mi]!==undefined?ep.mois[mi]:'';
-    html+=`<div class="ch3 cm3"><label>${liv}</label><input type="number" id="ep-inp-${i}" step="0.01" inputmode="decimal" value="${v}" placeholder="Ex : 8235.26"/></div>`;
+    html+=`<div class="ch3 cm3"><label>${esc(liv)}</label><input type="number" id="ep-inp-${i}" step="0.01" inputmode="decimal" value="${v}" placeholder="Ex : 8235.26"/></div>`;
   });
   html+=`<div id="msg-ep" style="display:none;border-radius:10px;padding:10px 13px;font-size:.82rem;margin-bottom:10px;font-weight:500;"></div>`;
   html+=`<button class="bp" id="btn-save-ep" onclick="saveEp(parseInt(document.getElementById('ep-mois').value),document.getElementById('ep-annee').value)">Enregistrer</button>`;
@@ -2576,7 +2584,7 @@ function chercher(q){
   if(tD>0)h+=`<span class="bt" style="background:var(--ro);color:#fff">Dépenses : ${fmtDec(tD)}</span>`;
   if(tR>0)h+=`<span class="bt" style="background:var(--ve);color:#fff">Revenus : ${fmtDec(tR)}</span>`;
   h+=`<div style="margin-top:12px">`;
-  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${t.desc||t.cat} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${s}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
+  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${esc(t.desc||t.cat)} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${esc(s)}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
   h+=`</div>`;el.innerHTML=h;
 }
 
@@ -2674,7 +2682,7 @@ function affProjets(){
     }
     return `<div style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;margin-bottom:6px">
       <div style="flex:1">
-        <div style="font-size:.85rem;font-weight:500">${pj}${badge}</div>
+        <div style="font-size:.85rem;font-weight:500">${esc(pj)}${badge}</div>
         <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de dépense':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}</div>
       </div>
       <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:92px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
@@ -2691,15 +2699,15 @@ function affPoles(){
   let h=POLES.map((p,i)=>`
     <div class="ban" style="padding:13px;margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input type="text" value="${p.nom}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
+        <input type="text" value="${esc(p.nom)}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
         <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
       </div>
       <div class="liste-cats-pole" data-pole="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
           <div style="display:flex;align-items:center;gap:8px">
             <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
-            <input type="text" value="${iconePourCategorie(c)}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
-            <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
+            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
+            <span style="flex:1">${esc(c)}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
             <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
             <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
           </div>
@@ -2714,7 +2722,7 @@ function affPoles(){
         <button onclick="ajouterCatAuPole(${i},document.getElementById('champ-nouvelle-cat-${i}').value);document.getElementById('champ-nouvelle-cat-${i}').value=''" style="padding:9px 14px;border-radius:9px;border:none;background:var(--bl);color:var(--wf);font-size:.82rem;cursor:pointer">Ajouter</button>
       </div>
     </div>`).join('');
-  h+=`<datalist id="suggestions-cats">${toutesCats.map(c=>`<option value="${c}">`).join('')}</datalist>`;
+  h+=`<datalist id="suggestions-cats">${toutesCats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`;
 
   // Catégories non assignées à aucun pôle = "Autres / Non classé"
   const catsAssignees=new Set();
@@ -2727,8 +2735,8 @@ function affPoles(){
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px">
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="text" value="${iconePourCategorie(c)}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
-            <span style="flex:1;font-size:.82rem">${c}</span>
+            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
+            <span style="flex:1;font-size:.82rem">${esc(c)}</span>
             <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
             <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
           </div>
@@ -2737,7 +2745,7 @@ function affPoles(){
             <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel)" onchange="definirBudgetCatAn('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
             <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none;flex:1;min-width:120px">
               <option value="">→ Choisir un pôle</option>
-              ${POLES.map((p,i)=>`<option value="${i}">${p.nom}</option>`).join('')}
+              ${POLES.map((p,i)=>`<option value="${i}">${esc(p.nom)}</option>`).join('')}
             </select>
           </div>
         </div>`).join('')}
@@ -2899,7 +2907,7 @@ async function sauvegarderPolesUI(){
 function peuplerImpCats(){
   const g=document.getElementById('gi-cats');if(!g)return;
   const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCategoriesConnues().map(c=>({c,t:'depense'}))];
-  g.innerHTML=tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('');
+  g.innerHTML=tout.map(({c,t})=>`<div class="cii"><label>${esc(c)} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${esc(c)}" data-type="${t}"/></div>`).join('');
 }
 
 function toggleImportTotaux(mi){
@@ -2908,7 +2916,7 @@ function toggleImportTotaux(mi){
   const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCategoriesConnues().map(c=>({c,t:'depense'}))];
   bloc.innerHTML=`<div class="ban" style="padding:14px">
     <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Saisissez les totaux par catégorie pour ${MOIS[mi]} ${E.annee} — pratique pour rattraper un mois passé rapidement.</p>
-    <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${c} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${c}" data-type="${t}"/></div>`).join('')}</div>
+    <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${esc(c)} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${esc(c)}" data-type="${t}"/></div>`).join('')}</div>
     <button class="bp" style="margin-top:10px" onclick="importerMoisVue(${mi})">Importer ${MOIS[mi]}</button>
   </div>`;
   bloc.style.display='block';
