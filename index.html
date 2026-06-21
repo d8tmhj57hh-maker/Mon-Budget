@@ -457,10 +457,17 @@
       <!-- PÔLES DE DÉPENSES -->
       <div class="si">
         <h3>🗂️ Pôles de dépenses</h3>
-        <p>Regroupez vos catégories par pôle de vie (ex : Maison Migennes, Voiture Suzuki...). Une catégorie par ligne dans chaque pôle. Les catégories non assignées apparaîtront automatiquement dans "Autres / Non classé". Le champ "Budget/mois" est optionnel : c'est un plafond qui se réinitialise chaque mois et n'est pas lié au total annuel affiché dans le tableau Budget.</p>
+        <p>Regroupez vos catégories par pôle de vie (ex : Maison Migennes, Voiture Suzuki...). Une catégorie par ligne dans chaque pôle. Les catégories non assignées apparaîtront automatiquement dans "Autres / Non classé". Les budgets sont optionnels : "Budget/mois" se réinitialise chaque mois, "Budget/an" est un plafond annuel librement réparti sur les 12 mois (utile pour les catégories qui varient fort selon la saison, ex : Cadeaux).</p>
         <div id="liste-poles"></div>
         <button class="bs2" onclick="ajouterPole()">+ Ajouter un pôle</button>
         <button class="bp" style="margin-top:10px" onclick="sauvegarderPolesUI()">💾 Enregistrer les pôles</button>
+      </div>
+
+      <!-- BUDGETS PAR PROJET -->
+      <div class="si">
+        <h3>🎯 Budgets par projet</h3>
+        <p>Définissez un budget total pour un projet (ex : "Salle de bain", "Vacances") — toutes dates et catégories de dépenses confondues. Les projets apparaissent ici dès que vous en renseignez un lors d'une saisie.</p>
+        <div id="liste-projets"></div>
       </div>
 
       <div class="si">
@@ -596,6 +603,8 @@ const DEF_LIVRETS=["Livret d'Épargne Populaire","Livret A","Compte Parts Social
 let POLES=JSON.parse(JSON.stringify(DEF_POLES)); // [{nom, cats:[...]}]
 let CATS_MASQUEES=[]; // catégories volontairement masquées de la gestion des pôles (historique conservé)
 let BUDGETS_CAT={}; // budget mensuel optionnel par catégorie de dépense, ex: {"Alimentation":200}
+let BUDGETS_CAT_AN={}; // budget annuel optionnel par catégorie, ex: {"Cadeaux":600} — répartition libre sur l'année
+let BUDGETS_PROJET={}; // budget total optionnel par projet, ex: {"Salle de bain":2000} — toutes dates et catégories confondues
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
@@ -987,6 +996,10 @@ async function chargerParams(){
     // Budgets par catégorie : stockés comme "Catégorie:montant" séparés par |
     const b=get('BUDGETS_CAT');
     if(b){BUDGETS_CAT={};b.forEach(paire=>{const [cat,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(cat&&!isNaN(m)&&m>0)BUDGETS_CAT[cat]=m;});}
+    const ba=get('BUDGETS_CAT_AN');
+    if(ba){BUDGETS_CAT_AN={};ba.forEach(paire=>{const [cat,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(cat&&!isNaN(m)&&m>0)BUDGETS_CAT_AN[cat]=m;});}
+    const bp=get('BUDGETS_PROJET');
+    if(bp){BUDGETS_PROJET={};bp.forEach(paire=>{const [pj,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(pj&&!isNaN(m)&&m>0)BUDGETS_PROJET[pj]=m;});}
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -1001,7 +1014,9 @@ async function chargerParams(){
 }
 async function sauvegarderParams(){
   const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr]];
+  const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
+  const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1068,7 +1083,7 @@ function aller(id,btn){
   if(btn)btn.classList.add('a');
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
-  if(id==='reglages'){affEpargne();affProg();remplirParams();}
+  if(id==='reglages'){affEpargne();affProg();affProjets();remplirParams();}
   if(id==='mois'&&!E.moisOuvert){affGrille();}
 }
 
@@ -1244,7 +1259,14 @@ function affBudget(){
     h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${pole.nom}</td></tr>`;
     catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${c}" data-bloc="pole"><td>${c}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
-      h+=`<td class="tn">${fmtDec(tot)}</td></tr>`;
+      const budgetAn=BUDGETS_CAT_AN[c];
+      let badgeAn='';
+      if(budgetAn){
+        const pctAn=Math.round((tot/budgetAn)*100);
+        if(tot>budgetAn)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:var(--ro)" title="Dépasse le budget annuel de ${fmtDec(budgetAn)}">⚠️${pctAn}%</span>`;
+        else if(pctAn>=80)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:#b8762e" title="Budget annuel : ${fmtDec(budgetAn)}">${pctAn}%</span>`;
+      }
+      h+=`<td class="tn">${fmtDec(tot)}${badgeAn}</td></tr>`;
     });
     let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${pole.nom}</td>`;
     MOIS.forEach((_,i)=>{const r=catsDuPole.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
@@ -2307,6 +2329,48 @@ async function definirBudgetCat(cat,valeur){
   affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
 }
 
+async function definirBudgetCatAn(cat,valeur){
+  const m=parseFloat(valeur);
+  if(!valeur||isNaN(m)||m<=0)delete BUDGETS_CAT_AN[cat];
+  else BUDGETS_CAT_AN[cat]=m;
+  await sauvegarderParams();
+  affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+}
+
+async function definirBudgetProjet(projet,valeur){
+  const m=parseFloat(valeur);
+  if(!valeur||isNaN(m)||m<=0)delete BUDGETS_PROJET[projet];
+  else BUDGETS_PROJET[projet]=m;
+  await sauvegarderParams();
+  affProjets();
+}
+
+function affProjets(){
+  const el=document.getElementById('liste-projets');
+  if(!el)return;
+  if(!E.projets.length){
+    el.innerHTML=`<p style="font-size:.78rem;color:var(--txl);font-style:italic">Aucun projet pour l'instant. Renseignez le champ "Projet" en ajoutant une dépense pour en créer un.</p>`;
+    return;
+  }
+  el.innerHTML=E.projets.map(pj=>{
+    const tot=E.tx.filter(t=>t.projet===pj&&t.type==='depense').reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+    const budget=BUDGETS_PROJET[pj];
+    let badge='';
+    if(budget){
+      const pct=Math.round((tot/budget)*100);
+      if(tot>budget)badge=` <span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">⚠️ ${pct}%</span>`;
+      else if(pct>=80)badge=` <span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">${pct}%</span>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:.85rem;font-weight:500">${pj}${badge}</div>
+        <div style="font-size:.72rem;color:var(--txl)">Dépensé : ${fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}</div>
+      </div>
+      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:92px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
+    </div>`;
+  }).join('');
+}
+
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
   const toutesCats=toutesCategoriesConnues();
@@ -2319,12 +2383,17 @@ function affPoles(){
         <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
       </div>
       <div class="liste-cats-pole" data-pole="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-        ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
-          <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
-          <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
-          <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — par mois, sans lien avec le total annuel du tableau" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:78px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right;flex-shrink:0"/>
-          <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-          <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+        ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
+            <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding-left:24px">
+            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel) — librement réparti sur les 12 mois" onchange="definirBudgetCatAn('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+          </div>
         </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
       </div>
       <div style="display:flex;gap:8px">
@@ -2343,15 +2412,20 @@ function affPoles(){
       <p style="font-weight:600;font-size:.875rem;margin-bottom:10px">📥 Autres / Non classé</p>
       <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez un pôle pour chaque catégorie ci-dessous, ou masquez-la si vous ne l'utilisez plus (son historique reste intact).</p>
       <div style="display:flex;flex-direction:column;gap:8px">
-        ${nonClassees.map(c=>`<div style="display:flex;align-items:center;gap:8px">
-          <span style="flex:1;font-size:.82rem">${c}</span>
-          <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — par mois, sans lien avec le total annuel du tableau" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:78px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right;flex-shrink:0"/>
-          <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-          <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
-          <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none">
-            <option value="">→ Choisir un pôle</option>
-            ${POLES.map((p,i)=>`<option value="${i}">${p.nom}</option>`).join('')}
-          </select>
+        ${nonClassees.map(c=>`<div style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="flex:1;font-size:.82rem">${c}</span>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel)" onchange="definirBudgetCatAn('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none;flex:1;min-width:120px">
+              <option value="">→ Choisir un pôle</option>
+              ${POLES.map((p,i)=>`<option value="${i}">${p.nom}</option>`).join('')}
+            </select>
+          </div>
         </div>`).join('')}
       </div>
     </div>`;
