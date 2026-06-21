@@ -368,6 +368,7 @@
       </div>
       <div class="dm" id="dm">
         <button class="bret" onclick="fermerDm()">← Tous les mois</button>
+        <p style="text-align:center;font-size:.7rem;color:var(--txl);margin:2px 0 8px">👈 Glissez pour changer de mois 👉</p>
         <div id="cdm"></div>
         <!-- Saisie rapide intégrée -->
         <div class="saisie-rapide" id="saisie-rapide" style="display:none">
@@ -602,6 +603,55 @@ const DEF_POLES=[
 ];
 const DEF_REV=["Salaire","Prime d'activité","Vente d'objets","Aide famille","Virements internes","Autres revenus"];
 const DEF_LIVRETS=["Livret d'Épargne Populaire","Livret A","Compte Parts Sociales"];
+
+// Icônes par catégorie : détection automatique par mots-clés (insensible à la casse/accents),
+// personnalisable depuis Réglages → Pôles de dépenses. ICONES_CAT_PERSO prime toujours
+// sur la détection automatique si l'utilisateur a explicitement choisi une icône.
+let ICONES_CAT_PERSO={};
+const REGLES_ICONES_CAT=[
+  [['alimentation','courses','epicerie'],'🍎'],
+  [['edf','electric','energie'],'💡'],
+  [['eau','assainissement'],'💧'],
+  [['gaz'],'🔥'],
+  [['logement','loyer','habitation'],'🏠'],
+  [['transport','essence','carburant','peage'],'⛽'],
+  [['voiture','auto','vehicule'],'🚗'],
+  [['assurance'],'🛡️'],
+  [['sante','medecin','pharmacie','mutuelle'],'💊'],
+  [['restaurant','bar'],'🍽️'],
+  [['loisir','musique'],'🎵'],
+  [['sport'],'⚽'],
+  [['vetement','habillement'],'👕'],
+  [['bricolage','jardin'],'🔧'],
+  [['esthetique','coiffure','beaute'],'💇'],
+  [['vacances','voyage'],'✈️'],
+  [['cadeau'],'🎁'],
+  [['spectacle','concert','cinema'],'🎭'],
+  [['impot','taxe'],'📋'],
+  [['abonnement','cotisation'],'📱'],
+  [['banque','frais bancaire'],'🏦'],
+  [['internet','sosh','box','telephon','forfait'],'📶'],
+  [['salaire','paie','paye'],'💰'],
+  [['prime'],'⭐'],
+  [['epargne','livret'],'🐷'],
+  [['enfant','ecole','scolaire'],'🎒'],
+  [['animal','veterinaire'],'🐾'],
+];
+function iconePourCategorie(cat){
+  if(ICONES_CAT_PERSO[cat])return ICONES_CAT_PERSO[cat];
+  const d=(cat||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  for(const [mots,emoji] of REGLES_ICONES_CAT){
+    if(mots.some(m=>d.includes(m)))return emoji;
+  }
+  return '🔸'; // icône neutre par défaut, pour rester cohérent visuellement sans deviner à tort
+}
+async function definirIconeCategorie(cat,emoji){
+  emoji=(emoji||'').trim();
+  if(!emoji)delete ICONES_CAT_PERSO[cat];
+  else ICONES_CAT_PERSO[cat]=emoji;
+  await sauvegarderParams();
+  affBudget();affPoles();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+}
 
 let POLES=JSON.parse(JSON.stringify(DEF_POLES)); // [{nom, cats:[...]}]
 let CATS_MASQUEES=[]; // catégories volontairement masquées de la gestion des pôles (historique conservé)
@@ -891,9 +941,9 @@ function lancerApp(){
 // ── TUTORIEL ──
 const TUTO_SLIDES=[
   {emoji:'👋',titre:'Bienvenue dans Mon Budget',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases, une idée par écran. Vous pourrez le revoir à tout moment depuis Réglages → "🎬 Revoir le tutoriel".</p>`},
-  {emoji:'📅',titre:'Les 4 onglets, en bas de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
+  {emoji:'📅',titre:'Les 4 onglets, en haut de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
   {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
-  {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p>`},
+  {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p><p>💡 Astuce : dans la vue Mois, glissez le doigt vers la gauche ou la droite pour passer directement au mois précédent ou suivant.</p>`},
   {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Reste au total" indique votre marge</li></ul><p>Vous organisez vos pôles depuis Réglages → Pôles de dépenses.</p>`},
   {emoji:'🎯',titre:'Surveiller un budget',html:`<p>Pour une catégorie qui vous tient à cœur (ex : "Alimentation"), vous pouvez fixer un budget maximum, par mois ou par an, depuis Réglages → Pôles de dépenses.</p><p>Dès que vous approchez ou dépassez ce montant, un petit badge coloré apparaît automatiquement sur la catégorie, dans la vue Mois — sans rien à calculer vous-même.</p>`},
   {emoji:'🔁',titre:'Les dépenses qui reviennent chaque mois',html:`<p>Pour vos charges régulières (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages → Programmées.</p><p>Chaque mois, elle apparaît automatiquement, et vous n'avez qu'à la "pointer" une fois le prélèvement réellement effectué.</p><p>Pour une dépense qui revient tous les 2 ou 3 ans (ex : le contrôle technique), cochez "Se répète tous les X ans" — elle réapparaîtra seule, sans jamais la ressaisir.</p>`},
@@ -1013,6 +1063,8 @@ async function chargerParams(){
     if(bp){BUDGETS_PROJET={};bp.forEach(paire=>{const [pj,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(pj&&!isNaN(m)&&m>0)BUDGETS_PROJET[pj]=m;});}
     const pd=get('PROJETS_DECLARES');
     if(pd)PROJETS_DECLARES=pd;
+    const ic=get('ICONES_CAT_PERSO');
+    if(ic){ICONES_CAT_PERSO={};ic.forEach(paire=>{const idx=paire.indexOf(':');if(idx<0)return;const cat=paire.slice(0,idx),emoji=paire.slice(idx+1);if(cat&&emoji)ICONES_CAT_PERSO[cat]=emoji;});}
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -1029,7 +1081,8 @@ async function sauvegarderParams(){
   const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')]];
+  const iconesStr=Object.entries(ICONES_CAT_PERSO).map(([c,e])=>`${c}:${e}`).join('|');
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['ICONES_CAT_PERSO',iconesStr]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1108,8 +1161,8 @@ function peuplerSels(){
   const i=document.getElementById('imp-an');if(i)i.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
 }
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
-function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
-function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
+function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${x}">${iconePourCategorie(x)} ${x}</option>`).join('');}
+function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${x}">${iconePourCategorie(x)} ${x}</option>`).join('');}
 function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=[...new Set([...E.projets,...PROJETS_DECLARES])].map(p=>`<option value="${p}">`).join('');}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
@@ -1269,7 +1322,7 @@ function affBudget(){
   h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
   const totRevMois=Array(12).fill(0);
-  cR.forEach(cat=>{let tot=0;h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${cat}</td>`;
+  cR.forEach(cat=>{let tot=0;h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}</td>`;
     MOIS.forEach((_,i)=>{
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
@@ -1300,7 +1353,7 @@ function affBudget(){
     const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
     if(!catsDuPole.length)return; // pôle vide cette année, on ne l'affiche pas
     h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${pole.nom}</td></tr>`;
-    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${c}" data-bloc="pole"><td>${c}</td>`;
+    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${c}" data-bloc="pole"><td>${iconePourCategorie(c)} ${c}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
       let badgeAn='';
@@ -1393,12 +1446,59 @@ function ouvrirDm(mi){
   document.getElementById('gv').style.display='none';
   document.getElementById('dm').classList.add('v');
   affDm(mi);
+  initSwipeMois();
   // Pré-remplir la date de saisie rapide sur ce mois
   const an=parseInt(E.annee);const d=new Date();
   if(d.getFullYear()===an&&d.getMonth()===mi)document.getElementById('s-da').value=today();
   else document.getElementById('s-da').value=`${E.annee}-${String(mi+1).padStart(2,'0')}-01`;
 }
 function fermerDm(){E.moisOuvert=null;document.getElementById('dm').classList.remove('v');document.getElementById('gv').style.display='block';fermerSaisie();}
+
+// Navigation par swipe entre les mois (vue Mois). En bout d'année, enchaîne
+// automatiquement sur Décembre de l'année précédente ou Janvier de la suivante,
+// si cette année existe dans la plage gérée par l'application.
+function moisAdjacent(direction){
+  if(E.moisOuvert===null)return;
+  let mi=E.moisOuvert+direction;
+  let an=parseInt(E.annee);
+  if(mi<0){
+    mi=11;an--;
+  } else if(mi>11){
+    mi=0;an++;
+  }
+  const anStr=String(an);
+  if(an!==parseInt(E.annee)){
+    if(!ANNEES.includes(anStr))return; // hors plage gérée, on ne fait rien
+    E.annee=anStr;localStorage.setItem('annee',anStr);
+    refresh();
+  }
+  ouvrirDm(mi);
+}
+function moisPrecedent(){moisAdjacent(-1);}
+function moisSuivant(){moisAdjacent(1);}
+
+// Détection du geste de swipe horizontal (tactile) sur la zone de détail du mois
+let _swipeStartX=null,_swipeStartY=null;
+function initSwipeMois(){
+  const zone=document.getElementById('cdm');
+  if(!zone||zone.dataset.swipeInit)return; // évite les doublons d'écouteur
+  zone.dataset.swipeInit='1';
+  zone.addEventListener('touchstart',e=>{
+    _swipeStartX=e.touches[0].clientX;
+    _swipeStartY=e.touches[0].clientY;
+  },{passive:true});
+  zone.addEventListener('touchend',e=>{
+    if(_swipeStartX===null)return;
+    const dx=e.changedTouches[0].clientX-_swipeStartX;
+    const dy=e.changedTouches[0].clientY-_swipeStartY;
+    _swipeStartX=null;
+    // Seuil de 60px et geste majoritairement horizontal, pour ne pas interférer
+    // avec le défilement vertical normal de la liste des transactions.
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5){
+      if(dx>0)moisPrecedent();else moisSuivant();
+    }
+  },{passive:true});
+}
 
 function affDm(mi){
   const txM=E.tx.filter(t=>t.an===E.annee&&new Date(t.date).getMonth()===mi);
@@ -1479,7 +1579,7 @@ function affDm(mi){
         if(tC>budget)badge=`<span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">⚠️ ${pct}% du budget</span>`;
         else if(pct>=80)badge=`<span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">${pct}% du budget</span>`;
       }
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${c}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -1490,7 +1590,7 @@ function affDm(mi){
     cR.forEach(c=>{
       const txC=txM.filter(t=>t.type==='revenu'&&t.cat===c);
       const tC=txC.reduce((a,t)=>a+t.montant,0);
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -1554,7 +1654,7 @@ function ouvrirTx(id){
   // Remplir la liste de catégories selon le type de la transaction, puis sélectionner la sienne
   const selCa=document.getElementById('ov-ca');
   const catsDisponibles=t.type==='revenu'?CREV:toutesCategoriesConnues();
-  selCa.innerHTML=catsDisponibles.map(c=>`<option ${c===t.cat?'selected':''}>${c}</option>`).join('');
+  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===t.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
   document.getElementById('ov-pr').value=t.projet||'';
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
   const btn=document.getElementById('ov-btn');
@@ -1887,7 +1987,7 @@ function affListeAClasserMois(){
       </div>
       <select id="cat-aclasser-${t.id}" style="width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--bo);margin-bottom:8px;font-family:Inter,sans-serif">
         <option value="">Choisir une catégorie...</option>
-        ${cats.map(c=>`<option value="${c}" ${c===t.catSuggeree?'selected':''}>${c}</option>`).join('')}
+        ${cats.map(c=>`<option value="${c}" ${c===t.catSuggeree?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('')}
       </select>
       <div style="display:flex;gap:8px">
         <button class="bp" style="flex:1;padding:9px;font-size:.85rem" onclick="validerAClasser('${t.id}')">✓ Valider</button>
@@ -2448,6 +2548,7 @@ function affPoles(){
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
           <div style="display:flex;align-items:center;gap:8px">
             <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
+            <input type="text" value="${iconePourCategorie(c)}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
             <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
             <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
@@ -2476,6 +2577,7 @@ function affPoles(){
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px">
           <div style="display:flex;align-items:center;gap:8px">
+            <input type="text" value="${iconePourCategorie(c)}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1;font-size:.82rem">${c}</span>
             <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
             <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
