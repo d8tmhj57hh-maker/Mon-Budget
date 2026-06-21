@@ -685,7 +685,7 @@ function poleDeCategorie(cat){
 let E={
   sid:localStorage.getItem('sid')||'',
   annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),
-  tx:[],prog:[],pts:[],epargne:[],projets:[],txc:null,tc:null,type:'depense',moisOuvert:null
+  tx:[],prog:[],pts:[],epargne:[],projets:[],txc:null,tc:null,type:'depense',moisOuvert:null,gtoken:null
 };
 
 // Fonctions cookies persistants (365 jours)
@@ -815,7 +815,11 @@ function initGSI(){
       }
       return;
     }
-    localStorage.setItem('gtoken',r.access_token);
+    // Le token n'est plus persisté dans localStorage (risque si lu par un script
+    // tiers) : il reste seulement en mémoire pour la session en cours. Au prochain
+    // lancement de l'app, une reconnexion silencieuse Google (cookie de session
+    // Google, pas localStorage) redonnera un token frais sans action de l'utilisateur.
+    E.gtoken=r.access_token;
     gapi.client.setToken({access_token:r.access_token});
     if(E.sid){
       await demarrer();
@@ -827,14 +831,9 @@ function initGSI(){
 }
 async function initGAPI(){
   await gapi.client.init({discoveryDocs:['https://sheets.googleapis.com/$discovery/rest?version=v4']});
-  const t=localStorage.getItem('gtoken');
-  // Essayer avec le token existant
-  if(t&&E.sid){
-    gapi.client.setToken({access_token:t});
-    try{await demarrer();return;}
-    catch(e){localStorage.removeItem('gtoken');}
-  }
-  // Tentative de reconnexion silencieuse
+  // Plus de token persisté à réutiliser : on tente directement la reconnexion
+  // silencieuse Google (basée sur la session Google du navigateur), qui redonne
+  // un token sans demander de re-cliquer "Se connecter avec Google".
   if(E.tc){
     try{
       E.tc.requestAccessToken({prompt:''});
@@ -871,7 +870,7 @@ async function demarrer(){
 }
 function afficherEcranNouvelUtilisateur(){
   // Récupérer l'email depuis le token Google
-  const token=localStorage.getItem('gtoken');
+  const token=E.gtoken;
   if(token){
     fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:'Bearer '+token}})
       .then(r=>r.json()).then(info=>{
@@ -896,7 +895,7 @@ async function creerSheetAuto(){
     const resp=await fetch('https://sheets.googleapis.com/v4/spreadsheets',{
       method:'POST',
       headers:{
-        'Authorization':'Bearer '+localStorage.getItem('gtoken'),
+        'Authorization':'Bearer '+E.gtoken,
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
