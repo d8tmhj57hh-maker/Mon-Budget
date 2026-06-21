@@ -466,7 +466,11 @@
       <!-- BUDGETS PAR PROJET -->
       <div class="si">
         <h3>🎯 Budgets par projet</h3>
-        <p>Définissez un budget total pour un projet (ex : "Salle de bain", "Vacances") — toutes dates et catégories de dépenses confondues. Les projets apparaissent ici dès que vous en renseignez un lors d'une saisie.</p>
+        <p>Définissez un budget total pour un projet (ex : "Salle de bain", "Vacances") — toutes dates et catégories de dépenses confondues. Créez un projet à l'avance pour planifier son budget avant même la première dépense, ou laissez-le apparaître automatiquement dès qu'une dépense le mentionne.</p>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="text" id="nouveau-projet-nom" placeholder="Nom du nouveau projet" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.85rem;outline:none"/>
+          <button class="bs2" style="margin-top:0;white-space:nowrap" onclick="creerProjetAvance()">+ Créer</button>
+        </div>
         <div id="liste-projets"></div>
       </div>
 
@@ -605,6 +609,7 @@ let CATS_MASQUEES=[]; // catégories volontairement masquées de la gestion des 
 let BUDGETS_CAT={}; // budget mensuel optionnel par catégorie de dépense, ex: {"Alimentation":200}
 let BUDGETS_CAT_AN={}; // budget annuel optionnel par catégorie, ex: {"Cadeaux":600} — répartition libre sur l'année
 let BUDGETS_PROJET={}; // budget total optionnel par projet, ex: {"Salle de bain":2000} — toutes dates et catégories confondues
+let PROJETS_DECLARES=[]; // projets créés à l'avance depuis Réglages, avant toute dépense réelle
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
@@ -1000,6 +1005,8 @@ async function chargerParams(){
     if(ba){BUDGETS_CAT_AN={};ba.forEach(paire=>{const [cat,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(cat&&!isNaN(m)&&m>0)BUDGETS_CAT_AN[cat]=m;});}
     const bp=get('BUDGETS_PROJET');
     if(bp){BUDGETS_PROJET={};bp.forEach(paire=>{const [pj,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(pj&&!isNaN(m)&&m>0)BUDGETS_PROJET[pj]=m;});}
+    const pd=get('PROJETS_DECLARES');
+    if(pd)PROJETS_DECLARES=pd;
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -1016,7 +1023,7 @@ async function sauvegarderParams(){
   const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr]];
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1097,7 +1104,7 @@ function peuplerSels(){
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
 function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
 function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option>${x}</option>`).join('');}
-function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=E.projets.map(p=>`<option value="${p}">`).join('');}
+function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=[...new Set([...E.projets,...PROJETS_DECLARES])].map(p=>`<option value="${p}">`).join('');}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
 
@@ -2345,18 +2352,36 @@ async function definirBudgetProjet(projet,valeur){
   affProjets();
 }
 
+async function creerProjetAvance(){
+  const nom=(document.getElementById('nouveau-projet-nom').value||'').trim();
+  if(!nom){toast('Indiquez un nom de projet');return;}
+  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
+  if(tousProjets.includes(nom)){toast('Ce projet existe déjà');return;}
+  PROJETS_DECLARES.push(nom);
+  await sauvegarderParams();
+  document.getElementById('nouveau-projet-nom').value='';
+  majDL();affProjets();
+  toast('✓ Projet "'+nom+'" créé');
+}
+
 function affProjets(){
   const el=document.getElementById('liste-projets');
   if(!el)return;
-  if(!E.projets.length){
-    el.innerHTML=`<p style="font-size:.78rem;color:var(--txl);font-style:italic">Aucun projet pour l'instant. Renseignez le champ "Projet" en ajoutant une dépense pour en créer un.</p>`;
+  // Fusion : projets déjà vus dans des dépenses + projets déclarés à l'avance, sans doublon
+  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
+  if(!tousProjets.length){
+    el.innerHTML=`<p style="font-size:.78rem;color:var(--txl);font-style:italic">Aucun projet pour l'instant. Créez-en un ci-dessous, ou renseignez le champ "Projet" en ajoutant une dépense.</p>`;
     return;
   }
-  el.innerHTML=E.projets.map(pj=>{
-    const tot=E.tx.filter(t=>t.projet===pj&&t.type==='depense').reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+  el.innerHTML=tousProjets.map(pj=>{
+    const txProjet=E.tx.filter(t=>t.projet===pj&&t.type==='depense');
+    const tot=txProjet.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+    const aVenir=txProjet.length===0;
     const budget=BUDGETS_PROJET[pj];
     let badge='';
-    if(budget){
+    if(aVenir){
+      badge=` <span style="background:rgba(26,47,74,.08);color:var(--txl);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">🕐 À venir</span>`;
+    } else if(budget){
       const pct=Math.round((tot/budget)*100);
       if(tot>budget)badge=` <span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">⚠️ ${pct}%</span>`;
       else if(pct>=80)badge=` <span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">${pct}%</span>`;
@@ -2364,7 +2389,7 @@ function affProjets(){
     return `<div style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;margin-bottom:6px">
       <div style="flex:1">
         <div style="font-size:.85rem;font-weight:500">${pj}${badge}</div>
-        <div style="font-size:.72rem;color:var(--txl)">Dépensé : ${fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}</div>
+        <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de dépense':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}</div>
       </div>
       <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:92px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
     </div>`;
