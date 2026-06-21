@@ -6,7 +6,31 @@
   <title>Mon Budget</title>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#1a2f4a"/>
+  <link rel="manifest" href="manifest.json"/>
   <meta name="apple-mobile-web-app-title" content="Mon Budget"/>
+  <!-- Content-Security-Policy : seconde barrière de sécurité. L'application utilise
+       énormément de gestionnaires inline (onclick="...") et un script inline unique,
+       ce qui impose 'unsafe-inline' pour script-src (sans quoi l'app ne fonctionnerait
+       plus du tout) — cette CSP ne bloque donc pas à elle seule l'exécution d'un script
+       injecté, mais elle apporte une protection réelle complémentaire à l'échappement
+       HTML déjà en place : connect-src empêche tout envoi de données (ex: vol du token
+       Google) vers un domaine autre que Google et le site lui-même ; object-src/base-uri
+       bloquent des techniques d'attaque classiques ; frame-src limite les iframes aux
+       pages de connexion Google légitimes.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://*.gstatic.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com;
+    img-src 'self' data: https:;
+    connect-src 'self' https://www.googleapis.com https://sheets.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://content.googleapis.com;
+    frame-src https://accounts.google.com;
+    object-src 'none';
+    base-uri 'none';
+    form-action 'self';
+  "/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
   <style>
@@ -37,6 +61,12 @@
       --p5:#161f28;--p5b:#1e2c38;--p5c:#263a48;--p5t:#7fb8e8;
       --pa:#22201e;--pab:#2e2a27;--pac:#3a3530;--pat:#b8b0a6;}
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    /* Repère visuel de focus clavier — utile pour la navigation sans souris/tactile
+       (clavier, switch control, certains lecteurs d'écran). N'apparaît jamais lors
+       d'une simple interaction tactile ou souris grâce à :focus-visible. */
+    a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+      outline:2px solid var(--or);outline-offset:2px;
+    }
     body{font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
     #tog-slider:before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--wh);border-radius:50%;transition:.2s}
     #tog-dark:checked + #tog-slider{background:var(--or)}
@@ -503,7 +533,7 @@
 <div class="ov" id="ov-tx">
   <div class="modal">
     <div class="mh"></div>
-    <button class="bf" onclick="fOv('ov-tx')">✕</button>
+    <button class="bf" onclick="fOv('ov-tx')" aria-label="Fermer">✕</button>
     <h2 id="ov-ti"></h2>
     <div id="ov-co"></div>
     <div id="ov-ed">
@@ -532,7 +562,7 @@
 <div class="ov" id="ov-sol">
   <div class="modal">
     <div class="mh"></div>
-    <button class="bf" onclick="fOv('ov-sol')">✕</button>
+    <button class="bf" onclick="fOv('ov-sol')" aria-label="Fermer">✕</button>
     <h2>Recaler le solde</h2>
     <div class="ch3 cm3"><label>Solde actuel (€)</label><input type="number" id="qs-s" step="0.01" inputmode="decimal"/></div>
     <div class="ch3"><label>À la date du</label><input type="date" id="qs-d"/></div>
@@ -555,7 +585,7 @@
 <div class="ov" id="ov-aide">
   <div class="modal">
     <div class="mh"></div>
-    <button class="bf" onclick="fermerPageAide()">✕</button>
+    <button class="bf" onclick="fermerPageAide()" aria-label="Fermer">✕</button>
     <h2 style="margin-bottom:14px">📖 Guide complet</h2>
     <div id="contenu-aide"></div>
   </div>
@@ -565,7 +595,7 @@
 <div class="ov" id="ov-prog">
   <div class="modal">
     <div class="mh"></div>
-    <button class="bf" onclick="fOv('ov-prog')">✕</button>
+    <button class="bf" onclick="fOv('ov-prog')" aria-label="Fermer">✕</button>
     <h2 id="ov-prog-ti">Élément programmé</h2>
     <div class="ch3"><label>Description *</label><input type="text" id="prog-nom" placeholder="Ex : Loyer, Salaire estimé..."/></div>
     <div class="tts">
@@ -1974,18 +2004,14 @@ function analyserReleveCA(lignes, annee){
   const sum=arr=>Math.round(arr.reduce((s,t)=>s+t.montant,0)*100)/100;
   let methode='heuristique';
   if(totalDebit!==null){
-    // Tenter subset-sum sur le total des débits (le plus fiable)
+    // Tenter de retrouver quelles opérations correspondent au total des débits.
+    // Auparavant : recherche en force brute (backtracking sur 2^n combinaisons),
+    // qui pouvait geler le navigateur au-delà d'une vingtaine de lignes.
+    // Désormais : programmation dynamique en O(n × cible), bornée, donc sûre
+    // même sur un relevé chargé. trouverSousEnsembleSomme() est définie plus bas.
     const cibleC=Math.round(totalDebit*100);
     const mC=tx.map(t=>Math.round(t.montant*100));
-    let sol=null;
-    const n=tx.length;
-    (function bt(idx,acc,ch){
-      if(sol)return;
-      if(acc===cibleC){sol=ch.slice();return;}
-      if(acc>cibleC||idx>=n)return;
-      bt(idx+1,acc+mC[idx],[...ch,idx]);
-      bt(idx+1,acc,ch);
-    })(0,0,[]);
+    const sol=trouverSousEnsembleSomme(mC,cibleC);
     if(sol){
       const sd=new Set(sol);
       tx.forEach((t,idx)=>t.type=sd.has(idx)?'depense':'revenu');
@@ -1999,6 +2025,42 @@ function analyserReleveCA(lignes, annee){
   // Construire la date complète YYYY-MM-DD
   tx.forEach(t=>{t.date=annee+'-'+t.mois+'-'+t.jour;});
   return {tx,totalDebit,totalCredit,methode};
+}
+
+// Recherche un sous-ensemble de montants (en centimes) dont la somme égale
+// exactement la cible (en centimes), par programmation dynamique 0/1.
+// Complexité O(n × cible) — toujours bornée, contrairement à une recherche en
+// force brute qui explorerait jusqu'à 2^n combinaisons. Une cible déraisonnable
+// (> 50 000 €) est refusée d'emblée pour limiter la mémoire utilisée.
+// Retourne un tableau d'index dans 'montants', ou null si aucune solution.
+function trouverSousEnsembleSomme(montants,cible){
+  const CIBLE_MAX_CENTIMES=5000000; // 50 000 €, garde-fou mémoire
+  if(cible<0||cible>CIBLE_MAX_CENTIMES)return null;
+  const atteint=new Uint8Array(cible+1);
+  const viaIndex=new Int32Array(cible+1).fill(-1);
+  const sommeAvant=new Int32Array(cible+1).fill(-1);
+  atteint[0]=1;
+  for(let idx=0;idx<montants.length;idx++){
+    const w=montants[idx];
+    if(w<=0||w>cible)continue;
+    for(let s=cible;s>=w;s--){
+      if(!atteint[s]&&atteint[s-w]){
+        atteint[s]=1;
+        viaIndex[s]=idx;
+        sommeAvant[s]=s-w;
+      }
+    }
+  }
+  if(!atteint[cible])return null;
+  const choisis=[];
+  let s=cible;
+  while(s>0){
+    const idx=viaIndex[s];
+    if(idx===-1)break;
+    choisis.push(idx);
+    s=sommeAvant[s];
+  }
+  return choisis;
 }
 
 async function analyserReleve(input){
@@ -2315,7 +2377,7 @@ function affProg(){
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div style="font-weight:600;font-size:.85rem;color:${p.type==='revenu'?'var(--ve)':'var(--ro)'};">${p.type==='revenu'?'+':'−'}</div>
-        <button onclick="suppProg('${p.id}')" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px">🗑</button>
+        <button onclick="suppProg('${p.id}')" aria-label="Supprimer cet élément programmé" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -2699,7 +2761,7 @@ function affPoles(){
     <div class="ban" style="padding:13px;margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
         <input type="text" value="${esc(p.nom)}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
-        <button onclick="supprimerPole(${i})" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
+        <button onclick="supprimerPole(${i})" aria-label="Supprimer ce pôle" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
       </div>
       <div class="liste-cats-pole" data-pole="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
@@ -2707,8 +2769,8 @@ function affPoles(){
             <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
             <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1">${esc(c)}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;padding-left:24px">
             <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
@@ -2736,8 +2798,8 @@ function affPoles(){
           <div style="display:flex;align-items:center;gap:8px">
             <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1;font-size:.82rem">${esc(c)}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
