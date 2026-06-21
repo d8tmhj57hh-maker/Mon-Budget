@@ -595,6 +595,7 @@ const DEF_LIVRETS=["Livret d'Épargne Populaire","Livret A","Compte Parts Social
 
 let POLES=JSON.parse(JSON.stringify(DEF_POLES)); // [{nom, cats:[...]}]
 let CATS_MASQUEES=[]; // catégories volontairement masquées de la gestion des pôles (historique conservé)
+let BUDGETS_CAT={}; // budget mensuel optionnel par catégorie de dépense, ex: {"Alimentation":200}
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
@@ -983,6 +984,9 @@ async function chargerParams(){
     const get=(cle)=>{const row=rows.find(r=>r[0]===cle);return row&&row[1]?row[1].split('|').map(s=>s.trim()).filter(Boolean):null;};
     const r=get('REVENUS'),l=get('LIVRETS'),m=get('CATS_MASQUEES');
     if(r)CREV=r;if(l)LIVRETS=l;if(m)CATS_MASQUEES=m;
+    // Budgets par catégorie : stockés comme "Catégorie:montant" séparés par |
+    const b=get('BUDGETS_CAT');
+    if(b){BUDGETS_CAT={};b.forEach(paire=>{const [cat,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(cat&&!isNaN(m)&&m>0)BUDGETS_CAT[cat]=m;});}
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -996,7 +1000,8 @@ async function chargerParams(){
   }catch(e){}
 }
 async function sauvegarderParams(){
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')]];
+  const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1402,7 +1407,14 @@ function affDm(mi){
     cD.forEach(c=>{
       const txC=txM.filter(t=>t.type==='depense'&&t.cat===c);
       const tC=txC.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
-      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}</span><span class="st">${fmtDec(tC)}</span></div>`;
+      const budget=BUDGETS_CAT[c];
+      let badge='';
+      if(budget){
+        const pct=Math.round((tC/budget)*100);
+        if(tC>budget)badge=`<span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">⚠️ ${pct}% du budget</span>`;
+        else if(pct>=80)badge=`<span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">${pct}% du budget</span>`;
+      }
+      h+=`<div class="sec"><div class="sec-ti"><span class="sn">${c}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
@@ -2287,6 +2299,14 @@ function toutesCategoriesConnues(){
   CATS_MASQUEES.forEach(c=>vues.delete(c));
   return [...vues].sort((a,b)=>a.localeCompare(b,'fr'));
 }
+async function definirBudgetCat(cat,valeur){
+  const m=parseFloat(valeur);
+  if(!valeur||isNaN(m)||m<=0)delete BUDGETS_CAT[cat];
+  else BUDGETS_CAT[cat]=m;
+  await sauvegarderParams();
+  affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+}
+
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
   const toutesCats=toutesCategoriesConnues();
@@ -2302,6 +2322,7 @@ function affPoles(){
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
           <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
           <span style="flex:1">${c}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
+          <input type="number" placeholder="Budget" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel max pour cette catégorie (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:60px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right;flex-shrink:0"/>
           <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
           <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
         </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
@@ -2324,6 +2345,7 @@ function affPoles(){
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;align-items:center;gap:8px">
           <span style="flex:1;font-size:.82rem">${c}</span>
+          <input type="number" placeholder="Budget" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel max pour cette catégorie (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:60px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right;flex-shrink:0"/>
           <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
           <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
           <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none">
