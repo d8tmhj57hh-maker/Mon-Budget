@@ -665,6 +665,7 @@ let BUDGETS_CAT={}; // budget mensuel optionnel par catégorie de dépense, ex: 
 let BUDGETS_CAT_AN={}; // budget annuel optionnel par catégorie, ex: {"Cadeaux":600} — répartition libre sur l'année
 let BUDGETS_PROJET={}; // budget total optionnel par projet, ex: {"Salle de bain":2000} — toutes dates et catégories confondues
 let PROJETS_DECLARES=[]; // projets créés à l'avance depuis Réglages, avant toute dépense réelle
+let EXCLUSIONS_PROG={}; // occurrences ponctuelles ignorées sans désactiver la récurrence, ex: {"prog_xxx":["2027-08"]}
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
@@ -1071,6 +1072,8 @@ async function chargerParams(){
     if(pd)PROJETS_DECLARES=pd;
     const ic=get('ICONES_CAT_PERSO');
     if(ic){ICONES_CAT_PERSO={};ic.forEach(paire=>{const idx=paire.indexOf(':');if(idx<0)return;const cat=paire.slice(0,idx),emoji=paire.slice(idx+1);if(cat&&emoji)ICONES_CAT_PERSO[cat]=emoji;});}
+    const exc=get('EXCLUSIONS_PROG');
+    if(exc){EXCLUSIONS_PROG={};exc.forEach(paire=>{const idx=paire.indexOf(':');if(idx<0)return;const pid=paire.slice(0,idx),mois=paire.slice(idx+1).split(',').filter(Boolean);if(pid&&mois.length)EXCLUSIONS_PROG[pid]=mois;});}
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -1088,7 +1091,8 @@ async function sauvegarderParams(){
   const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
   const iconesStr=Object.entries(ICONES_CAT_PERSO).map(([c,e])=>`${c}:${e}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['ICONES_CAT_PERSO',iconesStr]];
+  const exclusionsStr=Object.entries(EXCLUSIONS_PROG).filter(([,m])=>m.length).map(([pid,mois])=>`${pid}:${mois.join(',')}`).join('|');
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1212,6 +1216,10 @@ async function saveRecal(){
 // référence se reporte automatiquement sur les années suivant le même cycle,
 // même si aucune ligne n'existe explicitement pour cette année dans la feuille.
 function montantProgPour(p,an,mi){
+  // Une occurrence explicitement exclue (ex: "cette fois-ci ça n'a pas lieu")
+  // n'est jamais comptée, qu'elle vienne d'un montant saisi ou d'une récurrence reportée.
+  const cle=`${an}-${String(mi+1).padStart(2,'0')}`;
+  if(EXCLUSIONS_PROG[p.id]&&EXCLUSIONS_PROG[p.id].includes(cle))return null;
   if(p.montantsMois[an]){
     const v=p.montantsMois[an][mi];
     if(v!==null&&v!==undefined&&v>0)return v;
@@ -1629,22 +1637,51 @@ function ouvrirPointerProg(pid){
   document.getElementById('ov-co').innerHTML=`
     <div class="rd"><span class="la">Montant prévu</span><span class="va">${fmtDec(montantProgPour(p,E.annee,E.moisOuvert)||0)}</span></div>
     <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
-    <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>`;
+    <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>
+    <p style="font-size:.72rem;color:var(--txl);margin:8px 0 0">Cette ligne est une <strong>prévision</strong>, pas encore une dépense réelle. Ajustez si besoin, puis choisissez une action ci-dessous.</p>`;
   const montPrev=montantProgPour(p,E.annee,E.moisOuvert)||0;
   document.getElementById('ov-de').value=p.nom||'';
   document.getElementById('ov-mo').value=montPrev||0;
-  // Date par défaut : le 15 du mois ouvert (cohérent avec la date utilisée lors du pointage réel)
   document.getElementById('ov-da').value=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}-15`;
   const selCa=document.getElementById('ov-ca');
   const catsDisponibles=p.type==='revenu'?CREV:toutesCategoriesConnues();
   selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===p.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
   document.getElementById('ov-pr').value='';
   document.getElementById('ov-no').value='';
-  document.getElementById('ov-btn').textContent='✓ Pointer comme réalisée';
-  document.getElementById('ov-btn').dataset.mode='pointer-prog';
+  document.getElementById('bloc-pointe-ov').style.display='none';
+  const btn=document.getElementById('ov-btn');
+  btn.textContent='✓ Pointer comme réalisée';
+  btn.dataset.mode='pointer-prog';
+  // Deux actions secondaires propres à une prévision (pas une vraie transaction) :
+  // ignorer juste cette occurrence, ou supprimer toute la programmée.
+  let zoneActions=document.getElementById('zone-actions-prog');
+  if(!zoneActions){
+    zoneActions=document.createElement('div');
+    zoneActions.id='zone-actions-prog';
+    btn.insertAdjacentElement('afterend',zoneActions);
+  }
+  zoneActions.innerHTML=`
+    <button class="bs2" onclick="ignorerOccurrenceProg('${pid}')">⏭️ Ignorer ce mois (sans toucher aux autres)</button>
+    <button class="bd" onclick="suppProgDepuisPointage('${pid}')">🗑️ Supprimer toute cette programmée</button>`;
+  zoneActions.style.display='block';
   document.getElementById('ov-ed').style.display='block';
   document.getElementById('ov-tx').querySelector('.bd').style.display='none';
   document.getElementById('ov-tx').classList.add('v');
+}
+
+async function ignorerOccurrenceProg(pid){
+  if(!confirm('Ignorer cette occurrence pour ce mois ? La programmée restera active pour les mois suivants.'))return;
+  const cle=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}`;
+  if(!EXCLUSIONS_PROG[pid])EXCLUSIONS_PROG[pid]=[];
+  if(!EXCLUSIONS_PROG[pid].includes(cle))EXCLUSIONS_PROG[pid].push(cle);
+  await sauvegarderParams();
+  fOv('ov-tx');refresh();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+  toast('Occurrence ignorée pour ce mois ✓');
+}
+
+async function suppProgDepuisPointage(pid){
+  fOv('ov-tx');
+  await suppProg(pid);
 }
 
 // ── TRANSACTION OVERLAY ──
@@ -1681,6 +1718,8 @@ function ouvrirTx(id){
   const btn=document.getElementById('ov-btn');
   if(!t.pointe&&ep){btn.textContent='✓ Pointer comme réalisée';btn.dataset.mode='pointer';}
   else{btn.textContent='💾 Enregistrer les modifications';btn.dataset.mode='edit';}
+  const zoneActions=document.getElementById('zone-actions-prog');
+  if(zoneActions)zoneActions.style.display='none';
   document.getElementById('ov-ed').style.display='block';
   document.getElementById('ov-tx').querySelector('.bd').style.display='block';
   document.getElementById('ov-tx').classList.add('v');
@@ -2347,11 +2386,13 @@ async function togProg(id){
 async function suppProg(id){
   if(!confirm('Supprimer cet élément programmé ?'))return;
   try{
-    const rows=await lire('Prog!A2:H');
+    const rows=await lire('Prog!A2:I');
     for(let i=rows.length-1;i>=0;i--){
-      if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:H${i+2}`,[['','','','','','','','']]);}
+      if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:I${i+2}`,[['','','','','','','','','']]);}
     }
     E.prog=E.prog.filter(x=>x.id!==id);
+    delete EXCLUSIONS_PROG[id];
+    await sauvegarderParams();
     affProg();affBudget();toast('Supprimé ✓');
   }catch(e){toast('Erreur');}
 }
