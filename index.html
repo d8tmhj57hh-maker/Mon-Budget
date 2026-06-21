@@ -1461,7 +1461,13 @@ function affDm(mi){
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
-  if(!txM.length&&!enAttente.length)h+=`<div class="vi"><div class="em">📭</div><p>Aucune transaction ce mois</p></div>`;
+  if(!txM.length&&!enAttente.length)h+=`<div class="vi" style="text-align:center;padding:24px 16px">
+    <div class="em" style="font-size:2.2rem;margin-bottom:6px">🌱</div>
+    <p style="font-weight:600;margin:0 0 4px">Ce mois est encore vierge</p>
+    <p style="font-size:.8rem;color:var(--txl);margin:0 0 18px">Commencez par ajouter une dépense, ou importez votre relevé bancaire pour gagner du temps.</p>
+    <button class="bp" style="margin-top:0" onclick="ouvrirSaisie()">+ Ajouter ma première dépense</button>
+    <button class="bs2" style="font-size:.82rem" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF</button>
+  </div>`;
   document.getElementById('cdm').innerHTML=h;
   affListeAClasserMois();
 }
@@ -2024,6 +2030,7 @@ async function validerAClasser(id){
 function supprimerAClasser(id){
   E.aClasser=E.aClasser.filter(x=>x.id!==id);
   if(E.moisOuvert!==null)affDm(E.moisOuvert);
+  toast('Ligne ignorée');
 }
 
 function ouvrirSaisie(){
@@ -2111,7 +2118,12 @@ async function saveTx(){
 // ── PROGRAMMÉES ──
 function affProg(){
   const el=document.getElementById('lp');
-  if(!E.prog.length){el.innerHTML=`<div class="vi" style="padding:16px 0"><div class="em">🔄</div><p style="font-size:.82rem">Aucun élément programmé</p></div>`;return;}
+  if(!E.prog.length){el.innerHTML=`<div class="vi" style="padding:20px 0;text-align:center">
+    <div class="em" style="font-size:2rem">🔄</div>
+    <p style="font-weight:600;margin:6px 0 4px">Rien de programmé pour l'instant</p>
+    <p style="font-size:.78rem;color:var(--txl);margin:0 0 14px">Loyer, salaire, abonnements... Programmez ce qui revient chaque mois pour ne plus jamais le ressaisir.</p>
+    <button class="bs2" style="font-size:.82rem" onclick="ouvrirAjoutProg()">+ Programmer mon premier élément</button>
+  </div>`;return;}
   el.innerHTML=E.prog.map(p=>{
     const monts=MOIS.map((m,mi)=>montantProgPour(p,E.annee,mi));
     const defini=monts.filter(v=>v!==null&&v>0);
@@ -2384,7 +2396,7 @@ function chercher(q){
   if(!q||q.length<2){el.innerHTML=`<div class="vi"><div class="em">🔍</div><p>Tapez pour rechercher</p></div>`;return;}
   const ql=q.toLowerCase();
   const res=E.tx.filter(t=>(t.desc||'').toLowerCase().includes(ql)||(t.projet||'').toLowerCase().includes(ql)||(t.cat||'').toLowerCase().includes(ql)||(t.note||'').toLowerCase().includes(ql)).sort((a,b)=>b.date.localeCompare(a.date));
-  if(!res.length){el.innerHTML=`<div class="vi"><div class="em">😶</div><p>Aucun résultat pour "${q}"</p></div>`;return;}
+  if(!res.length){el.innerHTML=`<div class="vi"><div class="em">😶</div><p>Aucun résultat pour "${q}"</p><p style="font-size:.75rem;color:var(--txl);margin-top:4px">Essayez un autre mot, ou vérifiez l'orthographe.</p></div>`;return;}
   const tD=res.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
   const tR=res.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   let h=`<p style="font-size:.78rem;color:var(--txl);margin-bottom:9px">${res.length} résultat(s)</p>`;
@@ -2545,8 +2557,15 @@ function ajouterPole(){
   affPoles();
 }
 function supprimerPole(i){
+  const pole=POLES[i];
+  const nbCats=pole.cats.length;
+  const msg=nbCats>0
+    ? `Supprimer le pôle "${pole.nom}" ? Ses ${nbCats} catégorie(s) basculeront dans "Autres / Non classé" (l'historique de vos dépenses est conservé).`
+    : `Supprimer le pôle "${pole.nom}" ?`;
+  if(!confirm(msg))return;
   POLES.splice(i,1);
   affPoles();
+  toast('Pôle supprimé ✓');
 }
 function renommerPole(i,val){
   POLES[i].nom=val.replace(/\|/g,'/'); // le | est réservé au stockage interne
