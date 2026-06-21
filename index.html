@@ -289,6 +289,12 @@
     /* TOAST & LOADER */
     .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:var(--bl);color:var(--wf);padding:10px 16px;border-radius:10px;font-size:.8rem;font-weight:500;z-index:300;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
     .toast.v{opacity:1}
+    /* Toast d'annulation : reste affiché un peu plus longtemps qu'un toast simple
+       et inclut un bouton "Annuler" cliquable (pointer-events activé uniquement
+       pour ce toast, contrairement au toast informatif qui ne capte aucun clic). */
+    .toast-undo{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;pointer-events:none}
+    .toast-undo.v{pointer-events:auto}
+    .toast-undo button{background:var(--or);color:var(--bl);border:none;border-radius:7px;padding:7px 12px;font-size:.78rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;flex-shrink:0;white-space:nowrap}
     .ld{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;gap:12px;color:var(--txl);font-size:.83rem}
     .sp{width:26px;height:26px;border:3px solid var(--bo);border-top-color:var(--bl);border-radius:50%;animation:sp .8s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
@@ -623,6 +629,10 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="toast toast-undo" id="toast-undo" role="status">
+  <span id="toast-undo-msg"></span>
+  <button id="toast-undo-btn" onclick="annulerActionEnAttente()">Annuler</button>
+</div>
 
 <script>
 const CID='438546104293-81acihkhskj9n95u88pupgoasl07dq4t.apps.googleusercontent.com';
@@ -823,6 +833,42 @@ function parseNum(v){
 function fmt(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n||0);}
 function fmtDec(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('v');setTimeout(()=>t.classList.remove('v'),2500);}
+
+// ── ANNULATION DES SUPPRESSIONS ──
+// Principe : l'action destructive est retirée immédiatement de l'affichage
+// (réactivité maximale), mais son exécution réelle côté Google Sheets est
+// différée de quelques secondes. Pendant ce délai, un toast propose "Annuler" :
+// si cliqué, l'état d'origine est restauré et l'exécution réelle n'a jamais lieu.
+// Une seule action en attente à la fois, pour rester simple à comprendre.
+let _undoEnAttente=null;
+const DUREE_ANNULATION_MS=6000;
+function actionAvecAnnulation(message,executer,annuler){
+  // Si une suppression était déjà en attente, on la valide tout de suite
+  // (impossible d'annuler deux choses à la fois avec un seul bouton "Annuler").
+  if(_undoEnAttente){
+    clearTimeout(_undoEnAttente.timeoutId);
+    _undoEnAttente.executer();
+  }
+  const timeoutId=setTimeout(()=>{
+    if(_undoEnAttente&&_undoEnAttente.timeoutId===timeoutId){
+      _undoEnAttente=null;
+      cacherToastAnnulable();
+      executer();
+    }
+  },DUREE_ANNULATION_MS);
+  _undoEnAttente={timeoutId,executer,annuler};
+  const t=document.getElementById('toast-undo');
+  document.getElementById('toast-undo-msg').textContent=message;
+  t.classList.add('v');
+}
+function annulerActionEnAttente(){
+  if(!_undoEnAttente)return;
+  clearTimeout(_undoEnAttente.timeoutId);
+  _undoEnAttente.annuler();
+  _undoEnAttente=null;
+  cacherToastAnnulable();
+}
+function cacherToastAnnulable(){document.getElementById('toast-undo').classList.remove('v');}
 function fOv(id){document.getElementById(id).classList.remove('v');}
 // Échappe tout texte avant injection dans le HTML, pour empêcher l'exécution
 // de code si une description, note, projet ou nom de catégorie/pôle contient
@@ -1890,14 +1936,23 @@ async function actionTx(){
   }catch(e){toast('Erreur');}
 }
 
-async function suppTx(){
+function suppTx(){
   const t=E.tx.find(x=>x.id===E.txc);
-  if(!t||!confirm('Supprimer cette transaction ?'))return;
-  try{
-    const rows=await lire(`TX_${t.an}!A2:J`);const idx=rows.findIndex(r=>r[0]===t.id);
-    if(idx>=0)await ecrire(`TX_${t.an}!A${idx+2}:J${idx+2}`,[['','','','','','','','','','']]);
-    E.tx=E.tx.filter(x=>x.id!==E.txc);fOv('ov-tx');refresh();toast('Supprimée');
-  }catch(e){toast('Erreur');}
+  if(!t)return;
+  // Retrait immédiat de l'affichage ; l'écriture réelle dans Google Sheets
+  // est différée pour permettre l'annulation (voir actionAvecAnnulation).
+  E.tx=E.tx.filter(x=>x.id!==t.id);
+  fOv('ov-tx');refresh();
+  actionAvecAnnulation(
+    `"${t.desc||t.cat}" supprimée`,
+    async ()=>{
+      try{
+        const rows=await lire(`TX_${t.an}!A2:J`);const idx=rows.findIndex(r=>r[0]===t.id);
+        if(idx>=0)await ecrire(`TX_${t.an}!A${idx+2}:J${idx+2}`,[['','','','','','','','','','']]);
+      }catch(e){toast('Erreur lors de la suppression définitive');}
+    },
+    ()=>{E.tx.push(t);refresh();toast('Suppression annulée');}
+  );
 }
 
 // ── IMPORT RELEVÉ BANCAIRE PAR PHOTO/PDF ──
@@ -2377,7 +2432,7 @@ function affProg(){
       </div>
       <div style="display:flex;align-items:center;gap:8px">
         <div style="font-weight:600;font-size:.85rem;color:${p.type==='revenu'?'var(--ve)':'var(--ro)'};">${p.type==='revenu'?'+':'−'}</div>
-        <button onclick="suppProg('${p.id}')" aria-label="Supprimer cet élément programmé" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px">🗑</button>
+        <button onclick="suppProg('${p.id}')" aria-label="Supprimer cet élément programmé" style="background:none;border:none;color:var(--txl);font-size:1.1rem;cursor:pointer;padding:6px;min-width:32px;min-height:32px">🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -2535,18 +2590,30 @@ async function togProg(id){
   }catch(e){p.actif=!p.actif;affProg();}
 }
 
-async function suppProg(id){
-  if(!confirm('Supprimer cet élément programmé ?'))return;
-  try{
-    const rows=await lire('Prog!A2:I');
-    for(let i=rows.length-1;i>=0;i--){
-      if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:I${i+2}`,[['','','','','','','','','']]);}
+function suppProg(id){
+  const p=E.prog.find(x=>x.id===id);
+  if(!p)return;
+  E.prog=E.prog.filter(x=>x.id!==id);
+  const exclusionsSauvegardees=EXCLUSIONS_PROG[id];
+  delete EXCLUSIONS_PROG[id];
+  affProg();affBudget();
+  actionAvecAnnulation(
+    `"${p.nom}" supprimée`,
+    async ()=>{
+      try{
+        const rows=await lire('Prog!A2:I');
+        for(let i=rows.length-1;i>=0;i--){
+          if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:I${i+2}`,[['','','','','','','','','']]);}
+        }
+        await sauvegarderParams();
+      }catch(e){toast('Erreur lors de la suppression définitive');}
+    },
+    ()=>{
+      E.prog.push(p);
+      if(exclusionsSauvegardees)EXCLUSIONS_PROG[id]=exclusionsSauvegardees;
+      affProg();affBudget();toast('Suppression annulée');
     }
-    E.prog=E.prog.filter(x=>x.id!==id);
-    delete EXCLUSIONS_PROG[id];
-    await sauvegarderParams();
-    affProg();affBudget();toast('Supprimé ✓');
-  }catch(e){toast('Erreur');}
+  );
 }
 
 // ── ÉPARGNE ──
@@ -2769,8 +2836,8 @@ function affPoles(){
             <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
             <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1">${esc(c)}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:24px;height:24px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;padding-left:24px">
             <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
@@ -2798,8 +2865,8 @@ function affPoles(){
           <div style="display:flex;align-items:center;gap:8px">
             <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1;font-size:.82rem">${esc(c)}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
@@ -2883,14 +2950,17 @@ function ajouterPole(){
 }
 function supprimerPole(i){
   const pole=POLES[i];
-  const nbCats=pole.cats.length;
-  const msg=nbCats>0
-    ? `Supprimer le pôle "${pole.nom}" ? Ses ${nbCats} catégorie(s) basculeront dans "Autres / Non classé" (l'historique de vos dépenses est conservé).`
-    : `Supprimer le pôle "${pole.nom}" ?`;
-  if(!confirm(msg))return;
   POLES.splice(i,1);
   affPoles();
-  toast('Pôle supprimé ✓');
+  // Rien à exécuter "pour de vrai" ici : POLES n'est écrit dans Google Sheets
+  // qu'au moment où l'utilisateur clique "Enregistrer les pôles" — la suppression
+  // reste donc sans risque tant qu'elle n'est pas sauvegardée, mais on garde le
+  // même mécanisme d'annulation pour une expérience cohérente avec le reste de l'app.
+  actionAvecAnnulation(
+    `Pôle "${pole.nom}" supprimé`,
+    ()=>{},
+    ()=>{POLES.splice(i,0,pole);affPoles();toast('Suppression annulée');}
+  );
 }
 function renommerPole(i,val){
   POLES[i].nom=val.replace(/\|/g,'/'); // le | est réservé au stockage interne
