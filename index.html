@@ -515,6 +515,12 @@
       <div class="ch3"><label>Catégorie</label><select id="ov-ca"></select></div>
       <div class="ch3"><label>Projet</label><input type="text" id="ov-pr" list="dl-proj"/></div>
       <div class="ch3"><label>Note</label><input type="text" id="ov-no"/></div>
+      <div class="ch3" id="bloc-pointe-ov" style="display:none">
+        <div style="display:flex;align-items:center;gap:9px">
+          <input type="checkbox" id="ov-pointe" style="width:18px;height:18px"/>
+          <label for="ov-pointe" style="font-size:.85rem;font-weight:500;margin:0">✓ Réalisée (le prélèvement/versement a bien eu lieu)</label>
+        </div>
+      </div>
       <button class="bp" id="ov-btn" onclick="actionTx()">✓ Pointer comme réalisée</button>
     </div>
     <button class="bd" onclick="suppTx()">Supprimer</button>
@@ -1625,7 +1631,13 @@ function ouvrirPointerProg(pid){
     <div class="rd"><span class="la">Catégorie</span><span class="va">${p.cat}</span></div>
     <div class="rd"><span class="la">Type</span><span class="va">${p.type==='revenu'?'Revenu':'Dépense'}</span></div>`;
   const montPrev=montantProgPour(p,E.annee,E.moisOuvert)||0;
+  document.getElementById('ov-de').value=p.nom||'';
   document.getElementById('ov-mo').value=montPrev||0;
+  // Date par défaut : le 15 du mois ouvert (cohérent avec la date utilisée lors du pointage réel)
+  document.getElementById('ov-da').value=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}-15`;
+  const selCa=document.getElementById('ov-ca');
+  const catsDisponibles=p.type==='revenu'?CREV:toutesCategoriesConnues();
+  selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===p.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
   document.getElementById('ov-pr').value='';
   document.getElementById('ov-no').value='';
   document.getElementById('ov-btn').textContent='✓ Pointer comme réalisée';
@@ -1640,7 +1652,13 @@ function ouvrirTx(id){
   const t=E.tx.find(x=>x.id===id);if(!t)return;E.txc=id;
   document.getElementById('ov-ti').textContent=t.desc||t.cat;
   const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
-  const ep=E.prog.some(p=>p.cat===t.cat&&p.actif);
+  // Le bouton "Pointer" ne doit s'afficher que pour une transaction réellement
+  // issue d'un élément Programmé (note "prog:id"), jamais sur la simple
+  // coïncidence d'avoir la même catégorie qu'une programmée active —
+  // sinon n'importe quelle dépense libre dans cette catégorie devenait
+  // impossible à modifier ou supprimer (cf. "Achat Pellet").
+  const idProgLie=(t.note||'').startsWith('prog:')?t.note.slice(5):null;
+  const ep=idProgLie&&E.prog.some(p=>p.id===idProgLie&&p.actif);
   document.getElementById('ov-co').innerHTML=`
     <div class="rd"><span class="la">Montant</span><span class="va">${fmtDec(m)}</span></div>
     <div class="rd"><span class="la">Date</span><span class="va">${new Date(t.date).toLocaleDateString('fr-FR')}</span></div>
@@ -1657,6 +1675,9 @@ function ouvrirTx(id){
   selCa.innerHTML=catsDisponibles.map(c=>`<option value="${c}" ${c===t.cat?'selected':''}>${iconePourCategorie(c)} ${c}</option>`).join('');
   document.getElementById('ov-pr').value=t.projet||'';
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
+  const blocPointe=document.getElementById('bloc-pointe-ov');
+  if(!ep&&!t.pointe){blocPointe.style.display='block';document.getElementById('ov-pointe').checked=false;}
+  else blocPointe.style.display='none';
   const btn=document.getElementById('ov-btn');
   if(!t.pointe&&ep){btn.textContent='✓ Pointer comme réalisée';btn.dataset.mode='pointer';}
   else{btn.textContent='💾 Enregistrer les modifications';btn.dataset.mode='edit';}
@@ -1673,15 +1694,19 @@ async function actionTx(){
   if(isNaN(m)){toast('Montant invalide');return;}
 
   if(mode==='pointer-prog'){
-    // Créer une vraie transaction depuis la programmée
+    // Créer une vraie transaction depuis la programmée, en respectant les éventuels
+    // ajustements faits au moment du pointage (date réelle du prélèvement, catégorie
+    // différente si besoin, description personnalisée).
     const pid=E.txc.split(':')[1];
     const p=E.prog.find(x=>x.id===pid);if(!p)return;
-    const mi=E.moisOuvert;const an=E.annee;
-    const d=`${an}-${String(mi+1).padStart(2,'0')}-15`;
+    const an=E.annee;
+    const newDesc=document.getElementById('ov-de').value.trim()||p.nom;
+    const newDate=document.getElementById('ov-da').value||`${an}-${String(E.moisOuvert+1).padStart(2,'0')}-15`;
+    const newCat=document.getElementById('ov-ca').value||p.cat;
     const id=`tx_${Date.now()}`;
     try{
-      await ajouter(`TX_${an}`,[id,d,p.type,p.cat,pr,p.nom,m,`prog:${pid}`,'TRUE',m]);
-      E.tx.push({id,date:d,type:p.type,cat:p.cat,projet:pr,desc:p.nom,montant:m,note:`prog:${pid}`,pointe:true,montant_reel:m,an});
+      await ajouter(`TX_${an}`,[id,newDate,p.type,newCat,pr,newDesc,m,`prog:${pid}`,'TRUE',m]);
+      E.tx.push({id,date:newDate,type:p.type,cat:newCat,projet:pr,desc:newDesc,montant:m,note:`prog:${pid}`,pointe:true,montant_reel:m,an});
       fOv('ov-tx');refresh();toast('Pointée ✓');
     }catch(e){toast('Erreur');}
     return;
@@ -1691,7 +1716,8 @@ async function actionTx(){
   try{
     const rows=await lire(`TX_${t.an}!A2:J`);const idx=rows.findIndex(r=>r[0]===t.id);
     if(idx>=0){
-      const pointer=mode==='pointer';
+      const caseManuelle=document.getElementById('ov-pointe');
+      const pointer=mode==='pointer'||(caseManuelle&&caseManuelle.style.display!=='none'&&caseManuelle.checked);
       const newDesc=document.getElementById('ov-de').value.trim()||t.desc;
       const newDate=document.getElementById('ov-da').value||t.date;
       const newCat=document.getElementById('ov-ca').value||t.cat;
