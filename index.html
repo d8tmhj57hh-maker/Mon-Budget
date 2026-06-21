@@ -326,9 +326,7 @@
 <div id="ec-tuto" class="ea" style="display:none;align-items:stretch;justify-content:flex-start;padding:0">
   <div style="flex:1;display:flex;flex-direction:column;padding:32px 24px;overflow-y:auto">
     <div id="tuto-contenu" style="flex:1"></div>
-    <div style="display:flex;justify-content:center;gap:6px;margin:20px 0">
-      <span class="tuto-dot" id="tuto-dot-0"></span><span class="tuto-dot" id="tuto-dot-1"></span><span class="tuto-dot" id="tuto-dot-2"></span><span class="tuto-dot" id="tuto-dot-3"></span><span class="tuto-dot" id="tuto-dot-4"></span><span class="tuto-dot" id="tuto-dot-5"></span>
-    </div>
+    <div id="tuto-dots" style="display:flex;justify-content:center;gap:6px;margin:20px 0"></div>
     <div style="display:flex;gap:10px">
       <button class="bs2" id="tuto-passer" onclick="fermerTuto()" style="flex:1">Passer</button>
       <button class="bo2" id="tuto-suivant" onclick="tutoSuivant()" style="flex:2;margin:0">Suivant →</button>
@@ -356,6 +354,7 @@
     <div id="o-budget">
       <div class="ld" id="ld-budget"><div class="sp"></div><span>Chargement...</span></div>
       <div id="cv" style="display:none">
+        <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="tw"><table class="ta" id="ta"></table></div>
       </div>
@@ -891,12 +890,16 @@ function lancerApp(){
 
 // ── TUTORIEL ──
 const TUTO_SLIDES=[
-  {emoji:'👋',titre:'Bienvenue dans Mon Budget',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases en quelques écrans. Vous pourrez le revoir à tout moment depuis Réglages.</p>`},
-  {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><ul><li>Choisissez Dépense ou Revenu</li><li>Indiquez le montant, la date et la catégorie</li><li>Une fois saisie, la transaction est automatiquement marquée comme pointée</li></ul>`},
-  {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année en un coup d'œil, organisée par pôles de vie (par exemple "Maison", "Voiture") plutôt que par grandes catégories impersonnelles.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris indique un montant prévisionnel, pas encore réel</li><li>La ligne "Reste au total" indique votre marge du mois</li></ul><p>Vous pouvez organiser vos pôles depuis Réglages → Pôles de dépenses.</p>`},
-  {emoji:'🔁',titre:'Les dépenses programmées',html:`<p>Pour vos charges qui reviennent chaque mois (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages.</p><p>Chaque mois, elle apparaît automatiquement en italique dans le tableau, et vous n'avez plus qu'à la "pointer" une fois le prélèvement réellement effectué, depuis la vue Mois.</p>`},
-  {emoji:'📷',titre:"Importer un relevé bancaire",html:`<p>Dans la vue <strong>Mois</strong>, vous pouvez prendre en photo ou importer en PDF un relevé bancaire.</p><p>Les transactions sont extraites automatiquement, puis apparaissent dans une zone "À classer" où vous choisissez la bonne catégorie avant de valider chacune.</p><p>Vous pouvez aussi importer des totaux mensuels par catégorie, pratique pour rattraper un mois en une seule fois.</p>`},
-  {emoji:'🎉',titre:'Vous êtes prête !',html:`<p>Vous connaissez maintenant les bases. N'hésitez pas à explorer Réglages pour personnaliser vos pôles, votre épargne, et l'apparence de l'application (mode sombre, taille du texte).</p><p>Bonne gestion de budget !</p>`}
+  {emoji:'👋',titre:'Bienvenue dans Mon Budget',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases, une idée par écran. Vous pourrez le revoir à tout moment depuis Réglages → "🎬 Revoir le tutoriel".</p>`},
+  {emoji:'📅',titre:'Les 4 onglets, en bas de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
+  {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
+  {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p>`},
+  {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Reste au total" indique votre marge</li></ul><p>Vous organisez vos pôles depuis Réglages → Pôles de dépenses.</p>`},
+  {emoji:'🎯',titre:'Surveiller un budget',html:`<p>Pour une catégorie qui vous tient à cœur (ex : "Alimentation"), vous pouvez fixer un budget maximum, par mois ou par an, depuis Réglages → Pôles de dépenses.</p><p>Dès que vous approchez ou dépassez ce montant, un petit badge coloré apparaît automatiquement sur la catégorie, dans la vue Mois — sans rien à calculer vous-même.</p>`},
+  {emoji:'🔁',titre:'Les dépenses qui reviennent chaque mois',html:`<p>Pour vos charges régulières (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages → Programmées.</p><p>Chaque mois, elle apparaît automatiquement, et vous n'avez qu'à la "pointer" une fois le prélèvement réellement effectué.</p><p>Pour une dépense qui revient tous les 2 ou 3 ans (ex : le contrôle technique), cochez "Se répète tous les X ans" — elle réapparaîtra seule, sans jamais la ressaisir.</p>`},
+  {emoji:'⌨️',titre:'Saisir un relevé papier',html:`<p>Vous recevez vos relevés bancaires par courrier ? Depuis la vue <strong>Mois</strong>, le bouton "⌨️ Saisir un relevé papier" ouvre un petit formulaire : vous tapez chaque ligne une par une (montant, description, date), et elle s'ajoute aussitôt.</p><p>Pratique pour rattraper un relevé complet en quelques minutes, sans jamais quitter cet écran.</p>`},
+  {emoji:'🗂️',titre:'Classer une dépense importée',html:`<p>Qu'elle vienne d'un relevé PDF (lecture automatique) ou d'une saisie manuelle, chaque ligne importée arrive dans une zone <strong>"À classer"</strong>, en haut du mois.</p><p>Vous choisissez la catégorie, vérifiez le montant, et validez — la dépense rejoint alors votre suivi normal.</p>`},
+  {emoji:'🎉',titre:'Vous êtes prête !',html:`<p>Vous connaissez maintenant les bases. N'hésitez pas à explorer Réglages pour personnaliser vos pôles, votre épargne, et l'apparence de l'application (mode sombre, taille du texte).</p><p>En cas de doute, le guide complet reste accessible depuis Réglages → Aide. Bonne gestion de budget !</p>`}
 ];
 let _tutoIdx=0;
 function afficherTuto(){
@@ -905,6 +908,9 @@ function afficherTuto(){
   document.getElementById('ec-conn').style.display='none';
   document.getElementById('ec-init').style.display='none';
   document.getElementById('ec-tuto').style.display='flex';
+  // Génère les points de pagination dynamiquement : s'adapte automatiquement
+  // si le nombre d'écrans du tutoriel change, sans synchronisation manuelle du HTML.
+  document.getElementById('tuto-dots').innerHTML=TUTO_SLIDES.map((_,i)=>`<span class="tuto-dot" id="tuto-dot-${i}"></span>`).join('');
   renderTutoSlide();
 }
 function renderTutoSlide(){
@@ -1090,12 +1096,12 @@ function aller(id,btn){
   if(btn)btn.classList.add('a');
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
-  if(id==='reglages'){affEpargne();affProg();affProjets();remplirParams();}
+  if(id==='reglages'){affEpargne();affProg();affProjets();affPoles();remplirParams();affChecklistDemarrage();}
   if(id==='mois'&&!E.moisOuvert){affGrille();}
 }
 
 function changerAnnee(a){E.annee=a;localStorage.setItem('annee',a);refresh();}
-function refresh(){affBudget();affGrille();affBanner();if(E.moisOuvert!==null)affDm(E.moisOuvert);}
+function refresh(){affChecklistDemarrage();affBudget();affGrille();affBanner();if(E.moisOuvert!==null)affDm(E.moisOuvert);}
 
 function peuplerSels(){
   const s=document.getElementById('sel-an');if(s)s.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
@@ -1177,6 +1183,36 @@ function progActifsMois(mi, an){
   // Retourne les programmées qui ont un montant pour ce mois/année (saisi ou reporté par récurrence)
   an=an||E.annee;
   return E.prog.filter(p=>p.actif&&montantProgPour(p,an,mi)>0);
+}
+
+// Checklist de démarrage : disparaît dès que les 4 étapes sont accomplies,
+// détectées automatiquement à partir des vraies données (pas de case à cocher
+// manuelle qui pourrait se désynchroniser de la réalité).
+function affChecklistDemarrage(){
+  const el=document.getElementById('checklist-demarrage');
+  if(!el)return;
+  if(localStorage.getItem('checklist_terminee')){el.innerHTML='';return;}
+  const etapes=[
+    {fait:!!localStorage.getItem('poles_visites'),label:'Découvrir mes catégories',action:"aller('reglages')"},
+    {fait:E.pts.length>0,label:'Saisir mon solde initial',action:"ouvrirRecal()"},
+    {fait:E.tx.length>0,label:'Ajouter ma première dépense',action:"ouvrirSaisie()"},
+    {fait:E.prog.length>0,label:'Programmer une dépense récurrente (ex : loyer)',action:"aller('reglages')"},
+  ];
+  const toutesFaites=etapes.every(e=>e.fait);
+  if(toutesFaites){
+    localStorage.setItem('checklist_terminee','1');
+    el.innerHTML='';
+    return;
+  }
+  el.innerHTML=`<div class="ban" style="margin-bottom:14px">
+    <div class="lb">🚀 Pour bien démarrer</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      ${etapes.map(e=>`<div style="display:flex;align-items:center;gap:10px;cursor:${e.fait?'default':'pointer'};${e.fait?'opacity:.55':''}" ${e.fait?'':`onclick="${e.action}"`}>
+        <span style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${e.fait?'var(--ve)':'var(--bo)'};background:${e.fait?'var(--ve)':'transparent'};color:#fff;font-size:.7rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">${e.fait?'✓':''}</span>
+        <span style="font-size:.85rem;${e.fait?'text-decoration:line-through':''}">${e.label}</span>
+      </div>`).join('')}
+    </div>
+  </div>`;
 }
 
 function affBudget(){
@@ -2398,6 +2434,7 @@ function affProjets(){
 
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
+  localStorage.setItem('poles_visites','1');
   const toutesCats=toutesCategoriesConnues();
   const reellementUtilisees=categoriesReellementUtilisees();
   // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
