@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#1a2f4a"/>
   <link rel="manifest" href="manifest.json"/>
+  <link rel="icon" href="icon-192.png" type="image/png"/>
+  <link rel="apple-touch-icon" href="icon-192.png"/>
   <meta name="apple-mobile-web-app-title" content="Mon Budget"/>
   <!-- Content-Security-Policy : seconde barrière de sécurité. L'application utilise
        énormément de gestionnaires inline (onclick="...") et un script inline unique,
@@ -289,6 +291,12 @@
     /* TOAST & LOADER */
     .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:var(--bl);color:var(--wf);padding:10px 16px;border-radius:10px;font-size:.8rem;font-weight:500;z-index:300;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
     .toast.v{opacity:1}
+    /* Bannière de statut réseau : glisse depuis le haut de l'écran, au-dessus de
+       tout le reste, pour signaler une coupure réseau ou des tentatives de
+       reconnexion en cours, sans bloquer l'usage du reste de l'application. */
+    .banniere-connexion{position:fixed;top:0;left:0;right:0;background:var(--or2);color:#fff;text-align:center;font-size:.78rem;font-weight:500;padding:10px 16px;z-index:400;transform:translateY(-100%);transition:transform .25s ease}
+    .banniere-connexion.v{transform:translateY(0)}
+    .banniere-connexion.erreur{background:var(--ro)}
     /* Toast d'annulation : reste affiché un peu plus longtemps qu'un toast simple
        et inclut un bouton "Annuler" cliquable (pointer-events activé uniquement
        pour ce toast, contrairement au toast informatif qui ne capte aucun clic). */
@@ -597,6 +605,17 @@
   </div>
 </div>
 
+<!-- OVERLAY CONFIRMATION GÉNÉRIQUE (remplace les confirm() natifs) -->
+<div class="ov" id="ov-confirm">
+  <div class="modal">
+    <div class="mh"></div>
+    <h2 id="confirm-titre">Confirmer</h2>
+    <p id="confirm-message" style="font-size:.85rem;color:var(--txl);margin-bottom:16px;line-height:1.5"></p>
+    <button class="bp" id="confirm-btn-oui">Confirmer</button>
+    <button class="bs2" onclick="fOv('ov-confirm')">Annuler</button>
+  </div>
+</div>
+
 <!-- OVERLAY AJOUT PROGRAMMÉ -->
 <div class="ov" id="ov-prog">
   <div class="modal">
@@ -628,6 +647,7 @@
   </div>
 </div>
 
+<div class="banniere-connexion" id="banniere-connexion" role="alert"></div>
 <div class="toast" id="toast"></div>
 <div class="toast toast-undo" id="toast-undo" role="status">
   <span id="toast-undo-msg"></span>
@@ -869,6 +889,18 @@ function annulerActionEnAttente(){
   cacherToastAnnulable();
 }
 function cacherToastAnnulable(){document.getElementById('toast-undo').classList.remove('v');}
+
+// Remplace les confirm() natifs (incohérents visuellement, bloquants, parfois
+// désactivés dans certaines webviews) par une modale cohérente avec le reste
+// de l'application. onConfirm peut être une fonction async ; elle n'est pas
+// attendue ici, chaque appelant gère ses propres erreurs en interne.
+function confirmerAction(message,onConfirm,titre){
+  document.getElementById('confirm-titre').textContent=titre||'Confirmer';
+  document.getElementById('confirm-message').textContent=message;
+  const btn=document.getElementById('confirm-btn-oui');
+  btn.onclick=()=>{fOv('ov-confirm');onConfirm();};
+  document.getElementById('ov-confirm').classList.add('v');
+}
 function fOv(id){document.getElementById(id).classList.remove('v');}
 // Échappe tout texte avant injection dans le HTML, pour empêcher l'exécution
 // de code si une description, note, projet ou nom de catégorie/pôle contient
@@ -1080,16 +1112,77 @@ function fermerPageAide(){fOv('ov-aide');}
 
 
 // ── SHEETS ──
-async function lire(p){const r=await gapi.client.sheets.spreadsheets.values.get({spreadsheetId:E.sid,range:p});return r.result.values||[];}
-async function ecrire(p,v){await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'RAW',resource:{values:v}});}
+// ── RÉSEAU : retry automatique + indicateur de connexion ──
+// La plupart des actions de l'app passent par lire()/ecrire()/ajouter(), qui
+// appellent l'API Google Sheets. Sur une coupure réseau passagère (4G qui
+// flanche un instant, ascenseur, tunnel...), on retente automatiquement avant
+// d'abandonner et d'afficher une erreur, plutôt que de faire échouer l'action
+// dès le premier essai.
+const RETRY_TENTATIVES=3;
+const RETRY_DELAI_MS=1500;
+function estErreurReseau(e){
+  // Une vraie coupure réseau ne renvoie en général aucun code HTTP exploitable.
+  // Une erreur d'autorisation/quota (401/403/429) a une cause différente et ne
+  // doit pas être retentée à l'identique sans en informer l'utilisateur.
+  if(!navigator.onLine)return true;
+  const status=e&&(e.status||(e.result&&e.result.error&&e.result.error.code));
+  return !status||status===0;
+}
+async function appelAvecRetry(fn){
+  let derniereErreur;
+  for(let tentative=1;tentative<=RETRY_TENTATIVES;tentative++){
+    try{
+      const r=await fn();
+      cacherBanniereConnexion();
+      return r;
+    }catch(e){
+      derniereErreur=e;
+      if(!estErreurReseau(e))throw e; // erreur non réseau (droits, quota...) : on n'insiste pas
+      if(tentative<RETRY_TENTATIVES){
+        afficherBanniereConnexion(`📡 Connexion instable — nouvelle tentative (${tentative}/${RETRY_TENTATIVES-1})...`);
+        await new Promise(res=>setTimeout(res,RETRY_DELAI_MS*tentative));
+      }
+    }
+  }
+  afficherBanniereConnexion('❌ Impossible de joindre Google Sheets. Vérifiez votre connexion, vos modifications récentes n\'ont peut-être pas été enregistrées.',true);
+  throw derniereErreur;
+}
+function afficherBanniereConnexion(msg,erreur){
+  const b=document.getElementById('banniere-connexion');
+  if(!b)return;
+  b.textContent=msg;
+  b.classList.add('v');
+  b.classList.toggle('erreur',!!erreur);
+}
+function cacherBanniereConnexion(){
+  const b=document.getElementById('banniere-connexion');
+  if(!b)return;
+  b.classList.remove('v','erreur');
+}
+window.addEventListener('offline',()=>afficherBanniereConnexion('📡 Hors connexion — vos actions seront retentées au retour du réseau',true));
+window.addEventListener('online',()=>{cacherBanniereConnexion();toast('Connexion rétablie ✓');});
+
+async function lire(p){
+  return appelAvecRetry(async()=>{
+    const r=await gapi.client.sheets.spreadsheets.values.get({spreadsheetId:E.sid,range:p});
+    return r.result.values||[];
+  });
+}
+async function ecrire(p,v){
+  return appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'RAW',resource:{values:v}});
+  });
+}
 async function ajouter(o,v){
   // Utiliser A:A comme ancre pour forcer l'insertion depuis la colonne A
-  await gapi.client.sheets.spreadsheets.values.append({
-    spreadsheetId:E.sid,
-    range:`${o}!A1`,
-    valueInputOption:'RAW',
-    insertDataOption:'INSERT_ROWS',
-    resource:{values:[v]}
+  return appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.values.append({
+      spreadsheetId:E.sid,
+      range:`${o}!A1`,
+      valueInputOption:'RAW',
+      insertDataOption:'INSERT_ROWS',
+      resource:{values:[v]}
+    });
   });
 }
 
@@ -1497,7 +1590,7 @@ function affBudget(){
       if(budgetAn){
         const pctAn=Math.round((tot/budgetAn)*100);
         if(tot>budgetAn)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:var(--ro)" title="Dépasse le budget annuel de ${fmtDec(budgetAn)}">⚠️${pctAn}%</span>`;
-        else if(pctAn>=80)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:#b8762e" title="Budget annuel : ${fmtDec(budgetAn)}">${pctAn}%</span>`;
+        else if(pctAn>=80)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:var(--or2)" title="Budget annuel : ${fmtDec(budgetAn)}">${pctAn}%</span>`;
       }
       h+=`<td class="tn">${fmtDec(tot)}${badgeAn}</td></tr>`;
     });
@@ -1724,7 +1817,7 @@ function affDm(mi){
       if(budget){
         const pct=Math.round((tC/budget)*100);
         if(tC>budget)badge=`<span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">⚠️ ${pct}% du budget</span>`;
-        else if(pct>=80)badge=`<span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">${pct}% du budget</span>`;
+        else if(pct>=80)badge=`<span style="background:var(--or2c);color:var(--or2);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px;margin-left:6px">${pct}% du budget</span>`;
       }
       h+=`<div class="sec"><div class="sec-ti"><span class="sn">${iconePourCategorie(c)} ${esc(c)}${badge}</span><span class="st">${fmtDec(tC)}${budget?` <span style="color:var(--txl);font-weight:400">/ ${fmtDec(budget)}</span>`:''}</span></div>`;
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
@@ -1835,14 +1928,15 @@ async function corrigerOccurrenceProg(pid){
   }catch(e){toast('Erreur lors de l\'enregistrement');}
 }
 
-async function ignorerOccurrenceProg(pid){
-  if(!confirm('Ignorer cette occurrence pour ce mois ? La programmée restera active pour les mois suivants.'))return;
-  const cle=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}`;
-  if(!EXCLUSIONS_PROG[pid])EXCLUSIONS_PROG[pid]=[];
-  if(!EXCLUSIONS_PROG[pid].includes(cle))EXCLUSIONS_PROG[pid].push(cle);
-  await sauvegarderParams();
-  fOv('ov-tx');refresh();if(E.moisOuvert!==null)affDm(E.moisOuvert);
-  toast('Occurrence ignorée pour ce mois ✓');
+function ignorerOccurrenceProg(pid){
+  confirmerAction('Ignorer cette occurrence pour ce mois ? La programmée restera active pour les mois suivants.',async()=>{
+    const cle=`${E.annee}-${String(E.moisOuvert+1).padStart(2,'0')}`;
+    if(!EXCLUSIONS_PROG[pid])EXCLUSIONS_PROG[pid]=[];
+    if(!EXCLUSIONS_PROG[pid].includes(cle))EXCLUSIONS_PROG[pid].push(cle);
+    await sauvegarderParams();
+    fOv('ov-tx');refresh();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+    toast('Occurrence ignorée pour ce mois ✓');
+  });
 }
 
 async function suppProgDepuisPointage(pid){
@@ -2806,7 +2900,7 @@ function affProjets(){
     } else if(budget){
       const pct=Math.round((tot/budget)*100);
       if(tot>budget)badge=` <span style="background:var(--roc);color:var(--ro);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">⚠️ ${pct}%</span>`;
-      else if(pct>=80)badge=` <span style="background:rgba(230,162,60,.12);color:#b8762e;font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">${pct}%</span>`;
+      else if(pct>=80)badge=` <span style="background:var(--or2c);color:var(--or2);font-size:.65rem;font-weight:600;padding:2px 7px;border-radius:6px">${pct}%</span>`;
     }
     return `<div style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;margin-bottom:6px">
       <div style="flex:1">
@@ -3018,14 +3112,15 @@ function deplacerCatVersPole(cat,idxPole){
   POLES[parseInt(idxPole)].cats.push(cat);
   affPoles();
 }
-async function masquerCategorie(cat){
-  if(!confirm('Masquer "'+cat+'" ? Elle ne sera plus proposée dans la gestion des pôles, mais son historique de transactions reste intact et continuera d\'apparaître dans le tableau annuel et la vue Mois.'))return;
-  if(!CATS_MASQUEES.includes(cat))CATS_MASQUEES.push(cat);
-  // La retirer de tous les pôles où elle pourrait encore être listée
-  POLES.forEach(p=>{p.cats=p.cats.filter(c=>c!==cat);});
-  await sauvegarderParams();
-  affPoles();
-  toast('"'+cat+'" masquée ✓');
+function masquerCategorie(cat){
+  confirmerAction('Masquer "'+cat+'" ? Elle ne sera plus proposée dans la gestion des pôles, mais son historique de transactions reste intact et continuera d\'apparaître dans le tableau annuel et la vue Mois.',async()=>{
+    if(!CATS_MASQUEES.includes(cat))CATS_MASQUEES.push(cat);
+    // La retirer de tous les pôles où elle pourrait encore être listée
+    POLES.forEach(p=>{p.cats=p.cats.filter(c=>c!==cat);});
+    await sauvegarderParams();
+    affPoles();
+    toast('"'+cat+'" masquée ✓');
+  });
 }
 async function sauvegarderPolesUI(){
   // Retirer les pôles vides de nom
