@@ -523,7 +523,7 @@
       </div>
       <button class="bp" id="ov-btn" onclick="actionTx()">✓ Pointer comme réalisée</button>
     </div>
-    <button class="bd" onclick="suppTx()">Supprimer</button>
+    <button class="bd" id="btn-suppr-tx-generique" onclick="suppTx()">Supprimer</button>
     <button class="bs2" onclick="fOv('ov-tx')">Fermer</button>
   </div>
 </div>
@@ -1652,8 +1652,10 @@ function ouvrirPointerProg(pid){
   const btn=document.getElementById('ov-btn');
   btn.textContent='✓ Pointer comme réalisée';
   btn.dataset.mode='pointer-prog';
-  // Deux actions secondaires propres à une prévision (pas une vraie transaction) :
-  // ignorer juste cette occurrence, ou supprimer toute la programmée.
+  // Zone d'actions propre à une prévision (pas une vraie transaction) : pointer,
+  // corriger sans pointer, ignorer juste ce mois, ou supprimer toute la programmée.
+  // Boutons identifiés par ID unique pour ne jamais être confondus avec le bouton
+  // Supprimer générique de ouvrirTx (qui, lui, est explicitement masqué ici).
   let zoneActions=document.getElementById('zone-actions-prog');
   if(!zoneActions){
     zoneActions=document.createElement('div');
@@ -1661,12 +1663,43 @@ function ouvrirPointerProg(pid){
     btn.insertAdjacentElement('afterend',zoneActions);
   }
   zoneActions.innerHTML=`
-    <button class="bs2" onclick="ignorerOccurrenceProg('${pid}')">⏭️ Ignorer ce mois (sans toucher aux autres)</button>
-    <button class="bd" onclick="suppProgDepuisPointage('${pid}')">🗑️ Supprimer toute cette programmée</button>`;
+    <button class="bs2" id="btn-edit-sans-pointer-prog">💾 Corriger sans pointer (ex : changer la catégorie)</button>
+    <button class="bs2" id="btn-ignorer-prog">⏭️ Ignorer ce mois (sans toucher aux autres)</button>
+    <button class="bd" id="btn-suppr-prog">🗑️ Supprimer toute cette programmée</button>`;
+  document.getElementById('btn-edit-sans-pointer-prog').onclick=()=>corrigerOccurrenceProg(pid);
+  document.getElementById('btn-ignorer-prog').onclick=()=>ignorerOccurrenceProg(pid);
+  document.getElementById('btn-suppr-prog').onclick=()=>suppProgDepuisPointage(pid);
   zoneActions.style.display='block';
   document.getElementById('ov-ed').style.display='block';
-  document.getElementById('ov-tx').querySelector('.bd').style.display='none';
+  // Le bouton Supprimer générique (lié à suppTx, pensé pour une vraie transaction)
+  // n'a aucun sens ici puisqu'aucune transaction n'existe encore : on le masque
+  // explicitement par son ID, jamais par querySelector qui pourrait cibler le mauvais bouton.
+  document.getElementById('btn-suppr-tx-generique').style.display='none';
   document.getElementById('ov-tx').classList.add('v');
+}
+
+// Enregistre les corrections (catégorie, montant, date...) sur l'occurrence de ce
+// mois, SANS la transformer en dépense réelle : utile pour fiabiliser le prévisionnel
+// avant qu'elle ne soit effectivement pointée plus tard.
+async function corrigerOccurrenceProg(pid){
+  const p=E.prog.find(x=>x.id===pid);if(!p)return;
+  const newCat=document.getElementById('ov-ca').value||p.cat;
+  const newMontant=parseFloat(document.getElementById('ov-mo').value);
+  if(isNaN(newMontant)||newMontant<=0){toast('Montant invalide');return;}
+  const anneeRef=(p.recurAns&&p.recurAns>1&&p.recurAnneeRef)?p.recurAnneeRef:E.annee;
+  if(!p.montantsMois[anneeRef])p.montantsMois[anneeRef]=Array(12).fill(null);
+  p.montantsMois[anneeRef][E.moisOuvert]=newMontant;
+  if(newCat!==p.cat)p.cat=newCat; // la catégorie est globale à la programmée, pas par mois
+  try{
+    const rows=await lire('Prog!A2:I');
+    const lid=`${pid}_m${E.moisOuvert}`;
+    const idx=rows.findIndex(r=>r[0]===lid);
+    const ligne=[lid,p.nom,p.type,newCat,anneeRef,E.moisOuvert,newMontant,'TRUE',p.recurAns||''];
+    if(idx>=0)await ecrire(`Prog!A${idx+2}:I${idx+2}`,[ligne]);
+    else await ajouter('Prog',ligne);
+    fOv('ov-tx');refresh();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+    toast('Prévision corrigée ✓');
+  }catch(e){toast('Erreur lors de l\'enregistrement');}
 }
 
 async function ignorerOccurrenceProg(pid){
@@ -1721,7 +1754,7 @@ function ouvrirTx(id){
   const zoneActions=document.getElementById('zone-actions-prog');
   if(zoneActions)zoneActions.style.display='none';
   document.getElementById('ov-ed').style.display='block';
-  document.getElementById('ov-tx').querySelector('.bd').style.display='block';
+  document.getElementById('btn-suppr-tx-generique').style.display='block';
   document.getElementById('ov-tx').classList.add('v');
 }
 
