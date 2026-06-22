@@ -11,28 +11,15 @@
   <link rel="icon" href="icon-192.png" type="image/png"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
   <meta name="apple-mobile-web-app-title" content="Mon Budget"/>
-  <!-- Content-Security-Policy : seconde barrière de sécurité. L'application utilise
-       énormément de gestionnaires inline (onclick="...") et un script inline unique,
-       ce qui impose 'unsafe-inline' pour script-src (sans quoi l'app ne fonctionnerait
-       plus du tout) — cette CSP ne bloque donc pas à elle seule l'exécution d'un script
-       injecté, mais elle apporte une protection réelle complémentaire à l'échappement
-       HTML déjà en place : connect-src empêche tout envoi de données (ex: vol du token
-       Google) vers un domaine autre que Google et le site lui-même ; object-src/base-uri
-       bloquent des techniques d'attaque classiques ; frame-src limite les iframes aux
-       pages de connexion Google légitimes.
+  <!-- Content-Security-Policy retirée le 22/06 : elle bloquait silencieusement
+       l'initialisation de l'API Google Sheets (gapi.client), empêchant toute
+       connexion. La protection principale contre les injections reste
+       l'échappement HTML systématique (fonction esc()) déjà en place dans le
+       code — cette CSP n'était qu'une couche de défense supplémentaire, pas
+       la protection essentielle. À réintroduire plus tard uniquement après
+       un test complet en conditions réelles, avec une configuration plus
+       précisément calibrée pour les besoins exacts de gapi.
   -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com https://*.gstatic.com;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data: https:;
-    connect-src 'self' https://www.googleapis.com https://sheets.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://content.googleapis.com;
-    frame-src https://accounts.google.com;
-    object-src 'none';
-    base-uri 'none';
-    form-action 'self';
-  "/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
   <style>
