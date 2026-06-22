@@ -929,11 +929,19 @@ function initGSI(){
     // Google, pas localStorage) redonnera un token frais sans action de l'utilisateur.
     E.gtoken=r.access_token;
     gapi.client.setToken({access_token:r.access_token});
-    if(E.sid){
-      await demarrer();
-    } else {
-      // Nouvel utilisateur → proposer création automatique du Sheet
-      afficherEcranNouvelUtilisateur();
+    try{
+      if(E.sid){
+        await demarrer();
+      } else {
+        // Nouvel utilisateur → proposer création automatique du Sheet
+        afficherEcranNouvelUtilisateur();
+      }
+    }catch(e){
+      // Avant ce correctif, une erreur ici restait totalement silencieuse :
+      // l'utilisateur voyait son compte se connecter sans rien se passer
+      // ensuite, coincé sur l'écran de connexion sans aucune explication.
+      console.error('Erreur après connexion:',e);
+      toast('❌ '+messageErreurApi(e));
     }
   }});
 }
@@ -963,6 +971,18 @@ function connexionGoogle(){
 function validerSheet(){const v=document.getElementById('inp-sid').value.trim();if(!v){toast("Entrez l'ID");return;}E.sid=v;localStorage.setItem('sid',v);connexionGoogle();}
 
 async function demarrer(){
+  // Garde-fou : il arrive que la connexion Google réponde avant que gapi.client
+  // ait fini de charger l'API Sheets (notamment juste après un rechargement de
+  // page). Sans cette attente, l'appel suivant échouait silencieusement et
+  // l'utilisateur restait bloqué sur l'écran de connexion sans aucun message.
+  let tentatives=0;
+  while(!(window.gapi&&gapi.client&&gapi.client.sheets)&&tentatives<50){
+    await new Promise(r=>setTimeout(r,100));
+    tentatives++;
+  }
+  if(!(window.gapi&&gapi.client&&gapi.client.sheets)){
+    throw new Error("L'API Google Sheets n'a pas pu être initialisée à temps. Rechargez complètement la page (fermez puis rouvrez l'onglet) et réessayez.");
+  }
   await initOnglets();await chargerTout();
   // Si des points de solde existent dans Sheets → pas besoin d'init
   if(E.pts.length>0){
