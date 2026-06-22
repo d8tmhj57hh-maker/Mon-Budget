@@ -1035,7 +1035,7 @@ async function creerSheetAuto(){
     console.error('creerSheetAuto:',e);
     btn.disabled=false;
     btn.textContent='Reessayer';
-    msg.textContent='Erreur : '+e.message+'. Verifiez votre connexion.';
+    msg.textContent='Erreur : '+messageErreurApi(e)+'. Vérifiez votre connexion.';
     msg.style.color='#ff8a8a';
   }
 }
@@ -1128,6 +1128,56 @@ function estErreurReseau(e){
   const status=e&&(e.status||(e.result&&e.result.error&&e.result.error.code));
   return !status||status===0;
 }
+function codeErreurApi(e){
+  return e&&(e.status||(e.result&&e.result.error&&e.result.error.code));
+}
+// Les erreurs renvoyées par gapi.client n'ont pas de propriété .message standard
+// (contrairement aux erreurs JavaScript classiques) — sans cette fonction, l'app
+// affichait littéralement "Erreur : undefined" à l'utilisateur, ce qui n'aide
+// personne à comprendre ce qui s'est passé.
+function messageErreurApi(e){
+  if(!e)return 'Erreur inconnue';
+  if(e.result&&e.result.error&&e.result.error.message)return e.result.error.message;
+  if(typeof e.body==='string'){
+    try{const j=JSON.parse(e.body);if(j&&j.error&&j.error.message)return j.error.message;}catch(_){}
+  }
+  if(e.message)return e.message;
+  const status=codeErreurApi(e);
+  if(status===401)return 'Session expirée — merci de rouvrir l\'application pour vous reconnecter.';
+  if(status)return `Erreur ${status} côté Google Sheets`;
+  return 'Erreur inconnue (vérifiez votre connexion)';
+}
+// Tente une reconnexion silencieuse auprès de Google (sans interaction de
+// l'utilisateur), utile quand le jeton d'accès expire en cours de session
+// (durée de vie ~1h). Réutilise le client de connexion existant (E.tc) en
+// substituant temporairement son callback, puis le restaure pour ne jamais
+// perturber le flux normal de connexion initial.
+function tenterReconnexionSilencieuse(){
+  return new Promise((resolve)=>{
+    if(!E.tc){resolve(false);return;}
+    const callbackOriginal=E.tc.callback;
+    let resolu=false;
+    const terminer=(ok)=>{
+      if(resolu)return;
+      resolu=true;
+      E.tc.callback=callbackOriginal;
+      resolve(ok);
+    };
+    E.tc.callback=(r)=>{
+      if(r.error){terminer(false);return;}
+      E.gtoken=r.access_token;
+      gapi.client.setToken({access_token:r.access_token});
+      terminer(true);
+    };
+    try{
+      E.tc.requestAccessToken({prompt:''});
+    }catch(e){
+      terminer(false);
+    }
+    // Garde-fou : si Google ne répond jamais, on ne bloque pas indéfiniment.
+    setTimeout(()=>terminer(false),8000);
+  });
+}
 async function appelAvecRetry(fn){
   let derniereErreur;
   for(let tentative=1;tentative<=RETRY_TENTATIVES;tentative++){
@@ -1137,6 +1187,15 @@ async function appelAvecRetry(fn){
       return r;
     }catch(e){
       derniereErreur=e;
+      if(codeErreurApi(e)===401){
+        // Le jeton Google a expiré en cours de session : on tente une
+        // reconnexion silencieuse, puis on retente l'appel automatiquement.
+        afficherBanniereConnexion('🔒 Reconnexion à Google en cours...');
+        const reconnecte=await tenterReconnexionSilencieuse();
+        if(reconnecte)continue;
+        afficherBanniereConnexion('🔒 Session expirée — merci de rouvrir l\'application pour vous reconnecter.',true);
+        throw e;
+      }
       if(!estErreurReseau(e))throw e; // erreur non réseau (droits, quota...) : on n'insiste pas
       if(tentative<RETRY_TENTATIVES){
         afficherBanniereConnexion(`📡 Connexion instable — nouvelle tentative (${tentative}/${RETRY_TENTATIVES-1})...`);
@@ -2251,7 +2310,7 @@ async function analyserReleve(input){
   }catch(e){
     console.error('analyserReleve:',e);
     msg.style.background='var(--roc)';msg.style.color='var(--ro)';
-    msg.textContent='Erreur de lecture : '+e.message;
+    msg.textContent='Erreur de lecture : '+messageErreurApi(e);
   }
 }
 
@@ -2499,8 +2558,9 @@ async function saveTx(){
     er.classList.remove('v');refresh();
   }catch(e){
     console.error('saveTx error:',e);
-    if(er){er.textContent="Erreur : "+e.message;er.classList.add('v');}
-    else toast("Erreur d'enregistrement : "+e.message);
+    const msg=messageErreurApi(e);
+    if(er){er.textContent="Erreur : "+msg;er.classList.add('v');}
+    else toast("Erreur d'enregistrement : "+msg);
   }
 }
 
