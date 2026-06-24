@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
-  <title>Mon Budget</title>
+  <title>Cashorizon</title>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#1a2f4a"/>
   <link rel="manifest" href="manifest.json"/>
   <link rel="icon" href="icon-192.png" type="image/png"/>
   <link rel="apple-touch-icon" href="icon-192.png"/>
-  <meta name="apple-mobile-web-app-title" content="Mon Budget"/>
+  <meta name="apple-mobile-web-app-title" content="Cashorizon"/>
   <!-- Content-Security-Policy retirée le 22/06 : elle bloquait silencieusement
        l'initialisation de l'API Google Sheets (gapi.client), empêchant toute
        connexion. La protection principale contre les injections reste
@@ -312,8 +312,8 @@
 <!-- CONNEXION -->
 
 <div id="ec-conn" class="ea">
-  <h1>Mon Budget</h1>
-  <p id="p-conn">Gérez vos finances simplement</p>
+  <h1>Cashorizon</h1>
+  <p id="p-conn">Anticipez votre budget, pas seulement votre passé</p>
   <div id="zone-chargement" style="color:rgba(255,255,255,.6);font-size:.875rem;margin-bottom:20px;display:none">Connexion en cours...</div>
   <button class="bg" id="btn-google" onclick="connexionGoogle()">
     <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
@@ -368,7 +368,7 @@
 <!-- APP -->
 <div id="app">
   <div class="hd">
-    <h1>Mon Budget</h1>
+    <h1>Cashorizon</h1>
     <div class="hdr">
       <select class="san" id="sel-an" onchange="changerAnnee(this.value)"></select>
     </div>
@@ -1014,7 +1014,7 @@ async function creerSheetAuto(){
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        properties:{title:'Mon Budget'},
+        properties:{title:'Cashorizon'},
         sheets:[{properties:{title:'TX_2026'}}]
       })
     });
@@ -1069,7 +1069,7 @@ function lancerApp(){
 
 // ── TUTORIEL ──
 const TUTO_SLIDES=[
-  {emoji:'👋',titre:'Bienvenue dans Mon Budget',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases, une idée par écran. Vous pourrez le revoir à tout moment depuis Réglages → "🎬 Revoir le tutoriel".</p>`},
+  {emoji:'👋',titre:'Bienvenue dans Cashorizon',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases, une idée par écran. Vous pourrez le revoir à tout moment depuis Réglages → "🎬 Revoir le tutoriel".</p>`},
   {emoji:'📅',titre:'Les 4 onglets, en haut de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
   {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
   {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p><p>💡 Astuce : dans la vue Mois, glissez le doigt vers la gauche ou la droite pour passer directement au mois précédent ou suivant.</p>`},
