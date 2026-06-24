@@ -1,7 +1,7 @@
 {
-  "name": "Mon Budget",
-  "short_name": "Mon Budget",
-  "description": "Suivi de budget personnel — revenus, dépenses, épargne et projets.",
+  "name": "Cashorizon",
+  "short_name": "Cashorizon",
+  "description": "Anticipez votre budget — revenus, dépenses, épargne et projets, vus à l'avance.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
