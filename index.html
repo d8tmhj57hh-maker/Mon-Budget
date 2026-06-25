@@ -4,7 +4,6 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
   <title>Cashorizon</title>
-  <meta name="google-site-verification" content="TzlKVVuVWPfInKFhqw6fVnqdYzXrgKe4JScv2_XT5AM" />
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="theme-color" content="#1a2f4a"/>
@@ -828,7 +827,12 @@ window.onload=()=>{
 
 
 
-function today(){return new Date().toISOString().split('T')[0];}
+function today(){return fmtISO(new Date());}
+// Formate une date en YYYY-MM-DD à partir de ses composants LOCAUX (pas UTC).
+// toISOString() convertit en UTC, ce qui décale la date d'un jour en arrière
+// pour les fuseaux horaires positifs (ex: France) autour de minuit — d'où ce
+// helper systématique pour toute date de fin de mois ou date du jour.
+function fmtISO(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
 // Convertit en nombre une valeur venant de Google Sheets, qu'elle soit déjà
 // numérique ou une chaîne avec virgule décimale française (ex: "183,23").
 // parseFloat() seul s'arrête à la virgule et tronque le résultat (183,23 -> 183),
@@ -1375,7 +1379,7 @@ function calcSoldePrevisionnel(dateLimite){
   const aj=today();
   let d=0;
   // Transactions déjà saisies, futures, pas encore pointées
-  E.tx.filter(t=>t.date>aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
+  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
     t.type==='revenu'?d+=t.montant:d-=t.montant;
   });
   // Éléments programmés actifs, pour les mois restants jusqu'à dateLimite,
@@ -1410,7 +1414,7 @@ function calcSoldePrevisionnelGeneral(dateLimite){
   const aj=today();
   if(dateLimite<=aj)return null; // pas de prévisionnel pour une date déjà passée
   let d=0;
-  E.tx.filter(t=>t.date>aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
+  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
     t.type==='revenu'?d+=t.montant:d-=t.montant;
   });
   // Parcourir mois par mois, année par année, entre aujourd'hui et la date limite
@@ -1468,7 +1472,7 @@ function affBanner(){
   const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);const r=rev-dep;
   // Solde prévisionnel à la fin du mois en cours, affiché en complément discret
-  const finMois=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).toISOString().split('T')[0];
+  const finMois=fmtISO(new Date(new Date().getFullYear(),new Date().getMonth()+1,0));
   const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
   const nomMoisAuj=MOIS[new Date().getMonth()];
   const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
@@ -1682,7 +1686,7 @@ function affBudget(){
   h+=`<tr class="lr" style="background:rgba(45,122,95,.06)!important"><td><strong>Solde compte courant</strong></td>`;
   const ajHui=today();
   MOIS.forEach((_,i)=>{
-    const dF=new Date(parseInt(E.annee),i+1,0).toISOString().split('T')[0];
+    const dF=fmtISO(new Date(parseInt(E.annee),i+1,0));
     if(dF<=ajHui){
       // Mois déjà passé (ou en cours) : solde réel, basé sur les transactions pointées
       const sF=calcSolde(dF);
@@ -1696,7 +1700,7 @@ function affBudget(){
     }
   });
   // Colonne total = solde fin décembre (réel si déjà passé, prévisionnel sinon)
-  const dFDec=new Date(parseInt(E.annee),12,0).toISOString().split('T')[0];
+  const dFDec=fmtISO(new Date(parseInt(E.annee),12,0));
   const sFDec=dFDec<=ajHui?calcSolde(dFDec):calcSoldePrevisionnelGeneral(dFDec);
   const styleItaliqueDec=dFDec<=ajHui?'':'font-style:italic';
   h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}" style="${styleItaliqueDec}">${sFDec!==null?fmtDec(sFDec):'—'}</td></tr></tbody>`;
@@ -1812,7 +1816,7 @@ function affDm(mi){
   const rev=txM.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   const dep=txM.filter(t=>t.type==='depense').reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
   const r=rev-dep;
-  const dF=new Date(parseInt(E.annee),mi+1,0).toISOString().split('T')[0];
+  const dF=fmtISO(new Date(parseInt(E.annee),mi+1,0));
   const dD=`${E.annee}-${String(mi+1).padStart(2,'0')}-01`;
   const sF=calcSolde(dF);const sD=calcSolde(dD);
 
