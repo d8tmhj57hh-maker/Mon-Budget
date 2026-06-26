@@ -106,7 +106,7 @@
 
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
-    .barre-edition-budget{display:flex;justify-content:flex-end;padding:6px 0 10px}
+    .barre-edition-budget{display:flex;justify-content:flex-end;gap:8px;padding:6px 0 10px}
     .bedit{padding:7px 15px;border-radius:20px;font-size:.82rem;font-weight:600;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);cursor:pointer}
     .bedit.on{background:var(--or);color:#fff;border-color:var(--or)}
     .reord{display:inline-flex;flex-direction:column;gap:1px;margin-right:6px;vertical-align:middle}
@@ -396,6 +396,7 @@
         <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="barre-edition-budget">
+          <button class="bedit" onclick="ouvrirRecal()">⚡ Recaler</button>
           <button id="btn-edition-budget" class="bedit" onclick="toggleEditionBudget()">✏️ Modifier</button>
         </div>
         <div class="tw"><table class="ta" id="ta"></table></div>
@@ -495,16 +496,6 @@
           <button class="bs2" style="margin-top:0;white-space:nowrap" onclick="creerProjetAvance()">+ Créer</button>
         </div>
         <div id="liste-projets"></div>
-      </div>
-
-      <div class="si">
-        <h3>⚡ Recaler le solde</h3>
-        <p>Entrez votre solde bancaire exact à une date donnée.</p>
-        <div class="g2">
-          <div class="ch3 cm3"><label>Solde réel (€)</label><input type="number" id="rec-s" step="0.01" inputmode="decimal" placeholder="1250.00"/></div>
-          <div class="ch3"><label>À la date du</label><input type="date" id="rec-d"/></div>
-        </div>
-        <button class="bp" onclick="recalerSolde()">Recaler</button>
       </div>
 
       <div class="si">
@@ -1468,7 +1459,7 @@ function affBanner(){
   const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
   const nomMoisAuj=MOIS[new Date().getMonth()];
   const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
-  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}<div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div><button class="brec" onclick="ouvrirRecal()">⚡ Recaler le solde</button>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
+  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}<div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
 
