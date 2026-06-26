@@ -1731,10 +1731,12 @@ function affBudget(){
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Solde du mois</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
+    // Sommes purement réelles (sans aucun mélange avec les programmées), pour détecter
+    // si ce mois a déjà un mouvement constaté ou s'il est encore entièrement prévisionnel.
     const revReel=Object.values(data[i].rev).reduce((a,b)=>a+b,0);
-    const depReel=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||totGlobalDep[i]||0;
+    const depReel=Object.values(data[i].dep).reduce((a,b)=>a+b,0);
     const rev=revReel||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
-    const dep=depReel||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
+    const dep=depReel||totGlobalDep[i]||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
     const r=rev-dep;rAn+=r;
     // Mois sans aucun mouvement réel encore enregistré : on affiche le solde en italique
     // grisé (convention déjà utilisée ailleurs) pour signaler qu'il s'agit d'une prévision
