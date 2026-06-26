@@ -407,6 +407,7 @@
         <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="barre-edition-budget">
+          <button class="bedit" onclick="ouvrirListeProg()">🔄 Programmées</button>
           <button class="bedit" onclick="ouvrirRecal()">⚡ Recaler</button>
           <button id="btn-edition-budget" class="bedit" onclick="toggleEditionBudget()">✏️ Modifier</button>
         </div>
@@ -489,13 +490,7 @@
         <button class="bs2" style="margin-top:8px" onclick="ouvrirPageAide()">📋 Consulter le guide complet</button>
       </div>
 
-      <!-- PROGRAMMÉES -->
-      <div class="si">
-        <h3>🔄 Dépenses & revenus programmés</h3>
-        <p>Loyer, salaire estimé, EDF... Apparaissent en italique dans la vue Mois. Tapez dessus pour pointer avec le vrai montant.</p>
-        <div id="lp"><div class="ld"><div class="sp"></div></div></div>
-        <button class="bs2" onclick="ouvrirAjoutProg()">+ Ajouter un élément programmé</button>
-      </div>
+
 
       <!-- BUDGETS PAR PROJET -->
       <div class="si">
@@ -597,6 +592,16 @@
 </div>
 
 <!-- OVERLAY AJOUT PROGRAMMÉ -->
+<div class="ov" id="ov-liste-prog">
+  <div class="modal">
+    <div class="mh"></div>
+    <button class="bf" onclick="fOv('ov-liste-prog')" aria-label="Fermer">✕</button>
+    <h2>🔄 Dépenses & revenus programmés</h2>
+    <p style="font-size:.82rem;color:var(--txl);margin:4px 0 14px">Loyer, salaire estimé, EDF... Apparaissent en italique dans la vue Mois. Tapez dessus pour pointer avec le vrai montant.</p>
+    <div id="lp"><div class="ld"><div class="sp"></div></div></div>
+    <button class="bs2" style="margin-top:10px" onclick="ouvrirAjoutProg()">+ Ajouter un élément programmé</button>
+  </div>
+</div>
 <div class="ov" id="ov-prog">
   <div class="modal">
     <div class="mh"></div>
@@ -2628,6 +2633,7 @@ function affProg(){
   }).join('');
 }
 
+function ouvrirListeProg(){affProg();document.getElementById('ov-liste-prog').classList.add('v');}
 function ouvrirAjoutProg(){
   document.getElementById('ov-prog-ti').textContent='Nouvel élément programmé';
   document.getElementById('prog-nom').value='';
