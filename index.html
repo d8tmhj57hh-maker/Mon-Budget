@@ -407,6 +407,7 @@
         <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="barre-edition-budget">
+          <button class="bedit" onclick="ouvrirListeProjets()">🎯 Projets</button>
           <button class="bedit" onclick="ouvrirListeProg()">🔄 Programmées</button>
           <button class="bedit" onclick="ouvrirRecal()">⚡ Recaler</button>
           <button id="btn-edition-budget" class="bedit" onclick="toggleEditionBudget()">✏️ Modifier</button>
@@ -446,7 +447,7 @@
             <p style="font-size:.7rem;color:var(--txl);margin:5px 0 0">Cette date est dans le futur — cochez si cet élément revient régulièrement, pour le programmer une fois pour toutes.</p>
           </div>
           <div class="ch3"><label>Catégorie</label><select id="s-ca"></select></div>
-          <div class="ch3"><label>Projet</label><input type="text" id="s-pr" placeholder="Ex : Salle de bain..." list="dl-proj"/><datalist id="dl-proj"></datalist></div>
+          <div class="ch3"><label>Projet</label><select id="s-pr" onchange="gererChoixProjet(this)"></select></div>
           <div class="ch3"><label>Note</label><input type="text" id="s-no" placeholder="Détail..."/></div>
           <button class="bp" onclick="saveTx()">Enregistrer</button>
           <button class="bs2" onclick="fermerSaisie()">Annuler</button>
@@ -492,16 +493,6 @@
 
 
 
-      <!-- BUDGETS PAR PROJET -->
-      <div class="si">
-        <h3>🎯 Budgets par projet</h3>
-        <p>Définissez un budget total pour un projet (ex : "Salle de bain", "Vacances") — toutes dates et catégories de dépenses confondues. Créez un projet à l'avance pour planifier son budget avant même la première dépense, ou laissez-le apparaître automatiquement dès qu'une dépense le mentionne.</p>
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <input type="text" id="nouveau-projet-nom" placeholder="Nom du nouveau projet" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.85rem;outline:none"/>
-          <button class="bs2" style="margin-top:0;white-space:nowrap" onclick="creerProjetAvance()">+ Créer</button>
-        </div>
-        <div id="liste-projets"></div>
-      </div>
 
       <div class="si">
         <h3>📊 Vue lisible dans Google Sheets</h3>
@@ -532,7 +523,7 @@
         <div class="ch3"><label>Date</label><input type="date" id="ov-da"/></div>
       </div>
       <div class="ch3"><label>Catégorie</label><select id="ov-ca"></select></div>
-      <div class="ch3"><label>Projet</label><input type="text" id="ov-pr" list="dl-proj"/></div>
+      <div class="ch3"><label>Projet</label><select id="ov-pr" onchange="gererChoixProjet(this)"></select></div>
       <div class="ch3"><label>Note</label><input type="text" id="ov-no"/></div>
       <div class="ch3" id="bloc-pointe-ov" style="display:none">
         <div style="display:flex;align-items:center;gap:9px">
@@ -592,6 +583,19 @@
 </div>
 
 <!-- OVERLAY AJOUT PROGRAMMÉ -->
+<div class="ov" id="ov-liste-projets">
+  <div class="modal">
+    <div class="mh"></div>
+    <button class="bf" onclick="fOv('ov-liste-projets')" aria-label="Fermer">✕</button>
+    <h2>🎯 Budgets par projet</h2>
+    <p style="font-size:.82rem;color:var(--txl);margin:4px 0 14px">Définissez un budget total pour un projet (ex : "Salle de bain", "Vacances", "Pot de départ Julie") — toutes dates et catégories confondues. Le montant "Collecté" reprend les revenus liés à ce même projet (ex : participations reçues).</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input type="text" id="nouveau-projet-nom" placeholder="Nom du nouveau projet" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.85rem;outline:none"/>
+      <button class="bs2" style="margin-top:0;white-space:nowrap" onclick="creerProjetAvance()">+ Créer</button>
+    </div>
+    <div id="liste-projets"></div>
+  </div>
+</div>
 <div class="ov" id="ov-liste-prog">
   <div class="modal">
     <div class="mh"></div>
@@ -710,6 +714,7 @@ let BUDGETS_CAT={}; // budget mensuel optionnel par catégorie de dépense, ex: 
 let BUDGETS_CAT_AN={}; // budget annuel optionnel par catégorie, ex: {"Cadeaux":600} — répartition libre sur l'année
 let BUDGETS_PROJET={}; // budget total optionnel par projet, ex: {"Salle de bain":2000} — toutes dates et catégories confondues
 let PROJETS_DECLARES=[]; // projets créés à l'avance depuis Réglages, avant toute dépense réelle
+let PROJETS_MASQUES=[]; // projets volontairement retirés de la liste active (historique conservé, retrouvable via Recherche)
 let EXCLUSIONS_PROG={}; // occurrences ponctuelles ignorées sans désactiver la récurrence, ex: {"prog_xxx":["2027-08"]}
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
@@ -1304,8 +1309,8 @@ async function chargerParams(){
   try{
     const rows=await lire('Parametres!A1:B100');if(!rows.length)return;
     const get=(cle)=>{const row=rows.find(r=>r[0]===cle);return row&&row[1]?row[1].split('|').map(s=>s.trim()).filter(Boolean):null;};
-    const r=get('REVENUS'),l=get('LIVRETS'),m=get('CATS_MASQUEES');
-    if(r)CREV=r;if(l)LIVRETS=l;if(m)CATS_MASQUEES=m;
+    const r=get('REVENUS'),l=get('LIVRETS'),m=get('CATS_MASQUEES'),pm=get('PROJETS_MASQUES');
+    if(r)CREV=r;if(l)LIVRETS=l;if(m)CATS_MASQUEES=m;if(pm)PROJETS_MASQUES=pm;
     // Budgets par catégorie : stockés comme "Catégorie:montant" séparés par |
     const b=get('BUDGETS_CAT');
     if(b){BUDGETS_CAT={};b.forEach(paire=>{const [cat,...reste]=paire.split(':');const m=parseFloat(reste.join(':'));if(cat&&!isNaN(m)&&m>0)BUDGETS_CAT[cat]=m;});}
@@ -1337,7 +1342,7 @@ async function sauvegarderParams(){
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
   const iconesStr=Object.entries(ICONES_CAT_PERSO).map(([c,e])=>`${c}:${e}`).join('|');
   const exclusionsStr=Object.entries(EXCLUSIONS_PROG).filter(([,m])=>m.length).map(([pid,mois])=>`${pid}:${mois.join(',')}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr]];
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['PROJETS_MASQUES',PROJETS_MASQUES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1458,7 +1463,35 @@ function peuplerSels(){
 function majSelAnnee(){const s=document.getElementById('sel-an');if(s)s.value=E.annee;}
 function peuplerCat(){const s=document.getElementById('s-ca');if(!s)return;const c=E.type==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${esc(x)}">${iconePourCategorie(x)} ${esc(x)}</option>`).join('');}
 function peuplerProgCat(){const s=document.getElementById('prog-cat');if(!s)return;const c=PROG_TYPE==='revenu'?CREV:toutesCategoriesConnues();s.innerHTML=c.map(x=>`<option value="${esc(x)}">${iconePourCategorie(x)} ${esc(x)}</option>`).join('');}
-function majDL(){const dl=document.getElementById('dl-proj');if(dl)dl.innerHTML=[...new Set([...E.projets,...PROJETS_DECLARES])].map(p=>`<option value="${p}">`).join('');}
+function majDL(){
+  const actifs=[...new Set([...E.projets,...PROJETS_DECLARES])].filter(p=>!PROJETS_MASQUES.includes(p)).sort((a,b)=>a.localeCompare(b,'fr'));
+  ['s-pr','ov-pr'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const valActuelle=sel.value;
+    let opts=`<option value="">— Aucun projet —</option>`;
+    // Si la transaction en cours d'édition pointe vers un projet masqué/inconnu,
+    // on l'affiche tout de même pour ne pas effacer silencieusement la donnée existante.
+    if(valActuelle&&!actifs.includes(valActuelle))opts+=`<option value="${esc(valActuelle)}">${esc(valActuelle)} (archivé)</option>`;
+    opts+=actifs.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    opts+=`<option value="__nouveau__">+ Nouveau projet…</option>`;
+    sel.innerHTML=opts;
+    sel.value=valActuelle||'';
+  });
+}
+async function gererChoixProjet(sel){
+  if(sel.value!=='__nouveau__')return;
+  const nom=(prompt('Nom du nouveau projet :')||'').trim();
+  if(!nom){sel.value='';return;}
+  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
+  if(!tousProjets.includes(nom)){
+    PROJETS_DECLARES.push(nom);
+    if(PROJETS_MASQUES.includes(nom))PROJETS_MASQUES=PROJETS_MASQUES.filter(p=>p!==nom);
+    await sauvegarderParams();
+  }
+  majDL();
+  sel.value=nom;
+}
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
 
@@ -2071,6 +2104,7 @@ function ouvrirTx(id){
   const catsDisponibles=t.type==='revenu'?CREV:toutesCategoriesConnues();
   selCa.innerHTML=catsDisponibles.map(c=>`<option value="${esc(c)}" ${c===t.cat?'selected':''}>${iconePourCategorie(c)} ${esc(c)}</option>`).join('');
   document.getElementById('ov-pr').value=t.projet||'';
+  majDL();
   document.getElementById('ov-no').value=(t.note&&!t.note.startsWith('prog:'))?t.note:'';
   const blocPointe=document.getElementById('bloc-pointe-ov');
   if(!ep&&!t.pointe){blocPointe.style.display='block';document.getElementById('ov-pointe').checked=false;}
@@ -2633,6 +2667,7 @@ function affProg(){
   }).join('');
 }
 
+function ouvrirListeProjets(){affProjets();document.getElementById('ov-liste-projets').classList.add('v');}
 function ouvrirListeProg(){affProg();document.getElementById('ov-liste-prog').classList.add('v');}
 function ouvrirAjoutProg(){
   document.getElementById('ov-prog-ti').textContent='Nouvel élément programmé';
@@ -2985,16 +3020,19 @@ async function creerProjetAvance(){
 function affProjets(){
   const el=document.getElementById('liste-projets');
   if(!el)return;
-  // Fusion : projets déjà vus dans des dépenses + projets déclarés à l'avance, sans doublon
-  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
+  // Fusion : projets déjà vus dans des dépenses + projets déclarés à l'avance, sans doublon,
+  // en excluant ceux que l'utilisateur a volontairement retirés de la liste active.
+  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])].filter(pj=>!PROJETS_MASQUES.includes(pj));
   if(!tousProjets.length){
     el.innerHTML=`<p style="font-size:.78rem;color:var(--txl);font-style:italic">Aucun projet pour l'instant. Créez-en un ci-dessous, ou renseignez le champ "Projet" en ajoutant une dépense.</p>`;
     return;
   }
   el.innerHTML=tousProjets.map(pj=>{
-    const txProjet=E.tx.filter(t=>t.projet===pj&&t.type==='depense');
-    const tot=txProjet.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
-    const aVenir=txProjet.length===0;
+    const txDep=E.tx.filter(t=>t.projet===pj&&t.type==='depense');
+    const txRev=E.tx.filter(t=>t.projet===pj&&t.type==='revenu');
+    const tot=txDep.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+    const collecte=txRev.reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+    const aVenir=txDep.length===0&&txRev.length===0;
     const budget=BUDGETS_PROJET[pj];
     let badge='';
     if(aVenir){
@@ -3007,11 +3045,21 @@ function affProjets(){
     return `<div style="display:flex;align-items:center;gap:8px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;margin-bottom:6px">
       <div style="flex:1">
         <div style="font-size:.85rem;font-weight:500">${esc(pj)}${badge}</div>
-        <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de dépense':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}</div>
+        <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de mouvement':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}${collecte>0?` · 💶 Collecté : ${fmtDec(collecte)}`:''}</div>
       </div>
-      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:92px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
+      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:84px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
+      <button onclick="masquerProjetDepuisListe('${pj.replace(/'/g,"\\'")}')" aria-label="Retirer ce projet de la liste" title="Retirer de la liste (l'historique reste retrouvable via Recherche)" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px;min-width:28px;min-height:28px">🗑</button>
     </div>`;
   }).join('');
+}
+function masquerProjetDepuisListe(pj){
+  confirmerAction('Retirer "'+pj+'" de la liste de projets ? Les dépenses et revenus déjà liés à ce projet restent intacts et resteront retrouvables via l\'onglet Recherche — ce projet ne sera simplement plus proposé ni affiché ici.',()=>{
+    if(!PROJETS_MASQUES.includes(pj))PROJETS_MASQUES.push(pj);
+    PROJETS_DECLARES=PROJETS_DECLARES.filter(p=>p!==pj);
+    delete BUDGETS_PROJET[pj];
+    sauvegarderParams();
+    affProjets();
+  });
 }
 
 function affPoles(){
