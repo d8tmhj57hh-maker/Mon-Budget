@@ -103,6 +103,14 @@
     .ms .v{font-size:.85rem;font-weight:600}.ms .l{font-size:.62rem;opacity:.6;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
     .vp{color:#7eefc4}.vn{color:#ff8a8a}
     .brec{margin-top:10px;width:100%;padding:8px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:var(--wf);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer}
+    /* Écrans larges : regrouper le solde et les 3 indicateurs côte à côte, alignés
+       à gauche, plutôt que de les laisser s'étirer sur toute la largeur du bandeau. */
+    @media(min-width:700px){
+      .ban{display:flex;align-items:flex-start;gap:40px;flex-wrap:wrap}
+      .ban .ban-solde{flex:none}
+      .ban .g3{display:flex;gap:28px;border-top:none;padding-top:6px;align-self:center}
+      .ban .ms{min-width:auto}
+    }
 
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
@@ -1459,7 +1467,7 @@ function affBanner(){
   const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
   const nomMoisAuj=MOIS[new Date().getMonth()];
   const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
-  const h=solde!==null?`<div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}<div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div>`:`<div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button>`;
+  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}</div><div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div>`:`<div class="ban-solde"><div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button></div>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
 
