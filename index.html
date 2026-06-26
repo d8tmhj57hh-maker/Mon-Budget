@@ -114,6 +114,9 @@
 
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
+    .dm-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:11px}
+    .dm-fleche{background:var(--wh);border:1.5px solid var(--bo);border-radius:50%;width:32px;height:32px;font-size:.85rem;color:var(--tx);cursor:pointer;flex-shrink:0}
+    .dm-fleche:hover{background:var(--fo)}
     .barre-edition-budget{display:flex;justify-content:flex-end;gap:8px;padding:6px 0 10px}
     .bedit{padding:7px 15px;border-radius:20px;font-size:.82rem;font-weight:600;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);cursor:pointer}
     .bedit.on{background:var(--or);color:#fff;border-color:var(--or)}
@@ -419,7 +422,6 @@
       </div>
       <div class="dm" id="dm">
         <button class="bret" onclick="fermerDm()">← Tous les mois</button>
-        <p style="text-align:center;font-size:.7rem;color:var(--txl);margin:2px 0 8px">👈 Glissez pour changer de mois 👉</p>
         <div id="cdm"></div>
         <!-- Saisie rapide intégrée -->
         <div class="saisie-rapide" id="saisie-rapide" style="display:none">
@@ -1852,7 +1854,7 @@ function affDm(mi){
   const catsCouvertes=new Set(txM.filter(t=>t.pointe).map(t=>t.cat));
   const pointeesIds=new Set([...pointeesParNote,...E.prog.filter(p=>catsCouvertes.has(p.cat)).map(p=>p.id)]);
 
-  let h=`<h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin-bottom:11px;">${MOIS[mi]} ${E.annee}</h2>`;
+  let h=`<div class="dm-nav"><button class="dm-fleche" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;">${MOIS[mi]} ${E.annee}</h2><button class="dm-fleche" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>`;
   const couleurEtat=sF!==null?(sF>=0?'vp':'vn'):'';
   h+=`<div class="ban" style="margin-bottom:11px;">
     <div class="g3">
