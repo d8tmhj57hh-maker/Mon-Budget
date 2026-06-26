@@ -486,16 +486,6 @@
         <button class="bs2" onclick="ouvrirAjoutProg()">+ Ajouter un élément programmé</button>
       </div>
 
-      <!-- PARAMÈTRES -->
-      <div class="si">
-        <h3>⚙️ Paramètres — Catégories</h3>
-        <p>Personnalisez vos catégories. Un élément par ligne.</p>
-        <div class="ch3"><label>🏦 Livrets d'épargne</label><textarea id="p-livrets" style="min-height:80px"></textarea></div>
-        <div class="ch3"><label>💰 Revenus</label><textarea id="p-rev" style="min-height:90px"></textarea></div>
-        <button class="bp" onclick="sauvegarderParamsUI()">💾 Enregistrer</button>
-        <button class="bs2" onclick="reinitParams()">↺ Valeurs par défaut</button>
-      </div>
-
       <!-- BUDGETS PAR PROJET -->
       <div class="si">
         <h3>🎯 Budgets par projet</h3>
@@ -1448,7 +1438,7 @@ function aller(id,btn){
   if(btn)btn.classList.add('a');
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
-  if(id==='reglages'){affEpargne();affProg();affProjets();remplirParams();affChecklistDemarrage();}
+  if(id==='reglages'){affEpargne();affProg();affProjets();affChecklistDemarrage();}
   if(id==='mois'&&E.moisOuvert===null)ouvrirDm(new Date().getMonth());
 }
 
@@ -1583,9 +1573,12 @@ function affBudget(){
 
   // ÉPARGNE
   h+=`<tr class="ch z-ep"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
-  LIVRETS.forEach(liv=>{
+  LIVRETS.forEach((liv,idxLiv)=>{
     const ep=E.epargne.find(e=>e.livret===liv);
-    h+=`<tr class="z-ep cat-row" data-cat="${esc(liv)}" data-bloc="ep"><td>${esc(liv)}</td>`;
+    const ctrlLiv=E.editionBudget?
+      `<span class="reord"><button onclick="deplacerLivret(${idxLiv},-1)" aria-label="Monter">▲</button><button onclick="deplacerLivret(${idxLiv},1)" aria-label="Descendre">▼</button></span>
+       <span class="ic-edit-cat" onclick="renommerLivretDepuisBudget('${esc(liv).replace(/'/g,"\\'")}')">✏️</span><span class="ic-edit-cat" onclick="supprimerLivretDepuisBudget('${esc(liv).replace(/'/g,"\\'")}')">🗑️</span>`:'';
+    h+=`<tr class="z-ep cat-row" data-cat="${esc(liv)}" data-bloc="ep"><td>${esc(liv)}${ctrlLiv}</td>`;
     let premier=null;let dernier=null;
     MOIS.forEach((_,i)=>{
       const v=ep?ep.mois[i]:null;
@@ -1600,6 +1593,7 @@ function affBudget(){
     const labelEvol=evol===null?'—':(evol>=0?'+':'')+fmtDec(evol);
     h+=`<td class="${clEvol}">${labelEvol}</td></tr>`;
   });
+  if(E.editionBudget)h+=`<tr class="ligne-ajout-cat" onclick="ajouterLivretDepuisBudget()"><td colspan="${nc}">+ Ajouter un compte / livret</td></tr>`;
   // Ligne total épargne : dernier solde connu par livret + évolution totale
   h+=`<tr class="lt z-ep"><td>Total épargne</td>`;
   let totDernier=0;let totPremier=0;
@@ -1621,11 +1615,17 @@ function affBudget(){
   // REVENUS (réels + prévisionnels)
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   const cRBrut=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
-  const cR=[...CREV.filter(c=>cRBrut.includes(c)),...cRBrut.filter(c=>!CREV.includes(c))];
+  const aucuneRevenuSaisi=!cRBrut.length;
+  const cR=aucuneRevenuSaisi?[...CREV]:[...CREV.filter(c=>cRBrut.includes(c)),...cRBrut.filter(c=>!CREV.includes(c))];
   h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
   const totRevMois=Array(12).fill(0);
-  cR.forEach(cat=>{let tot=0;h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}</td>`;
+  cR.forEach(cat=>{let tot=0;
+    const idxRev=CREV.indexOf(cat);
+    const ctrlRev=E.editionBudget?
+      `${idxRev>-1?`<span class="reord"><button onclick="deplacerRevenu(${idxRev},-1)" aria-label="Monter">▲</button><button onclick="deplacerRevenu(${idxRev},1)" aria-label="Descendre">▼</button></span>`:''}
+       <span class="ic-edit-cat" onclick="renommerRevenuDepuisBudget('${esc(cat).replace(/'/g,"\\'")}')">✏️</span><span class="ic-edit-cat" onclick="supprimerRevenuDepuisBudget('${esc(cat).replace(/'/g,"\\'")}')">🗑️</span>`:'';
+    h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}${ctrlRev}</td>`;
     MOIS.forEach((_,i)=>{
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
@@ -1634,6 +1634,7 @@ function affBudget(){
     });
     h+=`<td class="tp">${fmtDec(tot)}</td></tr>`;
   });
+  if(E.editionBudget)h+=`<tr class="ligne-ajout-cat" onclick="ajouterRevenuDepuisBudget()"><td colspan="${nc}">+ Ajouter une catégorie de revenu</td></tr>`;
   let tRA=0;h+=`<tr class="lt z-rv"><td>Total revenus</td>`;
   MOIS.forEach((_,i)=>{tRA+=totRevMois[i];h+=`<td class="tp">${fmtDec(totRevMois[i])}</td>`;});
   h+=`<td class="tp">${fmtDec(tRA)}</td></tr>`;
@@ -3180,6 +3181,78 @@ function ajouterPoleDepuisBudget(){
   sauvegarderParams();
   affBudget();
 }
+function ajouterLivretDepuisBudget(){
+  const nv=prompt('Nom du nouveau compte / livret :');
+  if(!nv||!nv.trim())return;
+  if(LIVRETS.includes(nv.trim())){toast('Ce compte existe déjà');return;}
+  LIVRETS.push(nv.trim());
+  sauvegarderParams();
+  affBudget();affEpargne();
+}
+async function renommerLivretDepuisBudget(ancienNom){
+  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
+  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
+  const nv=nouveauNom.trim();
+  toast('Renommage en cours...');
+  try{
+    LIVRETS=LIVRETS.map(l=>l===ancienNom?nv:l);
+    const ep=E.epargne.find(e=>e.livret===ancienNom);
+    if(ep)ep.livret=nv;
+    // Met aussi à jour le nom dans la feuille Epargne (colonne A) pour conserver l'historique des soldes déjà saisis
+    const rows=await lire('Epargne!A2:N');
+    const idx=rows.findIndex(r=>r[0]===ancienNom);
+    if(idx>=0)await ecrire(`Epargne!A${idx+2}`,[[nv]]);
+    await sauvegarderParams();
+    affBudget();affEpargne();
+    toast('"'+ancienNom+'" renommé en "'+nv+'" ✓');
+  }catch(e){
+    toast('Erreur lors du renommage');
+  }
+}
+function supprimerLivretDepuisBudget(nom){
+  confirmerAction('Retirer "'+nom+'" de la liste ? L\'historique des soldes déjà enregistrés reste conservé dans votre fichier Google Sheets, mais ce compte ne sera plus proposé ni affiché ici.',()=>{
+    LIVRETS=LIVRETS.filter(l=>l!==nom);
+    sauvegarderParams();
+    affBudget();affEpargne();
+  });
+}
+function deplacerLivret(i,sens){
+  const j=i+sens;
+  if(j<0||j>=LIVRETS.length)return;
+  [LIVRETS[i],LIVRETS[j]]=[LIVRETS[j],LIVRETS[i]];
+  sauvegarderParams();
+  affBudget();affEpargne();
+}
+function ajouterRevenuDepuisBudget(){
+  const nv=prompt('Nom de la nouvelle catégorie de revenu :');
+  if(!nv||!nv.trim())return;
+  if(CREV.includes(nv.trim())){toast('Cette catégorie existe déjà');return;}
+  CREV.push(nv.trim());
+  sauvegarderParams();
+  affBudget();
+}
+async function renommerRevenuDepuisBudget(ancienNom){
+  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
+  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
+  const nv=nouveauNom.trim();
+  CREV=CREV.map(c=>c===ancienNom?nv:c);
+  // Met aussi à jour les transactions et programmées existantes (logique déjà utilisée pour les catégories de dépense)
+  await renommerCategorie(ancienNom,nv);
+}
+function supprimerRevenuDepuisBudget(nom){
+  confirmerAction('Retirer "'+nom+'" de la liste de revenus ? L\'historique des transactions déjà saisies sous ce nom reste intact et continuera de s\'afficher.',()=>{
+    CREV=CREV.filter(c=>c!==nom);
+    sauvegarderParams();
+    affBudget();
+  });
+}
+function deplacerRevenu(i,sens){
+  const j=i+sens;
+  if(j<0||j>=CREV.length)return;
+  [CREV[i],CREV[j]]=[CREV[j],CREV[i]];
+  sauvegarderParams();
+  affBudget();
+}
 function ajouterPole(){
   POLES.push({nom:'Nouveau pôle',cats:[]});
   affPoles();
@@ -3212,8 +3285,8 @@ function retirerCatDePole(i,cat){
   POLES[i].cats=POLES[i].cats.filter(c=>c!==cat);
   affPoles();
 }
-async function renommerCategorie(ancienNom){
-  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
+async function renommerCategorie(ancienNom,nomImpose){
+  const nouveauNom=nomImpose||prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
   if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
   const nv=nouveauNom.trim();
   toast('Renommage en cours...');
