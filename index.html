@@ -100,7 +100,11 @@
     .ban .gr{font-family:'DM Serif Display',serif;font-size:1.9rem;margin-bottom:2px}
     .ban .su{font-size:.7rem;opacity:.55;margin-bottom:10px}
     .ban .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,.15)}
-    .ms .v{font-size:.85rem;font-weight:600}.ms .l{font-size:.62rem;opacity:.6;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+    .ms .v{font-size:.85rem;font-weight:600}.ms .l{font-size:.62rem;opacity:.6;margin-top:4px;text-transform:uppercase;letter-spacing:.05em}
+    .ms .v2{display:flex;align-items:baseline;gap:5px;line-height:1.3}
+    .ms .vreel{font-size:.78rem;font-weight:500;opacity:.7;white-space:nowrap}
+    .ms .vproj{font-size:.9rem;font-weight:700;white-space:nowrap}
+    .ms .vlbl{font-size:.58rem;opacity:.55;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
     .vp{color:#7eefc4}.vn{color:#ff8a8a}
     .brec{margin-top:10px;width:100%;padding:8px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:var(--wf);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer}
     /* Écrans larges : regrouper le solde et les 3 indicateurs côte à côte, alignés
@@ -317,6 +321,11 @@
     .vi{text-align:center;padding:28px 0;color:var(--txl)}
     .vi .em{font-size:1.7rem;margin-bottom:8px}
     @media(max-width:380px){.gm{grid-template-columns:repeat(2,1fr)}.ban .gr{font-size:1.6rem}}
+    @media(max-width:699px){
+      .ban .g3{flex-direction:column;gap:13px;align-items:stretch}
+      .ban .ms{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px}
+      .ban .ms .l{order:-1;width:100%;opacity:.6;margin-top:0;margin-bottom:1px}
+    }
   </style>
   <!-- Firebase SDK compat (fonctionne sur Safari iOS PWA) -->
   
@@ -1499,17 +1508,51 @@ function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt'
 
 // peuplerMoisProg remplacé par affGrilleMontantsMois
 
+// Revenus/dépenses annuels "projetés" : pour chaque catégorie et chaque mois, on prend
+// le réel s'il existe, sinon la prévision programmée — exactement la même logique déjà
+// utilisée pour "Solde du mois" dans le tableau, mais cumulée sur les 12 mois de l'année.
+// Ainsi "Revenus/Dépenses/Reste" dans le bandeau reflètent une projection de fin d'année,
+// pas seulement ce qui a déjà eu lieu à ce jour.
+// Revenus/dépenses annuels "réels à ce jour" : uniquement ce qui est daté jusqu'à
+// aujourd'hui inclus, sans aucune part de prévision — à afficher en complément du
+// chiffre projeté (calcAnnuelPrevisionnel), pour comparer "où j'en suis" et "où je vais".
+function calcAnnuelReel(an){
+  const aj=today();
+  const txA=E.tx.filter(t=>t.an===an&&t.date<=aj);
+  const v=t=>t.pointe&&t.montant_reel?t.montant_reel:t.montant;
+  const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+v(t),0);
+  const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+v(t),0);
+  return {rev,dep};
+}
+function calcAnnuelPrevisionnel(an){
+  const txA=E.tx.filter(t=>t.an===an);
+  const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
+  txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
+  const catsRev=[...new Set([...CREV,...txA.filter(t=>t.type==='revenu').map(t=>t.cat)])];
+  const catsDep=[...new Set([...POLES.flatMap(p=>p.cats),...txA.filter(t=>t.type==='depense').map(t=>t.cat)])];
+  let rev=0,dep=0;
+  MOIS.forEach((_,i)=>{
+    const prev=prevMois(i,an);
+    catsRev.forEach(c=>{rev+=(data[i].rev[c]||prev.rev[c]||0);});
+    catsDep.forEach(c=>{dep+=(data[i].dep[c]||prev.dep[c]||0);});
+  });
+  return {rev,dep};
+}
 // ── BANNER ──
 function affBanner(){
-  const solde=soldeAuj();const txA=E.tx.filter(t=>t.an===E.annee);
-  const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
-  const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);const r=rev-dep;
+  const solde=soldeAuj();
+  const {rev:revReel,dep:depReel}=calcAnnuelReel(E.annee);const rReel=revReel-depReel;
+  const {rev:revProj,dep:depProj}=calcAnnuelPrevisionnel(E.annee);const rProj=revProj-depProj;
   // Solde prévisionnel à la fin du mois en cours, affiché en complément discret
   const finMois=fmtISO(new Date(new Date().getFullYear(),new Date().getMonth()+1,0));
   const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
   const nomMoisAuj=MOIS[new Date().getMonth()];
   const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
-  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}</div><div class="g3"><div class="ms"><div class="v vp">${fmtDec(rev)}</div><div class="l">Revenus ${E.annee}</div></div><div class="ms"><div class="v vn">${fmtDec(dep)}</div><div class="l">Dépenses ${E.annee}</div></div><div class="ms"><div class="v ${r>=0?'vp':'vn'}">${fmtDec(r)}</div><div class="l">Reste ${E.annee}</div></div></div>`:`<div class="ban-solde"><div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button></div>`;
+  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}</div><div class="g3">
+    <div class="ms"><div class="v2"><span class="vreel vp">${fmtDec(revReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vp">${fmtDec(revProj)}</span><span class="vlbl">projeté</span></div><div class="l">Revenus ${E.annee}</div></div>
+    <div class="ms"><div class="v2"><span class="vreel vn">${fmtDec(depReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vn">${fmtDec(depProj)}</span><span class="vlbl">projeté</span></div><div class="l">Dépenses ${E.annee}</div></div>
+    <div class="ms"><div class="v2"><span class="vreel ${rReel>=0?'vp':'vn'}">${fmtDec(rReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj ${rProj>=0?'vp':'vn'}">${fmtDec(rProj)}</span><span class="vlbl">projeté</span></div><div class="l">Reste ${E.annee}</div></div>
+  </div>`:`<div class="ban-solde"><div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button></div>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
 
@@ -1744,7 +1787,7 @@ function affBudget(){
     const estPrevisionnel=!auMoinsUnePointee;
     h+=`<td class="${r>=0?'tp':'tn'}${estPrevisionnel?' prev':''}"><strong>${fmtDec(r)}</strong></td>`;
   });
-  h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmtDec(rAn)}</strong></td></tr>`;
+  h+=`<td class="txl" title="Déjà affiché en haut de page sous « Reste ${E.annee} »">—</td></tr>`;
 
   // ── LIGNE SOLDE COMPTE COURANT ──
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
