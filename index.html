@@ -134,6 +134,7 @@
     .ta tr.lr td{font-weight:700;font-size:calc(.78rem * var(--ta-fs));padding:11px 9px}
     .ta .tp{color:var(--ve)}.ta .tn{color:var(--ro)}
     .ta .prev{color:var(--txl);font-style:italic}
+    .ta tr.lr td.prev{font-style:italic;color:inherit}
     /* Revenus / dépenses fixes / variables : noir (pointé) ou gris italique (prévisionnel) — pas de vert/rouge, meilleur contraste pour tous */
     .ta tr.z-rv td.tp,.ta tr.z-fx td.tn,.ta tr.z-vr td.tn{color:var(--tx);font-style:normal}
     .ta tr.z-rv.lt td.tp,.ta tr.z-fx.lt td.tn,.ta tr.z-vr.lt td.tn{color:var(--tx);font-weight:700}
@@ -280,6 +281,7 @@
 
     /* OVERLAYS */
     .ov{position:fixed;inset:0;background:rgba(26,47,74,.5);z-index:200;display:none;align-items:flex-end}
+    #ov-confirm{z-index:300}
     .ov.v{display:flex}
     .modal{background:var(--wh);border-radius:22px 22px 0 0;padding:18px 17px 40px;width:100%;max-height:88vh;overflow-y:auto;animation:gl .22s ease}
     @keyframes gl{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -1081,7 +1083,7 @@ const TUTO_SLIDES=[
   {emoji:'📅',titre:'Les 4 onglets, en haut de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
   {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
   {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p><p>💡 Astuce : dans la vue Mois, glissez le doigt vers la gauche ou la droite pour passer directement au mois précédent ou suivant.</p>`},
-  {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Reste au total" indique votre marge</li></ul><p>Vous organisez vos pôles depuis Réglages → Pôles de dépenses.</p>`},
+  {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Solde du mois" indique votre marge</li></ul><p>Vous organisez vos pôles directement depuis ce tableau, via le bouton "✏️ Modifier".</p>`},
   {emoji:'🎯',titre:'Surveiller un budget',html:`<p>Pour une catégorie qui vous tient à cœur (ex : "Alimentation"), vous pouvez fixer un budget maximum, par mois ou par an, depuis Réglages → Pôles de dépenses.</p><p>Dès que vous approchez ou dépassez ce montant, un petit badge coloré apparaît automatiquement sur la catégorie, dans la vue Mois — sans rien à calculer vous-même.</p>`},
   {emoji:'🔁',titre:'Les dépenses qui reviennent chaque mois',html:`<p>Pour vos charges régulières (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages → Programmées.</p><p>Chaque mois, elle apparaît automatiquement, et vous n'avez qu'à la "pointer" une fois le prélèvement réellement effectué.</p><p>Pour une dépense qui revient tous les 2 ou 3 ans (ex : le contrôle technique), cochez "Se répète tous les X ans" — elle réapparaîtra seule, sans jamais la ressaisir.</p>`},
   {emoji:'⌨️',titre:'Saisir un relevé papier',html:`<p>Vous recevez vos relevés bancaires par courrier ? Depuis la vue <strong>Mois</strong>, le bouton "⌨️ Saisir un relevé papier" ouvre un petit formulaire : vous tapez chaque ligne une par une (montant, description, date), et elle s'ajoute aussitôt.</p><p>Pratique pour rattraper un relevé complet en quelques minutes, sans jamais quitter cet écran.</p>`},
@@ -1727,12 +1729,18 @@ function affBudget(){
 
   // RESTE AU TOTAL
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-  h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Reste au total</strong></td>`;
+  h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Solde du mois</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
-    const rev=Object.values(data[i].rev).reduce((a,b)=>a+b,0)||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
-    const dep=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||totGlobalDep[i]||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
+    const revReel=Object.values(data[i].rev).reduce((a,b)=>a+b,0);
+    const depReel=Object.values(data[i].dep).reduce((a,b)=>a+b,0)||totGlobalDep[i]||0;
+    const rev=revReel||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
+    const dep=depReel||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
     const r=rev-dep;rAn+=r;
-    h+=`<td class="${r>=0?'tp':'tn'}"><strong>${fmtDec(r)}</strong></td>`;
+    // Mois sans aucun mouvement réel encore enregistré : on affiche le solde en italique
+    // grisé (convention déjà utilisée ailleurs) pour signaler qu'il s'agit d'une prévision
+    // basée sur les revenus/dépenses programmés, pas d'un résultat constaté.
+    const estPrevisionnel=!revReel&&!depReel;
+    h+=`<td class="${r>=0?'tp':'tn'}${estPrevisionnel?' prev':''}"><strong>${fmtDec(r)}</strong></td>`;
   });
   h+=`<td class="${rAn>=0?'tp':'tn'}"><strong>${fmtDec(rAn)}</strong></td></tr>`;
 
