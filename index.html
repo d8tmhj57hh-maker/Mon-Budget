@@ -106,6 +106,14 @@
 
     /* TABLEAU BUDGET */
     .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
+    .barre-edition-budget{display:flex;justify-content:flex-end;padding:6px 0 10px}
+    .bedit{padding:7px 15px;border-radius:20px;font-size:.82rem;font-weight:600;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);cursor:pointer}
+    .bedit.on{background:var(--or);color:#fff;border-color:var(--or)}
+    .reord{display:inline-flex;flex-direction:column;gap:1px;margin-right:6px;vertical-align:middle}
+    .reord button{width:18px;height:14px;line-height:14px;padding:0;font-size:.6rem;border:1px solid var(--bo);background:var(--wh);color:var(--tx);border-radius:3px;cursor:pointer}
+    .ic-edit-pole,.ic-edit-cat{cursor:pointer;font-size:.8rem;opacity:.85;margin-left:8px}
+    tr.ligne-ajout-cat td{font-style:italic;color:var(--or);cursor:pointer;padding-left:30px!important}
+    tr.ligne-ajout-pole td{font-weight:600;color:var(--or);text-align:center;cursor:pointer;background:rgba(232,183,74,.08)}
     :root{--ta-fs:1}
     .ta{width:100%;min-width:760px;border-collapse:collapse;font-size:calc(.75rem * var(--ta-fs));background:var(--wh)}
     .ta th{background:var(--bl);color:var(--wf);padding:10px 9px;text-align:right;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2}
@@ -387,6 +395,9 @@
       <div id="cv" style="display:none">
         <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
+        <div class="barre-edition-budget">
+          <button id="btn-edition-budget" class="bedit" onclick="toggleEditionBudget()">✏️ Modifier</button>
+        </div>
         <div class="tw"><table class="ta" id="ta"></table></div>
       </div>
     </div>
@@ -732,7 +743,7 @@ function poleDeCategorie(cat){
 let E={
   sid:localStorage.getItem('sid')||'',
   annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),
-  tx:[],prog:[],pts:[],epargne:[],projets:[],txc:null,tc:null,type:'depense',moisOuvert:null,gtoken:null
+  tx:[],prog:[],pts:[],epargne:[],projets:[],txc:null,tc:null,type:'depense',moisOuvert:null,gtoken:null,editionBudget:false
 };
 
 // Fonctions cookies persistants (365 jours)
@@ -1447,7 +1458,7 @@ function aller(id,btn){
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
   if(id==='reglages'){affEpargne();affProg();affProjets();affPoles();remplirParams();affChecklistDemarrage();}
-  if(id==='mois'&&!E.moisOuvert){affGrille();}
+  if(id==='mois'&&E.moisOuvert===null)ouvrirDm(new Date().getMonth());
 }
 
 function changerAnnee(a){E.annee=a;localStorage.setItem('annee',a);refresh();}
@@ -1577,7 +1588,7 @@ function affBudget(){
   const nc=MOIS.length+2;
   // Mois en cours (uniquement si on consulte l'année réelle d'aujourd'hui)
   const moisActuel=(E.annee===new Date().getFullYear().toString())?new Date().getMonth():-1;
-  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach((m,i)=>h+=`<th>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach((m,i)=>h+=`<th${i===moisActuel?' id="th-mois-actuel"':''}>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
 
   // ÉPARGNE
   h+=`<tr class="ch z-ep"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
@@ -1652,9 +1663,14 @@ function affBudget(){
     const zcls=pole.auto?'z-pa':('z-p'+(idxPole%6));
     h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
     const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
-    if(!catsDuPole.length)return; // pôle vide cette année, on ne l'affiche pas
-    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}</td></tr>`;
-    catsDuPole.forEach(c=>{let tot=0;h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}</td>`;
+    if(!catsDuPole.length&&!(E.editionBudget&&!pole.auto))return; // pôle vide cette année, on ne l'affiche pas (sauf en édition)
+    const ctrlPole=(E.editionBudget&&!pole.auto)?
+      `<span class="reord"><button onclick="deplacerPole(${idxPole},-1)" aria-label="Monter">▲</button><button onclick="deplacerPole(${idxPole},1)" aria-label="Descendre">▼</button></span>
+       <span class="ic-edit-pole" onclick="renommerPoleDepuisBudget(${idxPole})">✏️</span><span class="ic-edit-pole" onclick="supprimerPoleDepuisBudget(${idxPole})">🗑️</span>`:'';
+    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}${ctrlPole}</td></tr>`;
+    catsDuPole.forEach(c=>{let tot=0;
+      const ctrlCat=(E.editionBudget&&!pole.auto)?`<span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${esc(c).replace(/'/g,"\\'")}')">🗑️</span>`:'';
+      h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${ctrlCat}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
       let badgeAn='';
@@ -1665,10 +1681,12 @@ function affBudget(){
       }
       h+=`<td class="tn">${fmtDec(tot)}${badgeAn}</td></tr>`;
     });
+    if(E.editionBudget&&!pole.auto)h+=`<tr class="ligne-ajout-cat" onclick="ajouterCategorieDepuisBudget(${idxPole})"><td colspan="${nc}">+ Ajouter une catégorie à ce pôle</td></tr>`;
     let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${esc(pole.nom)}</td>`;
     MOIS.forEach((_,i)=>{const r=catsDuPole.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
     h+=`<td class="tn">${fmtDec(totPole)}</td></tr>`;
   });
+  if(E.editionBudget)h+=`<tr class="ligne-ajout-pole" onclick="ajouterPoleDepuisBudget()"><td colspan="${nc}">+ Nouveau pôle</td></tr>`;
 
   // RESTE AU TOTAL
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
@@ -1705,6 +1723,13 @@ function affBudget(){
   const styleItaliqueDec=dFDec<=ajHui?'':'font-style:italic';
   h+=`<td class="${sFDec!==null?(sFDec>=0?'tp':'tn'):''}" style="${styleItaliqueDec}">${sFDec!==null?fmtDec(sFDec):'—'}</td></tr></tbody>`;
   document.getElementById('ta').innerHTML=h;
+  // Sur mobile, le tableau démarre sinon visuellement sur janvier (colonne la
+  // plus à gauche) : on défile une seule fois vers le mois en cours pour que
+  // l'utilisateur n'ait pas à swiper manuellement à chaque ouverture de l'app.
+  if(!E._scrollMoisFait){
+    const cellActuelle=document.getElementById('th-mois-actuel');
+    if(cellActuelle){cellActuelle.scrollIntoView({inline:'center',block:'nearest'});E._scrollMoisFait=true;}
+  }
   // Surligner la colonne du mois en cours (nth-child = position de la cellule, +2 car col 1 = catégorie)
   let styleMc=document.getElementById('style-mc');
   if(!styleMc){styleMc=document.createElement('style');styleMc.id='style-mc';document.head.appendChild(styleMc);}
@@ -3109,6 +3134,54 @@ function initDragCats(){
       _dragState.placeholder=placeholder;
     },{passive:false});
   });
+}
+function toggleEditionBudget(){
+  E.editionBudget=!E.editionBudget;
+  const b=document.getElementById('btn-edition-budget');
+  if(b){b.textContent=E.editionBudget?'✓ Terminé':'✏️ Modifier';b.classList.toggle('on',E.editionBudget);}
+  affBudget();
+}
+function deplacerPole(i,sens){
+  const j=i+sens;
+  if(j<0||j>=POLES.length)return;
+  [POLES[i],POLES[j]]=[POLES[j],POLES[i]];
+  sauvegarderParams();
+  affBudget();
+}
+function ajouterCategorieDepuisBudget(i){
+  const cat=prompt('Nom de la nouvelle catégorie :');
+  if(!cat||!cat.trim())return;
+  ajouterCatAuPole(i,cat.trim());
+  sauvegarderParams();
+  affBudget();
+}
+function retirerCategorieDepuisBudget(i,cat){
+  confirmerAction('Retirer "'+cat+'" du pôle ? Son historique de transactions reste intact.',()=>{
+    retirerCatDePole(i,cat);
+    sauvegarderParams();
+    affBudget();
+  });
+}
+function renommerPoleDepuisBudget(i){
+  const nv=prompt('Nouveau nom pour ce pôle :',POLES[i].nom);
+  if(!nv||!nv.trim())return;
+  renommerPole(i,nv.trim());
+  sauvegarderParams();
+  affBudget();
+}
+function supprimerPoleDepuisBudget(i){
+  confirmerAction('Supprimer le pôle "'+POLES[i].nom+'" ? Les catégories qu\'il contient resteront visibles dans "Autres / Non classé".',()=>{
+    supprimerPole(i);
+    sauvegarderParams();
+    affBudget();
+  });
+}
+function ajouterPoleDepuisBudget(){
+  const nv=prompt('Nom du nouveau pôle :');
+  if(!nv||!nv.trim())return;
+  POLES.push({nom:nv.trim(),cats:[]});
+  sauvegarderParams();
+  affBudget();
 }
 function ajouterPole(){
   POLES.push({nom:'Nouveau pôle',cats:[]});
