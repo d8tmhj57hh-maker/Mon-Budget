@@ -496,15 +496,6 @@
         <button class="bs2" onclick="reinitParams()">↺ Valeurs par défaut</button>
       </div>
 
-      <!-- PÔLES DE DÉPENSES -->
-      <div class="si">
-        <h3>🗂️ Pôles de dépenses</h3>
-        <p>Regroupez vos catégories par pôle de vie (ex : Maison Migennes, Voiture Suzuki...). Une catégorie par ligne dans chaque pôle. Les catégories non assignées apparaîtront automatiquement dans "Autres / Non classé". Les budgets sont optionnels : "Budget/mois" se réinitialise chaque mois, "Budget/an" est un plafond annuel librement réparti sur les 12 mois (utile pour les catégories qui varient fort selon la saison, ex : Cadeaux).</p>
-        <div id="liste-poles"></div>
-        <button class="bs2" onclick="ajouterPole()">+ Ajouter un pôle</button>
-        <button class="bp" style="margin-top:10px" onclick="sauvegarderPolesUI()">💾 Enregistrer les pôles</button>
-      </div>
-
       <!-- BUDGETS PAR PROJET -->
       <div class="si">
         <h3>🎯 Budgets par projet</h3>
@@ -1457,7 +1448,7 @@ function aller(id,btn){
   if(btn)btn.classList.add('a');
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
-  if(id==='reglages'){affEpargne();affProg();affProjets();affPoles();remplirParams();affChecklistDemarrage();}
+  if(id==='reglages'){affEpargne();affProg();affProjets();remplirParams();affChecklistDemarrage();}
   if(id==='mois'&&E.moisOuvert===null)ouvrirDm(new Date().getMonth());
 }
 
@@ -1658,11 +1649,17 @@ function affBudget(){
   const polesAffiches=[...POLES];
   if(catsNonAssignees.length)polesAffiches.push({nom:'Autres / Non classé',cats:catsNonAssignees,auto:true});
 
+  // Si aucune dépense n'a jamais été saisie (nouvel utilisateur), on affiche les
+  // catégories par défaut en intégralité plutôt que de les masquer toutes — l'idée
+  // étant de montrer d'emblée les possibilités, personnalisables ensuite via "Modifier".
+  const aucuneDepenseSaisie=!txA.some(t=>t.type==='depense')&&!E.prog.some(p=>p.type==='depense'&&p.actif);
+
   let totGlobalDep=Array(12).fill(0);
   polesAffiches.forEach((pole,idxPole)=>{
     const zcls=pole.auto?'z-pa':('z-p'+(idxPole%6));
     h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-    const catsDuPole=[...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
+    const catsDuPole=aucuneDepenseSaisie&&!pole.auto?[...pole.cats]:
+      [...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
     if(!catsDuPole.length&&!(E.editionBudget&&!pole.auto))return; // pôle vide cette année, on ne l'affiche pas (sauf en édition)
     const ctrlPole=(E.editionBudget&&!pole.auto)?
       `<span class="reord"><button onclick="deplacerPole(${idxPole},-1)" aria-label="Monter">▲</button><button onclick="deplacerPole(${idxPole},1)" aria-label="Descendre">▼</button></span>
