@@ -1731,10 +1731,11 @@ function affBudget(){
   h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
   h+=`<tr class="lr" style="font-size:.8rem"><td><strong>Solde du mois</strong></td>`;
   let rAn=0;MOIS.forEach((_,i)=>{
-    const revReel=Object.values(data[i].rev).reduce((a,b)=>a+b,0);
-    const depReel=Object.values(data[i].dep).reduce((a,b)=>a+b,0);
-    const rev=revReel||Object.values(prevMois(i,E.annee).rev).reduce((a,b)=>a+b,0);
-    const dep=depReel||totGlobalDep[i]||Object.keys(prevMois(i,E.annee).dep).reduce((a,c)=>a+prevMois(i,E.annee).dep[c],0);
+    // totRevMois[i] et totGlobalDep[i] sont déjà calculés plus haut, catégorie par
+    // catégorie, en mélangeant le réel et le prévisionnel (programmées) là où il n'y a
+    // pas encore de réel — on les réutilise tels quels, sans recalcul partiel ici.
+    const rev=totRevMois[i];
+    const dep=totGlobalDep[i];
     const r=rev-dep;rAn+=r;
     // Le critère pertinent n'est pas "y a-t-il une dépense saisie ?" mais "y a-t-il déjà
     // une transaction POINTÉE ce mois ?" — une dépense prévisible saisie à l'avance (non
