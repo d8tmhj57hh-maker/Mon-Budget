@@ -1461,7 +1461,11 @@ function aller(id,btn){
   else{const map={'budget':0,'mois':1,'recherche':2,'reglages':3};document.querySelectorAll('.nb')[map[id]]?.classList.add('a');}
   document.getElementById('fab').style.display=id==='reglages'?'none':'flex';
   if(id==='reglages'){affEpargne();affProg();affProjets();affChecklistDemarrage();}
-  if(id==='mois'&&E.moisOuvert===null)ouvrirDm(new Date().getMonth());
+  // Cliquer sur l'onglet "Mois" affiche toujours la grille des 12 cartes d'abord,
+  // même si un mois précis était déjà ouvert : on referme le détail pour repartir
+  // de la vue d'ensemble. L'ouverture directe d'un mois ne se fait que via le
+  // tableau Budget (clic sur une case) ou le bouton "+".
+  if(id==='mois'&&E.moisOuvert!==null)fermerDm();
 }
 
 function changerAnnee(a){E.annee=a;localStorage.setItem('annee',a);refresh();}
