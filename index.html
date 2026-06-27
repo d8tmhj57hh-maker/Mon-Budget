@@ -23,7 +23,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
   <style>
-    :root{--bl:#15102a;--blc:#2e2358;--or:#8d6ee0;--fo:#f8f7fb;--wh:#fff;--tx:#1a1c26;--txl:#5b6478;--ve:#0b7a55;--vec:#e3f6ef;--ro:#c4302a;--roc:#fbe9e7;--or2:#b3622c;--or2c:#fbeee5;--bo:#e3e0ee;--sh:0 1px 2px rgba(21,16,42,.04), 0 8px 24px -4px rgba(21,16,42,.10);--lr-bg:rgba(21,16,42,.06);--lr-border:rgba(21,16,42,.14);--lr-bg-compte:rgba(11,122,85,.07);
+    :root{--bl:#15102a;--blc:#2e2358;--or:#8d6ee0;--fo:#f8f7fb;--wh:#fff;--tx:#1a1c26;--txl:#5b6478;--ve:#0b7a55;--vec:#e3f6ef;--ro:#c4302a;--roc:#fbe9e7;--or2:#b3622c;--or2c:#fbeee5;--bo:#e3e0ee;--sh:0 1px 2px rgba(21,16,42,.04), 0 8px 24px -4px rgba(21,16,42,.10);--lr-bg:rgba(21,16,42,.06);--lr-border:rgba(21,16,42,.14);--lr-bg-compte:rgba(11,122,85,.07);--ban-warn:#a85a28;--ban-err:#c4302a;
       --zep:#eee7f8;--zep2:#dbccf0;--zep3:#c2a8e6;
       --zrv:#e7f4f8;--zrv2:#cce7f0;--zrv3:#a8d6e6;
       --zfx:#fbeceb;--zfx2:#f5d6d3;--zfx3:#ecbab6;
@@ -36,7 +36,7 @@
       --p4:#f8f4e7;--p4b:#f0e7cc;--p4c:#e6d6a8;--p4t:#715a14;
       --p5:#e7ecf8;--p5b:#ccd7f0;--p5c:#a8bbe6;--p5t:#1d3c87;
       --pa:#efeff1;--pab:#dddce0;--pac:#c5c4ca;--pat:#52505e;}
-    body.dark{--bl:#0d0a1a;--blc:#1f1640;--or:#a78bfa;--fo:#11101c;--wh:#1a1826;--tx:#f0eef7;--txl:#9994b3;--ve:#34e0a1;--vec:#11261f;--ro:#ff6b6b;--roc:#2e1a1a;--or2:#e0935e;--or2c:#3a2a14;--bo:#2a2640;--sh:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -4px rgba(0,0,0,.5);--lr-bg:rgba(167,139,250,.08);--lr-border:rgba(167,139,250,.22);--lr-bg-compte:rgba(52,224,161,.10);
+    body.dark{--bl:#0d0a1a;--blc:#1f1640;--or:#a78bfa;--fo:#11101c;--wh:#1a1826;--tx:#f0eef7;--txl:#9994b3;--ve:#34e0a1;--vec:#11261f;--ro:#ff6b6b;--roc:#2e1a1a;--or2:#e0935e;--or2c:#3a2a14;--bo:#2a2640;--sh:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -4px rgba(0,0,0,.5);--lr-bg:rgba(167,139,250,.08);--lr-border:rgba(167,139,250,.22);--lr-bg-compte:rgba(52,224,161,.10);--ban-warn:#94501f;--ban-err:#a8261f;
       --zep:#261b37;--zep2:#32214a;--zep3:#402960;
       --zrv:#1b3037;--zrv2:#21404a;--zrv3:#295360;
       --zfx:#2b1a18;--zfx2:#3a2220;--zfx3:#4a2b27;
@@ -121,7 +121,11 @@
     }
 
     /* TABLEAU BUDGET */
-    .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh)}
+    .tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:12px;box-shadow:var(--sh);scrollbar-width:thin;scrollbar-color:var(--bo) transparent}
+    .tw::-webkit-scrollbar{height:6px}
+    .tw::-webkit-scrollbar-track{background:transparent}
+    .tw::-webkit-scrollbar-thumb{background:var(--bo);border-radius:3px}
+    .tw::-webkit-scrollbar-thumb:hover{background:var(--or)}
     .dm-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:11px}
     .dm-fleche{background:var(--wh);border:1.5px solid var(--bo);border-radius:50%;width:32px;height:32px;font-size:.85rem;color:var(--tx);cursor:pointer;flex-shrink:0}
     .dm-fleche:hover{background:var(--fo)}
@@ -296,7 +300,10 @@
     .ov{position:fixed;inset:0;background:rgba(26,47,74,.5);z-index:200;display:none;align-items:flex-end}
     #ov-confirm{z-index:300}
     .ov.v{display:flex}
-    .modal{background:var(--wh);border-radius:22px 22px 0 0;padding:18px 17px 40px;width:100%;max-height:88vh;overflow-y:auto;animation:gl .22s ease}
+    .modal{background:var(--wh);border-radius:22px 22px 0 0;padding:18px 17px 40px;width:100%;max-height:88vh;overflow-y:auto;animation:gl .22s ease;scrollbar-width:thin;scrollbar-color:var(--bo) transparent}
+    .modal::-webkit-scrollbar{width:6px}
+    .modal::-webkit-scrollbar-track{background:transparent}
+    .modal::-webkit-scrollbar-thumb{background:var(--bo);border-radius:3px}
     @keyframes gl{from{transform:translateY(100%)}to{transform:translateY(0)}}
     .mh{width:36px;height:4px;background:var(--bo);border-radius:2px;margin:0 auto 16px}
     .modal h2{font-size:1rem;font-weight:600;margin-bottom:14px}
@@ -316,9 +323,9 @@
     /* Bannière de statut réseau : glisse depuis le haut de l'écran, au-dessus de
        tout le reste, pour signaler une coupure réseau ou des tentatives de
        reconnexion en cours, sans bloquer l'usage du reste de l'application. */
-    .banniere-connexion{position:fixed;top:0;left:0;right:0;background:var(--or2);color:#fff;text-align:center;font-size:.78rem;font-weight:500;padding:10px 16px;z-index:400;transform:translateY(-100%);transition:transform .25s ease}
+    .banniere-connexion{position:fixed;top:0;left:0;right:0;background:var(--ban-warn);color:#fff;text-align:center;font-size:.78rem;font-weight:500;padding:10px 16px;z-index:400;transform:translateY(-100%);transition:transform .25s ease}
     .banniere-connexion.v{transform:translateY(0)}
-    .banniere-connexion.erreur{background:var(--ro)}
+    .banniere-connexion.erreur{background:var(--ban-err)}
     /* Toast d'annulation : reste affiché un peu plus longtemps qu'un toast simple
        et inclut un bouton "Annuler" cliquable (pointer-events activé uniquement
        pour ce toast, contrairement au toast informatif qui ne capte aucun clic). */
