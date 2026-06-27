@@ -1152,7 +1152,7 @@ function fermerTuto(){
 }
 function ouvrirPageAide(){
   let h='';
-  TUTO_SLIDES.forEach(s=>{h+=`<div class="ban" style="margin-bottom:14px;padding:16px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
+  TUTO_SLIDES.forEach(s=>{h+=`<div class="ban" style="margin-bottom:14px;padding:14px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
   document.getElementById('contenu-aide').innerHTML=h;
   document.getElementById('ov-aide').classList.add('v');
 }
@@ -2556,7 +2556,7 @@ function affListeAClasserMois(){
   if(!liste)return; // section pas affichée (aucune dépense à classer)
   liste.innerHTML=E.aClasser.map(t=>{
     const cats=t.type==='revenu'?CREV:toutesCategoriesConnues();
-    return `<div class="ban" style="margin-bottom:10px;padding:12px">
+    return `<div class="ban" style="margin-bottom:10px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
           <div style="font-weight:600;font-size:.9rem">${esc(t.desc)}</div>
@@ -3148,7 +3148,7 @@ function affPoles(){
   const reellementUtilisees=categoriesReellementUtilisees();
   // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
   let h=POLES.map((p,i)=>`
-    <div class="ban" style="padding:13px;margin-bottom:10px">
+    <div class="ban" style="padding:14px;margin-bottom:10px">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
         <input type="text" value="${esc(p.nom)}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
         <button onclick="supprimerPole(${i})" aria-label="Supprimer ce pôle" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
@@ -3180,7 +3180,7 @@ function affPoles(){
   POLES.forEach(p=>p.cats.forEach(c=>catsAssignees.add(c)));
   const nonClassees=toutesCats.filter(c=>!catsAssignees.has(c));
   if(nonClassees.length){
-    h+=`<div class="ban" style="padding:13px;margin-bottom:10px;background:var(--pa)">
+    h+=`<div class="ban" style="padding:14px;margin-bottom:10px;background:var(--pa)">
       <p style="font-weight:600;font-size:.875rem;margin-bottom:10px">📥 Autres / Non classé</p>
       <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez un pôle pour chaque catégorie ci-dessous, ou masquez-la si vous ne l'utilisez plus (son historique reste intact).</p>
       <div style="display:flex;flex-direction:column;gap:8px">
