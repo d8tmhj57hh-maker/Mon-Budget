@@ -62,7 +62,11 @@
     #tog-dark:checked + #tog-slider:before{transform:translateX(20px)}
 
     /* AUTH */
-    .ea{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;background:linear-gradient(160deg,var(--bl) 0%,var(--blc) 100%)}
+    .ea{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;background:linear-gradient(160deg,var(--bl) 0%,var(--blc) 100%);position:relative;overflow:hidden;animation:eaIn .4s ease}
+    .ea::before{content:'';position:absolute;left:0;right:0;top:62%;height:1px;background:linear-gradient(90deg,transparent,rgba(141,110,224,.5),transparent);pointer-events:none;z-index:-1}
+    .ea::after{content:'';position:absolute;left:50%;top:18%;width:480px;height:480px;transform:translateX(-50%);background:radial-gradient(circle,rgba(141,110,224,.16),transparent 70%);pointer-events:none;z-index:-1}
+    @keyframes eaIn{from{opacity:0}to{opacity:1}}
+    .ea-mark{width:40px;height:40px;color:var(--or);margin-bottom:14px;position:relative;z-index:1}
     .tuto-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:.2s}
     .tuto-dot.actif{background:var(--or);width:22px;border-radius:4px}
     .tuto-slide h2{font-family:'DM Serif Display',serif;color:var(--wf);font-size:1.5rem;margin-bottom:14px}
@@ -341,8 +345,8 @@
     .ov.v{animation:ovIn .18s ease}
 
     .nb{transition:color .15s ease, border-color .15s ease}
-    .bp,.bo2,.bs2,.bd,.bedit,.tt,.dm-fleche,.fab{transition:transform .12s ease, filter .12s ease, background .15s ease, color .15s ease, border-color .15s ease}
-    .bp:active,.bo2:active,.bs2:active,.bd:active,.bedit:active,.tt:active,.dm-fleche:active{transform:scale(.96)}
+    .bp,.bo2,.bs2,.bd,.bedit,.tt,.dm-fleche,.fab,.bg{transition:transform .12s ease, filter .12s ease, background .15s ease, color .15s ease, border-color .15s ease}
+    .bp:active,.bo2:active,.bs2:active,.bd:active,.bedit:active,.tt:active,.dm-fleche:active,.bg:active{transform:scale(.96)}
     .ch3 input,.ch3 select,.ch3 textarea,.br2 input{transition:border-color .15s ease}
     .ltx{transition:transform .12s ease, box-shadow .15s ease}
     .ltx:active{transform:scale(.985)}
@@ -364,6 +368,7 @@
 <!-- CONNEXION -->
 
 <div id="ec-conn" class="ea">
+  <svg class="ea-mark" viewBox="0 0 24 24" fill="none"><path d="M3 17L9 11L13 15L21 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <h1>Cashorizon</h1>
   <p id="p-conn">Anticipez votre budget, pas seulement votre passé</p>
   <div id="zone-chargement" style="color:rgba(255,255,255,.6);font-size:.875rem;margin-bottom:20px;display:none">Connexion en cours...</div>
