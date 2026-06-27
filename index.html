@@ -205,14 +205,14 @@
     body.dark .ta tbody tr.cat-row.sel td{filter:brightness(1.35)}
 
     /* MOIS GRILLE */
-    .gm{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+    .gm{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
     .cm{background:var(--wh);border-radius:14px;padding:13px 11px;box-shadow:var(--sh);cursor:pointer;border:2px solid transparent;position:relative}
     .cm.sel{border-color:var(--or)}
     .cm .cn{font-size:.68rem;font-weight:600;color:var(--txl);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
     .cm .cr{font-size:.9rem;font-weight:600}
     .cm .cb{height:3px;border-radius:2px;margin-top:7px;background:var(--bo);overflow:hidden}
     .cm .cbf{height:100%;border-radius:2px}
-    .ba2{position:absolute;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--or)}
+    .tag-actuel{position:absolute;top:-7px;right:8px;background:var(--or);color:var(--bl);font-size:.56rem;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
 
     /* DETAIL MOIS */
     .dm{display:none}.dm.v{display:block}
@@ -1887,7 +1887,7 @@ function affGrille(){
     const r=rev-dep;const p=rev>0?Math.min((dep/rev)*100,100):0;
     const col=p>90?'var(--ro)':p>70?'var(--or2)':'var(--ve)';
     const ec=i===mA&&E.annee===new Date().getFullYear().toString();
-    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" onclick="ouvrirDm(${i})">${ec?'<div class="ba2"></div>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmtDec(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
+    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" onclick="ouvrirDm(${i})">${ec?'<span class="tag-actuel">En cours</span>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmtDec(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
   });
   document.getElementById('gm').innerHTML=h;
 }
