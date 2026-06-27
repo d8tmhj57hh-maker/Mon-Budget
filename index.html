@@ -328,8 +328,9 @@
     .ld{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;gap:12px;color:var(--txl);font-size:.83rem}
     .sp{width:26px;height:26px;border:3px solid var(--bo);border-top-color:var(--bl);border-radius:50%;animation:sp .8s linear infinite}
     @keyframes sp{to{transform:rotate(360deg)}}
-    .vi{text-align:center;padding:28px 0;color:var(--txl)}
+    .vi{text-align:center;padding:28px 20px;color:var(--txl);background:var(--wh);border-radius:16px;box-shadow:var(--sh)}
     .vi .em{font-size:1.7rem;margin-bottom:8px}
+    .vi .bp,.vi .bs2{max-width:280px;margin-left:auto;margin-right:auto}
     @media(max-width:380px){.gm{grid-template-columns:repeat(2,1fr)}.ban .gr{font-size:1.6rem}}
     @media(max-width:699px){
       .ban .g3{flex-direction:column;gap:13px;align-items:stretch}
@@ -2051,7 +2052,7 @@ function affDm(mi){
       txC.forEach(t=>h+=ltx(t));h+=`</div>`;
     });
   }
-  if(!txM.length&&!enAttente.length)h+=`<div class="vi" style="text-align:center;padding:24px 16px">
+  if(!txM.length&&!enAttente.length)h+=`<div class="vi">
     <div class="em" style="font-size:2.2rem;margin-bottom:6px">🌱</div>
     <p style="font-weight:600;margin:0 0 4px">Ce mois est encore vierge</p>
     <p style="font-size:.8rem;color:var(--txl);margin:0 0 18px">Commencez par ajouter une dépense, ou importez votre relevé bancaire pour gagner du temps.</p>
@@ -2726,7 +2727,7 @@ async function saveTx(){
 // ── PROGRAMMÉES ──
 function affProg(){
   const el=document.getElementById('lp');
-  if(!E.prog.length){el.innerHTML=`<div class="vi" style="padding:20px 0;text-align:center">
+  if(!E.prog.length){el.innerHTML=`<div class="vi">
     <div class="em" style="font-size:2rem">🔄</div>
     <p style="font-weight:600;margin:6px 0 4px">Rien de programmé pour l'instant</p>
     <p style="font-size:.78rem;color:var(--txl);margin:0 0 14px">Loyer, salaire, abonnements... Programmez ce qui revient chaque mois pour ne plus jamais le ressaisir.</p>
