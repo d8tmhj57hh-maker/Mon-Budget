@@ -2320,10 +2320,14 @@ async function pdfVersTexte(file){
       if(cle===undefined)cle=y;
       (parY[cle]=parY[cle]||[]).push({x:it.transform[4],s:it.str});
     });
-    // Trier les lignes de haut en bas, et dans chaque ligne de gauche à droite
+    // Trier les lignes de haut en bas, et dans chaque ligne de gauche à droite.
+    // On conserve aussi les fragments avec leur position x : c'est ce qui permet
+    // ensuite de savoir si un montant est dans la colonne Débit ou Crédit,
+    // au lieu de devoir le deviner.
     Object.keys(parY).map(Number).sort((a,b)=>b-a).forEach(y=>{
-      const txt=parY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(' ').replace(/\s+/g,' ').trim();
-      if(txt)lignes.push(txt);
+      const frags=parY[y].sort((a,b)=>a.x-b.x);
+      const txt=frags.map(o=>o.s).join(' ').replace(/\s+/g,' ').trim();
+      if(txt)lignes.push({texte:txt,frags});
     });
   }
   return lignes;
@@ -2333,16 +2337,50 @@ function parseMontantCA(s){
   return parseFloat(s.replace(/\s/g,'').replace(',','.'));
 }
 
+// Repère le montant d'une ligne en s'appuyant sur les FRAGMENTS PDF individuels
+// (pas sur le texte fusionné). Un numéro de référence technique (ex: une
+// cotisation à 11 chiffres) est toujours un fragment à part, distinct du
+// fragment qui porte le montant — il ne peut donc jamais s'y mélanger, même
+// collé juste devant dans le texte affiché. On ne récupère le "préfixe
+// milliers" (le "8" de "8 813,00") que s'il s'agit d'un entier court isolé
+// (1 à 3 chiffres et rien d'autre), jamais d'une référence plus longue.
+function extraireMontantEtX(frags){
+  const reCoeur=/^\d{1,3}(?:\s\d{3})*,\d{2}$/;
+  const reEntierCourt=/^\d{1,3}$/;
+  let idxCoeur=-1;
+  for(let k=frags.length-1;k>=0;k--){
+    if(reCoeur.test(frags[k].s.trim())){idxCoeur=k;break;}
+  }
+  if(idxCoeur===-1)return null;
+  let texteMontant=frags[idxCoeur].s.trim();
+  const x=frags[idxCoeur].x;
+  if(idxCoeur>0&&reEntierCourt.test(frags[idxCoeur-1].s.trim())){
+    texteMontant=frags[idxCoeur-1].s.trim()+' '+texteMontant;
+  }
+  return {montant:parseMontantCA(texteMontant),x,texte:texteMontant};
+}
+
 // Analyse un relevé Crédit Agricole : reconstruit les transactions et déduit
-// débit/crédit grâce aux totaux annoncés (garantie d'exactitude des montants).
+// débit/crédit en priorité grâce à la position x réelle de chaque montant
+// (colonne Débit vs colonne Crédit, repérée via l'en-tête du tableau).
+// Le total annoncé par la banque sert ensuite de vérification, et seulement
+// en dernier recours (en-tête introuvable) de méthode de classification.
 function analyserReleveCA(lignes, annee){
   const tx=[];
   let totalDebit=null, totalCredit=null;
+  let xDebit=null, xCredit=null;
   const reDate=/^(\d{2})\.(\d{2})\s+(\d{2})\.(\d{2})\s+(.*)$/;
-  const reMontantFin=/(\d{1,3}(?:\s\d{3})*,\d{2})[\s¨þ☐□]*$/;
   let i=0;
   while(i<lignes.length){
-    const ligne=lignes[i];
+    const ligneObj=lignes[i];
+    const ligne=ligneObj.texte;
+    // Calibrage des colonnes via l'en-tête (répétée sur chaque page du relevé)
+    if(xDebit===null||xCredit===null){
+      const fd=ligneObj.frags.find(o=>o.s.trim()==='Débit');
+      const fc=ligneObj.frags.find(o=>o.s.trim()==='Crédit');
+      if(fd)xDebit=fd.x;
+      if(fc)xCredit=fc.x;
+    }
     const mTot=ligne.match(/Total des op[ée]rations\s+(\d[\d\s]*,\d{2})\s+(\d[\d\s]*,\d{2})/i);
     if(mTot){totalDebit=parseMontantCA(mTot[1]);totalCredit=parseMontantCA(mTot[2]);i++;continue;}
     if(/solde (cr[ée]diteur|d[ée]biteur)/i.test(ligne)){i++;continue;}
@@ -2351,16 +2389,23 @@ function analyserReleveCA(lignes, annee){
       const jour=m[1],mois=m[2];
       let reste=m[5];
       reste=reste.replace(/\d{1,2}H\d{2}/g,' ').replace(/\d{2}\/\d{2}(\/\d{2,4})?/g,' ').replace(/\s+/g,' ').trim();
-      let mm=reste.match(reMontantFin);
-      let montant=null;
-      if(mm){montant=parseMontantCA(mm[1]);reste=reste.slice(0,mm.index).trim();}
-      else{
+      let montant=null, xMontant=null;
+      const res=extraireMontantEtX(ligneObj.frags);
+      if(res){
+        montant=res.montant;xMontant=res.x;
+        const idxTxt=reste.lastIndexOf(res.texte);
+        if(idxTxt!==-1)reste=reste.slice(0,idxTxt).trim();
+      } else {
         let j=i+1;
         while(j<lignes.length){
-          const ls=lignes[j];
-          const ms=ls.match(/^(\d{1,3}(?:\s\d{3})*,\d{2})[\s¨þ☐□]*$/);
-          if(ms){montant=parseMontantCA(ms[1]);j++;break;}
-          if(ls.match(reDate))break;
+          const lsObj=lignes[j];
+          const ls=lsObj.texte;
+          if(reDate.test(ls))break;
+          const r2=extraireMontantEtX(lsObj.frags);
+          // La ligne ne doit contenir QUE le montant (+ éventuelle case à cocher)
+          if(r2&&new RegExp('^'+r2.texte.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s/g,'\\s')+'[\\s¨þ☐□]*$').test(ls)){
+            montant=r2.montant;xMontant=r2.x;j++;break;
+          }
           j++;
         }
         i=j-1;
@@ -2369,7 +2414,7 @@ function analyserReleveCA(lignes, annee){
         // Libellé essentiel : retirer les références techniques, garder le début lisible
         let lib=reste.split(/\s{2,}/)[0].trim();
         lib=lib.replace(/\bDép\b.*$/i,'').trim()||reste.trim();
-        tx.push({jour,mois,libelle:lib||'Opération',montant});
+        tx.push({jour,mois,libelle:lib||'Opération',montant,xMontant});
       }
     }
     i++;
@@ -2378,12 +2423,18 @@ function analyserReleveCA(lignes, annee){
   const estCredit=lib=>/versement|virement.*\bde\b|caf |remboursement|salaire|\bpaie\b|\bpaye\b/i.test(lib);
   const sum=arr=>Math.round(arr.reduce((s,t)=>s+t.montant,0)*100)/100;
   let methode='heuristique';
-  if(totalDebit!==null){
-    // Tenter de retrouver quelles opérations correspondent au total des débits.
-    // Auparavant : recherche en force brute (backtracking sur 2^n combinaisons),
-    // qui pouvait geler le navigateur au-delà d'une vingtaine de lignes.
-    // Désormais : programmation dynamique en O(n × cible), bornée, donc sûre
-    // même sur un relevé chargé. trouverSousEnsembleSomme() est définie plus bas.
+  if(xDebit!==null&&xCredit!==null&&tx.length&&tx.every(t=>t.xMontant!==null)){
+    // Méthode fiable : chaque montant est physiquement dans une colonne précise,
+    // on compare sa position à celle des deux colonnes plutôt que de deviner.
+    tx.forEach(t=>{t.type=Math.abs(t.xMontant-xDebit)<=Math.abs(t.xMontant-xCredit)?'depense':'revenu';});
+    methode='colonnes';
+  } else if(totalDebit!==null){
+    // Repli : format de relevé sans en-tête de colonnes détectable.
+    // Programmation dynamique en O(n × cible), bornée, donc sûre même sur un
+    // relevé chargé. trouverSousEnsembleSomme() est définie plus bas.
+    // Attention : si plusieurs combinaisons de lignes donnent la même somme,
+    // cette méthode peut choisir la mauvaise répartition — d'où la priorité
+    // donnée à la méthode par colonnes ci-dessus quand elle est disponible.
     const cibleC=Math.round(totalDebit*100);
     const mC=tx.map(t=>Math.round(t.montant*100));
     const sol=trouverSousEnsembleSomme(mC,cibleC);
