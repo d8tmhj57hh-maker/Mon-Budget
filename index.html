@@ -637,6 +637,18 @@
   </div>
 </div>
 
+<!-- OVERLAY SAISIE TEXTE GÉNÉRIQUE (remplace les prompt() natifs) -->
+<div class="ov" id="ov-prompt">
+  <div class="modal">
+    <div class="mh"></div>
+    <h2 id="prompt-titre">Renommer</h2>
+    <p id="prompt-message" style="font-size:.85rem;color:var(--txl);margin-bottom:12px;line-height:1.5"></p>
+    <div class="ch3"><input type="text" id="prompt-input" maxlength="60" style="width:100%;padding:11px 13px;border:1.5px solid var(--bo);border-radius:12px;font-size:.875rem;font-family:'Inter',sans-serif;color:var(--tx);background:var(--wh);outline:none" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('prompt-btn-oui').click();}"/></div>
+    <button class="bp" id="prompt-btn-oui">Valider</button>
+    <button class="bs2" onclick="fOv('ov-prompt')">Annuler</button>
+  </div>
+</div>
+
 <!-- OVERLAY AJOUT PROGRAMMÉ -->
 <div class="ov" id="ov-liste-projets">
   <div class="modal">
@@ -896,6 +908,12 @@ function today(){return fmtISO(new Date());}
 // pour les fuseaux horaires positifs (ex: France) autour de minuit — d'où ce
 // helper systématique pour toute date de fin de mois ou date du jour.
 function fmtISO(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
+// Extrait le mois (0-11) d'une date stockée au format "YYYY-MM-DD" en découpant
+// directement la chaîne, sans passer par new Date(chaine).getMonth(). new Date()
+// interprète "YYYY-MM-DD" comme minuit UTC puis .getMonth() reconvertit dans le
+// fuseau local de l'appareil : sur un fuseau négatif (ex. voyage aux États-Unis),
+// une transaction du 1er du mois se retrouvait affichée dans le mois précédent.
+function moisDe(dateISO){return parseInt(String(dateISO).substring(5,7),10)-1;}
 // Convertit en nombre une valeur venant de Google Sheets, qu'elle soit déjà
 // numérique ou une chaîne avec virgule décimale française (ex: "183,23").
 // parseFloat() seul s'arrête à la virgule et tronque le résultat (183,23 -> 183),
@@ -957,6 +975,22 @@ function confirmerAction(message,onConfirm,titre){
   document.getElementById('ov-confirm').classList.add('v');
 }
 function fOv(id){document.getElementById(id).classList.remove('v');}
+// Remplace les prompt() natifs (mêmes défauts que confirm() : incohérents
+// visuellement, bloquants, désactivés dans certaines webviews) par une modale de
+// saisie cohérente avec le reste de l'application. onValider reçoit le texte saisi
+// (déjà .trim()), ou n'est pas appelée si l'utilisatrice annule.
+function promptModal(titre,message,valeurDefaut,onValider){
+  document.getElementById('prompt-titre').textContent=titre||'Renommer';
+  const msgEl=document.getElementById('prompt-message');
+  msgEl.textContent=message||'';
+  msgEl.style.display=message?'block':'none';
+  const inp=document.getElementById('prompt-input');
+  inp.value=valeurDefaut||'';
+  const btn=document.getElementById('prompt-btn-oui');
+  btn.onclick=()=>{const v=inp.value.trim();fOv('ov-prompt');onValider(v);};
+  document.getElementById('ov-prompt').classList.add('v');
+  setTimeout(()=>{inp.focus();inp.select();},50);
+}
 // Échappe tout texte avant injection dans le HTML, pour empêcher l'exécution
 // de code si une description, note, projet ou nom de catégorie/pôle contient
 // des caractères HTML/script (ex: <script>, onerror=...). À utiliser
@@ -964,6 +998,16 @@ function fOv(id){document.getElementById(id).classList.remove('v');}
 function esc(s){
   if(s===null||s===undefined)return '';
   return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// Échappe une chaîne destinée à être insérée dans un attribut onclick="fn('...')" :
+// d'abord échappement JS (antislash puis apostrophe) pour rester une chaîne JS valide,
+// PUIS échappement HTML via esc() pour rester un attribut HTML valide. Les deux sont
+// nécessaires : le navigateur décode l'attribut HTML avant d'exécuter le JS qu'il
+// contient, donc un simple antislash devant l'apostrophe ne suffit pas à empêcher une
+// évasion via un guillemet double (l'attribut est lui-même délimité par des guillemets
+// doubles).
+function escJs(s){
+  return esc(String(s===null||s===undefined?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"));
 }
 
 // ── AUTH ──
@@ -1132,7 +1176,9 @@ async function validerInit(){
 }
 function lancerApp(){
   document.getElementById('ec-conn').style.display='none';document.getElementById('ec-init').style.display='none';
-  document.getElementById('app').style.display='flex';majSelAnnee();refresh();
+  document.getElementById('app').style.display='flex';majSelAnnee();
+  restaurerAClasserLocal();
+  refresh();
 }
 
 // ── TUTORIEL ──
@@ -1336,7 +1382,7 @@ async function initOnglets(){
   if(!ex.includes('Prog'))await ecrire('Prog!A1:H1',[['id','nom','type','cat','annee','mois','montant','actif']]);
   if(!ex.includes('Soldes'))await ecrire('Soldes!A1:B1',[['date','solde']]);
   if(!ex.includes('Epargne'))await ecrire('Epargne!A1:N1',[['Livret','Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']]);
-  if(!ex.includes('Parametres'))await sauvegarderParams();
+  if(!ex.includes('Parametres'))await sauvegarderParams(true);
 }
 
 async function chargerTout(){
@@ -1370,9 +1416,17 @@ async function chargerTout(){
   peuplerCat();peuplerProgCat();peuplerImpCats();
 }
 
+// Passe à true seulement après une lecture réussie de l'onglet Parametres (même
+// vide, cas d'un nouvel utilisateur). sauvegarderParams() s'appuie dessus pour ne
+// jamais réécrire l'onglet avec les valeurs par défaut si la lecture a échoué
+// (ex: réseau instable au démarrage) — sans ce garde-fou, la config réelle de
+// l'utilisatrice (pôles, budgets, icônes...) serait silencieusement écrasée.
+let _paramsChargesOk=false;
 async function chargerParams(){
   try{
-    const rows=await lire('Parametres!A1:B100');if(!rows.length)return;
+    const rows=await lire('Parametres!A1:B100');
+    _paramsChargesOk=true;
+    if(!rows.length)return;
     const get=(cle)=>{const row=rows.find(r=>r[0]===cle);return row&&row[1]?row[1].split('|').map(s=>s.trim()).filter(Boolean):null;};
     const r=get('REVENUS'),l=get('LIVRETS'),m=get('CATS_MASQUEES'),pm=get('PROJETS_MASQUES');
     if(r)CREV=r;if(l)LIVRETS=l;if(m)CATS_MASQUEES=m;if(pm)PROJETS_MASQUES=pm;
@@ -1401,9 +1455,21 @@ async function chargerParams(){
       });
       POLES=nvPoles;
     }
-  }catch(e){}
+  }catch(e){
+    _paramsChargesOk=false;
+    console.error('Erreur chargement des paramètres:',e);
+    toast('⚠️ Paramètres non chargés (problème réseau) — rechargez la page avant de modifier vos réglages');
+  }
 }
-async function sauvegarderParams(){
+// forcer=true réservé au tout premier bootstrap (initOnglets), quand l'onglet
+// Parametres n'existe pas encore : rien à écraser, donc pas besoin d'avoir
+// chargé quoi que ce soit au préalable.
+async function sauvegarderParams(forcer){
+  if(!forcer&&!_paramsChargesOk){
+    console.error('sauvegarderParams: annulé, les paramètres n\'ont jamais été chargés avec succès dans cette session');
+    toast('⚠️ Sauvegarde annulée — paramètres non chargés. Rechargez la page.');
+    return;
+  }
   const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
@@ -1463,7 +1529,7 @@ function calcSoldePrevisionnel(dateLimite){
       progActifsMois(mi,anLim).forEach(p=>{
         if(CATS_HORS_CALCUL.includes(p.cat))return;
         // Si une transaction pointée existe déjà pour ce prog ce mois-ci, ne pas compter deux fois
-        const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&new Date(t.date).getMonth()===mi&&t.an===anLim);
+        const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&moisDe(t.date)===mi&&t.an===anLim);
         if(dejaPointe)return;
         const m=montantProgPour(p,anLim,mi)||0;
         if(m<=0)return;
@@ -1498,7 +1564,7 @@ function calcSoldePrevisionnelGeneral(dateLimite){
     if(ANNEES.includes(anStr)){
       progActifsMois(curMi,anStr).forEach(p=>{
         if(CATS_HORS_CALCUL.includes(p.cat))return;
-        const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&new Date(t.date).getMonth()===curMi&&t.an===anStr);
+        const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&moisDe(t.date)===curMi&&t.an===anStr);
         if(dejaPointe)return;
         const m=montantProgPour(p,anStr,curMi)||0;
         if(m<=0)return;
@@ -1552,18 +1618,20 @@ function majDL(){
     sel.value=valActuelle||'';
   });
 }
-async function gererChoixProjet(sel){
-  if(sel.value!=='__nouveau__')return;
-  const nom=(prompt('Nom du nouveau projet :')||'').trim();
-  if(!nom){sel.value='';return;}
-  const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
-  if(!tousProjets.includes(nom)){
-    PROJETS_DECLARES.push(nom);
-    if(PROJETS_MASQUES.includes(nom))PROJETS_MASQUES=PROJETS_MASQUES.filter(p=>p!==nom);
-    await sauvegarderParams();
-  }
-  majDL();
-  sel.value=nom;
+function gererChoixProjet(sel){
+  if(sel.value!=='__nouveau__'){return;}
+  sel.value='';
+  promptModal('Nouveau projet','Nom du nouveau projet :','',async(nom)=>{
+    if(!nom)return;
+    const tousProjets=[...new Set([...E.projets,...PROJETS_DECLARES])];
+    if(!tousProjets.includes(nom)){
+      PROJETS_DECLARES.push(nom);
+      if(PROJETS_MASQUES.includes(nom))PROJETS_MASQUES=PROJETS_MASQUES.filter(p=>p!==nom);
+      await sauvegarderParams();
+    }
+    majDL();
+    sel.value=nom;
+  });
 }
 function setType(t,btn){E.type=t;document.querySelectorAll('.tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerCat();}
 function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt').forEach(b=>b.classList.remove('a'));btn.classList.add('a');peuplerProgCat();}
@@ -1589,7 +1657,7 @@ function calcAnnuelReel(an){
 function calcAnnuelPrevisionnel(an){
   const txA=E.tx.filter(t=>t.an===an);
   const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
-  txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
+  txA.forEach(t=>{const m=moisDe(t.date);const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
   const catsRev=[...new Set([...CREV,...txA.filter(t=>t.type==='revenu').map(t=>t.cat)])].filter(c=>!CATS_HORS_CALCUL.includes(c));
   const catsDep=[...new Set([...POLES.flatMap(p=>p.cats),...txA.filter(t=>t.type==='depense').map(t=>t.cat)])].filter(c=>!CATS_HORS_CALCUL.includes(c));
   let rev=0,dep=0;
@@ -1711,7 +1779,7 @@ function affBudget(){
   document.getElementById('ld-budget').style.display='none';document.getElementById('cv').style.display='block';
   const txA=E.tx.filter(t=>t.an===E.annee);
   const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
-  txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
+  txA.forEach(t=>{const m=moisDe(t.date);const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
   const nc=MOIS.length+2;
   // Mois en cours (uniquement si on consulte l'année réelle d'aujourd'hui)
   const moisActuel=(E.annee===new Date().getFullYear().toString())?new Date().getMonth():-1;
@@ -1723,7 +1791,7 @@ function affBudget(){
     const ep=E.epargne.find(e=>e.livret===liv);
     const ctrlLiv=E.editionBudget?
       `<span class="reord"><button onclick="deplacerLivret(${idxLiv},-1)" aria-label="Monter">▲</button><button onclick="deplacerLivret(${idxLiv},1)" aria-label="Descendre">▼</button></span>
-       <span class="ic-edit-cat" onclick="renommerLivretDepuisBudget('${liv.replace(/'/g,"\\'")}')">✏️</span><span class="ic-edit-cat" onclick="supprimerLivretDepuisBudget('${liv.replace(/'/g,"\\'")}')">🗑️</span>`:'';
+       <span class="ic-edit-cat" onclick="renommerLivretDepuisBudget('${escJs(liv)}')">✏️</span><span class="ic-edit-cat" onclick="supprimerLivretDepuisBudget('${escJs(liv)}')">🗑️</span>`:'';
     h+=`<tr class="z-ep cat-row" data-cat="${esc(liv)}" data-bloc="ep"><td>${esc(liv)}${ctrlLiv}</td>`;
     let premier=null;let dernier=null;
     MOIS.forEach((_,i)=>{
@@ -1771,9 +1839,9 @@ function affBudget(){
     const horsCalcul=CATS_HORS_CALCUL.includes(cat);
     const ctrlRev=E.editionBudget?
       `${idxRev>-1?`<span class="reord"><button onclick="deplacerRevenu(${idxRev},-1)" aria-label="Monter">▲</button><button onclick="deplacerRevenu(${idxRev},1)" aria-label="Descendre">▼</button></span>`:''}
-       <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${cat.replace(/'/g,"\\'")}')">€</span>
-       <span class="ic-edit-cat" onclick="renommerRevenuDepuisBudget('${cat.replace(/'/g,"\\'")}')">✏️</span><span class="ic-edit-cat" onclick="supprimerRevenuDepuisBudget('${cat.replace(/'/g,"\\'")}')">🗑️</span>`:'';
-    h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlRev}</td>`;
+       <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${escJs(cat)}')">€</span>
+       <span class="ic-edit-cat" onclick="renommerRevenuDepuisBudget('${escJs(cat)}')">✏️</span><span class="ic-edit-cat" onclick="supprimerRevenuDepuisBudget('${escJs(cat)}')">🗑️</span>`:'';
+    h+=`<tr class="z-rv cat-row" data-cat="${esc(cat)}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${esc(cat)}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlRev}</td>`;
     MOIS.forEach((_,i)=>{
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
@@ -1819,8 +1887,8 @@ function affBudget(){
       const horsCalcul=CATS_HORS_CALCUL.includes(c);
       const ctrlCat=(E.editionBudget&&!pole.auto)?
         `${idxCat>-1?`<span class="reord"><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},-1)" aria-label="Monter">▲</button><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},1)" aria-label="Descendre">▼</button></span>`:''}
-         <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${c.replace(/'/g,"\\'")}')">€</span>
-         <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${c.replace(/'/g,"\\'")}')">🗑️</span>`:'';
+         <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${escJs(c)}')">€</span>
+         <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${escJs(c)}')">🗑️</span>`:'';
       h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlCat}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${(reel?'tn':'prev')}${horsCalcul?' hc':''}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
@@ -1853,7 +1921,7 @@ function affBudget(){
     // Le critère pertinent n'est pas "y a-t-il une dépense saisie ?" mais "y a-t-il déjà
     // une transaction POINTÉE ce mois ?" — une dépense prévisible saisie à l'avance (non
     // pointée) reste une prévision, tout comme une dépense programmée non encore réalisée.
-    const auMoinsUnePointee=txA.some(t=>t.pointe&&new Date(t.date).getMonth()===i);
+    const auMoinsUnePointee=txA.some(t=>t.pointe&&moisDe(t.date)===i);
     const estPrevisionnel=!auMoinsUnePointee;
     h+=`<td class="${r>=0?'tp':'tn'}${estPrevisionnel?' prev':''}"><strong>${fmtDec(r)}</strong></td>`;
   });
@@ -1926,7 +1994,7 @@ function affBudget(){
 function affGrille(){
   const txA=E.tx.filter(t=>t.an===E.annee);const mA=new Date().getMonth();let h='';
   MOIS.forEach((n,i)=>{
-    const txM=txA.filter(t=>new Date(t.date).getMonth()===i);
+    const txM=txA.filter(t=>moisDe(t.date)===i);
     const rev=txM.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
     const dep=txM.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
     const r=rev-dep;const p=rev>0?Math.min((dep/rev)*100,100):0;
@@ -1997,7 +2065,7 @@ function initSwipeMois(){
 }
 
 function affDm(mi){
-  const txM=E.tx.filter(t=>t.an===E.annee&&new Date(t.date).getMonth()===mi);
+  const txM=E.tx.filter(t=>t.an===E.annee&&moisDe(t.date)===mi);
   const rev=txM.filter(t=>t.type==='revenu'&&!CATS_HORS_CALCUL.includes(t.cat)).reduce((a,t)=>a+t.montant,0);
   const dep=txM.filter(t=>t.type==='depense'&&!CATS_HORS_CALCUL.includes(t.cat)).reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
   const r=rev-dep;
@@ -2278,9 +2346,11 @@ async function actionTx(){
       const newDate=document.getElementById('ov-da').value||t.date;
       const newCat=document.getElementById('ov-ca').value||t.cat;
       // Mettre à jour toute la ligne
-      await ecrire(`TX_${t.an}!B${idx+2}:J${idx+2}`,[[newDate,t.type,newCat,pr,newDesc,m,no,pointer?'TRUE':(t.pointe?'TRUE':'FALSE'),pointer?m:(t.montant_reel||'')]]);
+      await ecrire(`TX_${t.an}!B${idx+2}:J${idx+2}`,[[newDate,t.type,newCat,pr,newDesc,m,no,pointer?'TRUE':(t.pointe?'TRUE':'FALSE'),(pointer||t.pointe)?m:'']]);
       t.desc=newDesc;t.date=newDate;t.cat=newCat;t.projet=pr;t.note=no;
-      if(pointer){t.pointe=true;t.montant_reel=m;}else t.montant=m;
+      t.montant=m;
+      if(pointer)t.pointe=true;
+      if(pointer||t.pointe)t.montant_reel=m;
       if(pr&&!E.projets.includes(pr)){E.projets.push(pr);majDL();}
       fOv('ov-tx');refresh();toast(pointer?'Pointée ✓':'Modifiée ✓');
     }
@@ -2308,6 +2378,27 @@ function suppTx(){
 
 // ── IMPORT RELEVÉ BANCAIRE PAR PHOTO/PDF ──
 E.aClasser=E.aClasser||[];
+// Les lignes "à classer" ne vivent qu'en mémoire tant qu'elles ne sont pas validées
+// une à une (voir validerAClasser). C'est le flux utilisé pour la saisie manuelle de
+// relevés papier (potentiellement 20-30 lignes d'affilée) : un rafraîchissement
+// accidentel ou une PWA rechargée en arrière-plan sur mobile ferait tout perdre sans
+// ce filet de sécurité local, propre à chaque Sheet (E.sid) pour ne pas mélanger
+// les comptes sur un même appareil.
+function cleAClasserLocal(){return 'aclasser_'+(E.sid||'defaut');}
+function sauverAClasserLocal(){
+  try{
+    if(E.aClasser&&E.aClasser.length)localStorage.setItem(cleAClasserLocal(),JSON.stringify(E.aClasser));
+    else localStorage.removeItem(cleAClasserLocal());
+  }catch(e){}
+}
+function restaurerAClasserLocal(){
+  try{
+    const brut=localStorage.getItem(cleAClasserLocal());
+    if(!brut)return;
+    const liste=JSON.parse(brut);
+    if(Array.isArray(liste)&&liste.length){E.aClasser=liste;toast(`🗂️ ${liste.length} ligne(s) à classer restaurée(s)`);}
+  }catch(e){}
+}
 
 async function fichierEnBase64(file){
   const buffer=await file.arrayBuffer();
@@ -2546,6 +2637,7 @@ async function analyserReleve(input){
     res.tx.forEach(t=>{
       E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date:t.date,desc:t.libelle,montant:t.montant,type:t.type,catSuggeree:suggererCategorie(t.libelle,t.type)});
     });
+    sauverAClasserLocal();
     msg.style.background='var(--vec)';msg.style.color='var(--ve)';
     let verif='';
     if(res.totalDebit!==null){
@@ -2619,6 +2711,7 @@ function validerSaisieLigne(){
   if(!desc){toast('Indiquez une description');return;}
   if(!date){toast('Indiquez une date');return;}
   E.aClasser.push({id:'aclasser_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),date,desc,montant,type:_smType,catSuggeree:cat||suggererCategorie(desc,_smType),_manuelle:true});
+  sauverAClasserLocal();
   // Réafficher le formulaire vide, prêt pour la ligne suivante, en gardant la date
   _saisieDateDefaut=date;
   renderSaisieManuelle('✓ « '+desc+' » ajoutée. Ligne suivante :');
@@ -2702,10 +2795,12 @@ async function validerAClasser(id){
   if(!cat){toast('Choisissez une catégorie');return;}
   const an=t.date.slice(0,4);
   const txId='tx_'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
+  const pointee=!(t.date>today());
   try{
-    await ajouter(`TX_${an}`,[txId,t.date,t.type,cat,'',t.desc,t.montant,'','TRUE',t.montant]);
-    E.tx.push({id:txId,date:t.date,type:t.type,cat,projet:'',desc:t.desc,montant:t.montant,note:'',pointe:true,montant_reel:t.montant,an});
+    await ajouter(`TX_${an}`,[txId,t.date,t.type,cat,'',t.desc,t.montant,'',pointee?'TRUE':'FALSE',pointee?t.montant:'']);
+    E.tx.push({id:txId,date:t.date,type:t.type,cat,projet:'',desc:t.desc,montant:t.montant,note:'',pointe:pointee,montant_reel:pointee?t.montant:null,an});
     E.aClasser=E.aClasser.filter(x=>x.id!==id);
+    sauverAClasserLocal();
     affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
     toast('✓ '+t.desc+' classee');
   }catch(e){toast('Erreur enregistrement');}
@@ -2713,6 +2808,7 @@ async function validerAClasser(id){
 
 function supprimerAClasser(id){
   E.aClasser=E.aClasser.filter(x=>x.id!==id);
+  sauverAClasserLocal();
   if(E.moisOuvert!==null)affDm(E.moisOuvert);
   toast('Ligne ignorée');
 }
@@ -2763,7 +2859,7 @@ function onToggleRecurSaisie(){
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if((E.type==='revenu'&&b.textContent.includes('Revenu'))||(E.type==='depense'&&b.textContent.includes('Dépense')))b.classList.add('a');});
   PROG_TYPE=E.type;
   if(da&&!isNaN(mo)&&mo>0){
-    const mi=new Date(da).getMonth();
+    const mi=moisDe(da);
     E.montsMoisEnCours[mi]=mo;
     const inp=document.getElementById('pmois'+mi);if(inp)inp.value=mo;
   }
@@ -2806,6 +2902,7 @@ async function saveTx(){
     toast(`"${de}" enregistrée ✓${suffixe}`);
     if(_aClasserEnEdition){
       E.aClasser=E.aClasser.filter(x=>x.id!==_aClasserEnEdition);
+      sauverAClasserLocal();
       _aClasserEnEdition=null;
       fermerSaisie();
     }
@@ -3116,7 +3213,7 @@ function chercher(q){
   if(!q||q.length<2){el.innerHTML=`<div class="vi"><div class="em">🔍</div><p>Tapez pour rechercher</p></div>`;return;}
   const ql=q.toLowerCase();
   const res=E.tx.filter(t=>(t.desc||'').toLowerCase().includes(ql)||(t.projet||'').toLowerCase().includes(ql)||(t.cat||'').toLowerCase().includes(ql)||(t.note||'').toLowerCase().includes(ql)).sort((a,b)=>b.date.localeCompare(a.date));
-  if(!res.length){el.innerHTML=`<div class="vi"><div class="em">😶</div><p>Aucun résultat pour "${q}"</p><p style="font-size:.75rem;color:var(--txl);margin-top:4px">Essayez un autre mot, ou vérifiez l'orthographe.</p></div>`;return;}
+  if(!res.length){el.innerHTML=`<div class="vi"><div class="em">😶</div><p>Aucun résultat pour "${esc(q)}"</p><p style="font-size:.75rem;color:var(--txl);margin-top:4px">Essayez un autre mot, ou vérifiez l'orthographe.</p></div>`;return;}
   const tD=res.filter(t=>t.type==='depense').reduce((a,t)=>a+t.montant,0);
   const tR=res.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
   let h=`<p style="font-size:.78rem;color:var(--txl);margin-bottom:9px">${res.length} résultat(s)</p>`;
@@ -3227,8 +3324,8 @@ function affProjets(){
         <div style="font-size:.85rem;font-weight:500">${esc(pj)}${badge}</div>
         <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de mouvement':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}${collecte>0?` · 💶 Collecté : ${fmtDec(collecte)}`:''}</div>
       </div>
-      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${pj.replace(/'/g,"\\'")}',this.value)" style="width:84px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
-      <button onclick="masquerProjetDepuisListe('${pj.replace(/'/g,"\\'")}')" aria-label="Retirer ce projet de la liste" title="Retirer de la liste (l'historique reste retrouvable via Recherche)" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px;min-width:28px;min-height:28px">🗑</button>
+      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${escJs(pj)}',this.value)" style="width:84px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
+      <button onclick="masquerProjetDepuisListe('${escJs(pj)}')" aria-label="Retirer ce projet de la liste" title="Retirer de la liste (l'historique reste retrouvable via Recherche)" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px;min-width:28px;min-height:28px">🗑</button>
     </div>`;
   }).join('');
 }
@@ -3257,14 +3354,14 @@ function affPoles(){
         ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
           <div style="display:flex;align-items:center;gap:8px">
             <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
-            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
+            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${escJs(c)}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1">${esc(c)}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="retirerCatDePole(${i},'${c.replace(/'/g,"\\'")}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+            <button onclick="renommerCategorie('${escJs(c)}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="retirerCatDePole(${i},'${escJs(c)}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;padding-left:24px">
-            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel) — librement réparti sur les 12 mois" onchange="definirBudgetCatAn('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel) — librement réparti sur les 12 mois" onchange="definirBudgetCatAn('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
           </div>
         </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
       </div>
@@ -3286,15 +3383,15 @@ function affPoles(){
       <div style="display:flex;flex-direction:column;gap:8px">
         ${nonClassees.map(c=>`<div style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px">
           <div style="display:flex;align-items:center;gap:8px">
-            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${c.replace(/'/g,"\\'")}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
+            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${escJs(c)}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
             <span style="flex:1;font-size:.82rem">${esc(c)}</span>
-            <button onclick="renommerCategorie('${c.replace(/'/g,"\\'")}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="masquerCategorie('${c.replace(/'/g,"\\'")}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
+            <button onclick="renommerCategorie('${escJs(c)}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
+            <button onclick="masquerCategorie('${escJs(c)}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel)" onchange="definirBudgetCatAn('${c.replace(/'/g,"\\'")}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <select onchange="deplacerCatVersPole('${c.replace(/'/g,"\\'")}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none;flex:1;min-width:120px">
+            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel)" onchange="definirBudgetCatAn('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
+            <select onchange="deplacerCatVersPole('${escJs(c)}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none;flex:1;min-width:120px">
               <option value="">→ Choisir un pôle</option>
               ${POLES.map((p,i)=>`<option value="${i}">${esc(p.nom)}</option>`).join('')}
             </select>
@@ -3393,11 +3490,12 @@ function deplacerCategorieDansPole(idxPole,i,sens){
   affBudget();
 }
 function ajouterCategorieDepuisBudget(i){
-  const cat=prompt('Nom de la nouvelle catégorie :');
-  if(!cat||!cat.trim())return;
-  ajouterCatAuPole(i,cat.trim());
-  sauvegarderParams();
-  affBudget();
+  promptModal('Nouvelle catégorie','Nom de la nouvelle catégorie :','',(cat)=>{
+    if(!cat)return;
+    ajouterCatAuPole(i,cat);
+    sauvegarderParams();
+    affBudget();
+  });
 }
 function retirerCategorieDepuisBudget(i,cat){
   confirmerAction('Retirer "'+cat+'" du pôle ? Son historique de transactions reste intact.',()=>{
@@ -3407,11 +3505,12 @@ function retirerCategorieDepuisBudget(i,cat){
   });
 }
 function renommerPoleDepuisBudget(i){
-  const nv=prompt('Nouveau nom pour ce pôle :',POLES[i].nom);
-  if(!nv||!nv.trim())return;
-  renommerPole(i,nv.trim());
-  sauvegarderParams();
-  affBudget();
+  promptModal('Renommer le pôle','Nouveau nom pour ce pôle :',POLES[i].nom,(nv)=>{
+    if(!nv)return;
+    renommerPole(i,nv);
+    sauvegarderParams();
+    affBudget();
+  });
 }
 function supprimerPoleDepuisBudget(i){
   confirmerAction('Supprimer le pôle "'+POLES[i].nom+'" ? Les catégories qu\'il contient resteront visibles dans "Autres / Non classé".',()=>{
@@ -3421,39 +3520,41 @@ function supprimerPoleDepuisBudget(i){
   });
 }
 function ajouterPoleDepuisBudget(){
-  const nv=prompt('Nom du nouveau pôle :');
-  if(!nv||!nv.trim())return;
-  POLES.push({nom:nv.trim(),cats:[]});
-  sauvegarderParams();
-  affBudget();
+  promptModal('Nouveau pôle','Nom du nouveau pôle :','',(nv)=>{
+    if(!nv)return;
+    POLES.push({nom:nv,cats:[]});
+    sauvegarderParams();
+    affBudget();
+  });
 }
 function ajouterLivretDepuisBudget(){
-  const nv=prompt('Nom du nouveau compte / livret :');
-  if(!nv||!nv.trim())return;
-  if(LIVRETS.includes(nv.trim())){toast('Ce compte existe déjà');return;}
-  LIVRETS.push(nv.trim());
-  sauvegarderParams();
-  affBudget();affEpargne();
-}
-async function renommerLivretDepuisBudget(ancienNom){
-  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
-  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
-  const nv=nouveauNom.trim();
-  toast('Renommage en cours...');
-  try{
-    LIVRETS=LIVRETS.map(l=>l===ancienNom?nv:l);
-    const ep=E.epargne.find(e=>e.livret===ancienNom);
-    if(ep)ep.livret=nv;
-    // Met aussi à jour le nom dans la feuille Epargne (colonne A) pour conserver l'historique des soldes déjà saisis
-    const rows=await lire('Epargne!A2:N');
-    const idx=rows.findIndex(r=>r[0]===ancienNom);
-    if(idx>=0)await ecrire(`Epargne!A${idx+2}`,[[nv]]);
-    await sauvegarderParams();
+  promptModal('Nouveau compte / livret','Nom du nouveau compte / livret :','',(nv)=>{
+    if(!nv)return;
+    if(LIVRETS.includes(nv)){toast('Ce compte existe déjà');return;}
+    LIVRETS.push(nv);
+    sauvegarderParams();
     affBudget();affEpargne();
-    toast('"'+ancienNom+'" renommé en "'+nv+'" ✓');
-  }catch(e){
-    toast('Erreur lors du renommage');
-  }
+  });
+}
+function renommerLivretDepuisBudget(ancienNom){
+  promptModal('Renommer le compte','Nouveau nom pour "'+ancienNom+'" :',ancienNom,async(nv)=>{
+    if(!nv||nv===ancienNom)return;
+    toast('Renommage en cours...');
+    try{
+      LIVRETS=LIVRETS.map(l=>l===ancienNom?nv:l);
+      const ep=E.epargne.find(e=>e.livret===ancienNom);
+      if(ep)ep.livret=nv;
+      // Met aussi à jour le nom dans la feuille Epargne (colonne A) pour conserver l'historique des soldes déjà saisis
+      const rows=await lire('Epargne!A2:N');
+      const idx=rows.findIndex(r=>r[0]===ancienNom);
+      if(idx>=0)await ecrire(`Epargne!A${idx+2}`,[[nv]]);
+      await sauvegarderParams();
+      affBudget();affEpargne();
+      toast('"'+ancienNom+'" renommé en "'+nv+'" ✓');
+    }catch(e){
+      toast('Erreur lors du renommage');
+    }
+  });
 }
 function supprimerLivretDepuisBudget(nom){
   confirmerAction('Retirer "'+nom+'" de la liste ? L\'historique des soldes déjà enregistrés reste conservé dans votre fichier Google Sheets, mais ce compte ne sera plus proposé ni affiché ici.',()=>{
@@ -3470,20 +3571,21 @@ function deplacerLivret(i,sens){
   affBudget();affEpargne();
 }
 function ajouterRevenuDepuisBudget(){
-  const nv=prompt('Nom de la nouvelle catégorie de revenu :');
-  if(!nv||!nv.trim())return;
-  if(CREV.includes(nv.trim())){toast('Cette catégorie existe déjà');return;}
-  CREV.push(nv.trim());
-  sauvegarderParams();
-  affBudget();
+  promptModal('Nouvelle catégorie de revenu','Nom de la nouvelle catégorie de revenu :','',(nv)=>{
+    if(!nv)return;
+    if(CREV.includes(nv)){toast('Cette catégorie existe déjà');return;}
+    CREV.push(nv);
+    sauvegarderParams();
+    affBudget();
+  });
 }
-async function renommerRevenuDepuisBudget(ancienNom){
-  const nouveauNom=prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
-  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
-  const nv=nouveauNom.trim();
-  CREV=CREV.map(c=>c===ancienNom?nv:c);
-  // Met aussi à jour les transactions et programmées existantes (logique déjà utilisée pour les catégories de dépense)
-  await renommerCategorie(ancienNom,nv);
+function renommerRevenuDepuisBudget(ancienNom){
+  promptModal('Renommer la catégorie de revenu','Nouveau nom pour "'+ancienNom+'" :',ancienNom,async(nv)=>{
+    if(!nv||nv===ancienNom)return;
+    CREV=CREV.map(c=>c===ancienNom?nv:c);
+    // Met aussi à jour les transactions et programmées existantes (logique déjà utilisée pour les catégories de dépense)
+    await renommerCategorie(ancienNom,nv);
+  });
 }
 function supprimerRevenuDepuisBudget(nom){
   confirmerAction('Retirer "'+nom+'" de la liste de revenus ? L\'historique des transactions déjà saisies sous ce nom reste intact et continuera de s\'afficher.',()=>{
@@ -3548,9 +3650,13 @@ function retirerCatDePole(i,cat){
   affPoles();
 }
 async function renommerCategorie(ancienNom,nomImpose){
-  const nouveauNom=nomImpose||prompt('Nouveau nom pour "'+ancienNom+'" :',ancienNom);
-  if(!nouveauNom||!nouveauNom.trim()||nouveauNom.trim()===ancienNom)return;
-  const nv=nouveauNom.trim();
+  if(nomImpose){await renommerCategorieVers(ancienNom,nomImpose);return;}
+  promptModal('Renommer la catégorie','Nouveau nom pour "'+ancienNom+'" :',ancienNom,(nv)=>{
+    if(!nv||nv===ancienNom)return;
+    renommerCategorieVers(ancienNom,nv);
+  });
+}
+async function renommerCategorieVers(ancienNom,nv){
   toast('Renommage en cours...');
   try{
     // 1. Mettre à jour le nom dans le(s) pôle(s) qui la contiennent
@@ -3679,7 +3785,7 @@ async function genererVueSheets(){
     const txA=E.tx.filter(t=>t.an===an);
     const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
     txA.forEach(t=>{
-      const m=new Date(t.date).getMonth();
+      const m=moisDe(t.date);
       const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
       const b=t.type==='revenu'?'rev':'dep';
       if(!data[m][b][t.cat])data[m][b][t.cat]=0;
