@@ -776,7 +776,7 @@ async function definirIconeCategorie(cat,emoji){
   if(!emoji)delete ICONES_CAT_PERSO[cat];
   else ICONES_CAT_PERSO[cat]=emoji;
   await sauvegarderParams();
-  affBudget();affPoles();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+  affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
 }
 
 let POLES=JSON.parse(JSON.stringify(DEF_POLES)); // [{nom, cats:[...]}]
@@ -798,12 +798,6 @@ function toutesCatsDepense(){
   POLES.forEach(p=>p.cats.forEach(c=>{if(!cats.includes(c))cats.push(c);}));
   return cats;
 }
-// Pôle d'une catégorie donnée, ou "Autres / Non classé" si introuvable
-function poleDeCategorie(cat){
-  const p=POLES.find(p=>p.cats.includes(cat));
-  return p?p.nom:'Autres / Non classé';
-}
-
 let E={
   sid:localStorage.getItem('sid')||'',
   annee:localStorage.getItem('annee')||new Date().getFullYear().toString(),
@@ -923,7 +917,6 @@ function parseNum(v){
   if(typeof v==='number')return v;
   return parseFloat(String(v).replace(',','.'))||0;
 }
-function fmt(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(n||0);}
 function fmtDec(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('v');setTimeout(()=>t.classList.remove('v'),2500);}
 
@@ -1057,17 +1050,10 @@ async function initGAPI(){
     }
   }
 }
-function connexionFirebase(){
-  document.getElementById('btn-google').style.display='none';
-  document.getElementById('zone-chargement').style.display='block';
-  document.getElementById('zone-chargement').textContent='Redirection vers Google...';
-  window.fbSignIn();
-}
 function connexionGoogle(){
   if(!E.tc){toast('Chargement en cours, reessayez...');return;}
   E.tc.requestAccessToken();
 }
-function validerSheet(){const v=document.getElementById('inp-sid').value.trim();if(!v){toast("Entrez l'ID");return;}E.sid=v;localStorage.setItem('sid',v);connexionGoogle();}
 
 async function demarrer(){
   // Garde-fou : il arrive que la connexion Google réponde avant que gapi.client
@@ -1883,12 +1869,26 @@ function affBudget(){
        <span class="ic-edit-pole" onclick="renommerPoleDepuisBudget(${idxPole})">✏️</span><span class="ic-edit-pole" onclick="supprimerPoleDepuisBudget(${idxPole})">🗑️</span>`:'';
     h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}${ctrlPole}</td></tr>`;
     catsDuPole.forEach(c=>{let tot=0;
-      const idxCat=POLES[idxPole].cats.indexOf(c);
+      // pole.auto ("Autres / Non classé") n'existe pas dans POLES : POLES[idxPole]
+      // serait hors bornes et ferait planter tout le rendu du tableau Budget dès
+      // qu'une catégorie de dépense n'est assignée à aucun pôle.
+      const idxCat=pole.auto?-1:POLES[idxPole].cats.indexOf(c);
       const horsCalcul=CATS_HORS_CALCUL.includes(c);
       const ctrlCat=(E.editionBudget&&!pole.auto)?
         `${idxCat>-1?`<span class="reord"><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},-1)" aria-label="Monter">▲</button><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},1)" aria-label="Descendre">▼</button></span>`:''}
-         <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${escJs(c)}')">€</span>
-         <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${escJs(c)}')">🗑️</span>`:'';
+         <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l’exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${escJs(c)}')">€</span>
+         <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${escJs(c)}')">🗑️</span>`
+        :(E.editionBudget&&pole.auto)?
+        // "Autres / Non classé" : pas de pôle attitré, donc pas de réordonnancement/budget
+        // possible ici — juste renommer (pour corriger une saisie libre), ranger dans un
+        // vrai pôle, ou masquer si la catégorie n'est plus utilisée.
+        `<span class="ic-edit-cat" onclick="renommerCategorie('${escJs(c)}')" title="Renommer cette catégorie">✏️</span>
+         <select onchange="deplacerCatVersPoleDepuisBudget('${escJs(c)}',this.value)" title="Ranger dans un pôle" style="font-size:.66rem;padding:2px 3px;border-radius:6px;border:1px solid var(--bo);background:var(--wh);color:var(--tx);margin-left:6px;max-width:96px;vertical-align:middle">
+           <option value="">→ Pôle…</option>
+           ${POLES.map((p,pi)=>`<option value="${pi}">${esc(p.nom)}</option>`).join('')}
+         </select>
+         <span class="ic-edit-cat" onclick="masquerCategorieDepuisBudget('${escJs(c)}')" title="Masquer cette catégorie">🗑️</span>`
+        :'';
       h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlCat}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${(reel?'tn':'prev')}${horsCalcul?' hc':''}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
@@ -2398,14 +2398,6 @@ function restaurerAClasserLocal(){
     const liste=JSON.parse(brut);
     if(Array.isArray(liste)&&liste.length){E.aClasser=liste;toast(`🗂️ ${liste.length} ligne(s) à classer restaurée(s)`);}
   }catch(e){}
-}
-
-async function fichierEnBase64(file){
-  const buffer=await file.arrayBuffer();
-  const bytes=new Uint8Array(buffer);
-  let bin='';const chunk=8192;
-  for(let i=0;i<bytes.length;i+=chunk)bin+=String.fromCharCode(...bytes.subarray(i,i+chunk));
-  return btoa(bin);
 }
 
 function chargerScript(src){
@@ -3224,24 +3216,6 @@ function chercher(q){
   h+=`</div>`;el.innerHTML=h;
 }
 
-// ── PARAMÈTRES ──
-function remplirParams(){
-  document.getElementById('p-livrets').value=LIVRETS.join('\n');
-  document.getElementById('p-rev').value=CREV.join('\n');
-  affPoles();
-}
-async function sauvegarderParamsUI(){
-  const parse=id=>document.getElementById(id).value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const liv=parse('p-livrets'),rev=parse('p-rev');
-  if(!liv.length||!rev.length){toast('Remplissez toutes les sections');return;}
-  LIVRETS=liv;CREV=rev;
-  await sauvegarderParams();peuplerCat();peuplerImpCats();refresh();toast('Paramètres enregistrés ✓');
-}
-function reinitParams(){
-  CREV=[...DEF_REV];LIVRETS=[...DEF_LIVRETS];POLES=JSON.parse(JSON.stringify(DEF_POLES));
-  remplirParams();toast('Valeurs par défaut restaurées');
-}
-
 // ── GESTION DES PÔLES DE DÉPENSES ──
 function categoriesReellementUtilisees(){
   // Catégories de dépense ayant au moins une transaction ou une programmée réelle (pas juste listées dans un pôle)
@@ -3339,131 +3313,6 @@ function masquerProjetDepuisListe(pj){
   });
 }
 
-function affPoles(){
-  const el=document.getElementById('liste-poles');if(!el)return;
-  const toutesCats=toutesCategoriesConnues();
-  const reellementUtilisees=categoriesReellementUtilisees();
-  // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
-  let h=POLES.map((p,i)=>`
-    <div class="ban" style="padding:14px;margin-bottom:10px">
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-        <input type="text" value="${esc(p.nom)}" oninput="renommerPole(${i},this.value)" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-weight:600;font-size:.875rem;outline:none"/>
-        <button onclick="supprimerPole(${i})" aria-label="Supprimer ce pôle" style="width:34px;height:34px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:1rem;cursor:pointer">✕</button>
-      </div>
-      <div class="liste-cats-pole" data-pole="${i}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-        ${p.cats.length?p.cats.map((c,ci)=>`<div class="cat-draggable" data-pole="${i}" data-idx="${ci}" style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px;font-size:.82rem;touch-action:none">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="poignee-drag" style="cursor:grab;color:var(--txl);font-size:1rem;padding:0 4px;flex-shrink:0">⠿</span>
-            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${escJs(c)}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
-            <span style="flex:1">${esc(c)}${reellementUtilisees.has(c)?'':' <span style="color:var(--txl);font-style:italic;font-size:.7rem">(inutilisée)</span>'}</span>
-            <button onclick="renommerCategorie('${escJs(c)}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="retirerCatDePole(${i},'${escJs(c)}')" title="Retirer (et oublier si inutilisée)" aria-label="Retirer cette catégorie du pôle" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--bo);color:var(--tx);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;padding-left:24px">
-            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel) — se réinitialise chaque mois" onchange="definirBudgetCat('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel) — librement réparti sur les 12 mois" onchange="definirBudgetCatAn('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-          </div>
-        </div>`).join(''):'<span style="color:var(--txl);font-size:.78rem;font-style:italic">Aucune catégorie pour l’instant</span>'}
-      </div>
-      <div style="display:flex;gap:8px">
-        <input type="text" list="suggestions-cats" placeholder="+ Ajouter une catégorie..." onkeydown="if(event.key==='Enter'){ajouterCatAuPole(${i},this.value);this.value='';event.preventDefault();}" id="champ-nouvelle-cat-${i}" style="flex:1;padding:9px 11px;border-radius:9px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.82rem;outline:none"/>
-        <button onclick="ajouterCatAuPole(${i},document.getElementById('champ-nouvelle-cat-${i}').value);document.getElementById('champ-nouvelle-cat-${i}').value=''" style="padding:9px 14px;border-radius:9px;border:none;background:var(--bl);color:var(--wf);font-size:.82rem;cursor:pointer">Ajouter</button>
-      </div>
-    </div>`).join('');
-  h+=`<datalist id="suggestions-cats">${toutesCats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist>`;
-
-  // Catégories non assignées à aucun pôle = "Autres / Non classé"
-  const catsAssignees=new Set();
-  POLES.forEach(p=>p.cats.forEach(c=>catsAssignees.add(c)));
-  const nonClassees=toutesCats.filter(c=>!catsAssignees.has(c));
-  if(nonClassees.length){
-    h+=`<div class="ban" style="padding:14px;margin-bottom:10px;background:var(--pa)">
-      <p style="font-weight:600;font-size:.875rem;margin-bottom:10px">📥 Autres / Non classé</p>
-      <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Choisissez un pôle pour chaque catégorie ci-dessous, ou masquez-la si vous ne l'utilisez plus (son historique reste intact).</p>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${nonClassees.map(c=>`<div style="display:flex;flex-direction:column;gap:6px;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:8px 10px">
-          <div style="display:flex;align-items:center;gap:8px">
-            <input type="text" value="${esc(iconePourCategorie(c))}" maxlength="4" title="Icône de la catégorie (tapez ou collez un emoji)" onchange="definirIconeCategorie('${escJs(c)}',this.value)" style="width:34px;height:34px;text-align:center;border-radius:8px;border:1.5px solid var(--bo);font-size:1rem;padding:0;flex-shrink:0;outline:none"/>
-            <span style="flex:1;font-size:.82rem">${esc(c)}</span>
-            <button onclick="renommerCategorie('${escJs(c)}')" title="Renommer cette catégorie" aria-label="Renommer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">✏️</button>
-            <button onclick="masquerCategorie('${escJs(c)}')" title="Masquer (garde l'historique, ne montre plus dans la gestion des pôles)" aria-label="Masquer cette catégorie" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--bo);background:var(--wh);color:var(--ro);font-size:.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🗑️</button>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <input type="number" placeholder="Budget/mois" value="${BUDGETS_CAT[c]||''}" title="Budget mensuel maximum (optionnel)" onchange="definirBudgetCat('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <input type="number" placeholder="Budget/an" value="${BUDGETS_CAT_AN[c]||''}" title="Budget annuel maximum (optionnel)" onchange="definirBudgetCatAn('${escJs(c)}',this.value)" style="width:88px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.7rem;outline:none;text-align:right"/>
-            <select onchange="deplacerCatVersPole('${escJs(c)}',this.value);this.value=''" style="padding:7px 9px;border-radius:8px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.78rem;outline:none;flex:1;min-width:120px">
-              <option value="">→ Choisir un pôle</option>
-              ${POLES.map((p,i)=>`<option value="${i}">${esc(p.nom)}</option>`).join('')}
-            </select>
-          </div>
-        </div>`).join('')}
-      </div>
-    </div>`;
-  }
-  el.innerHTML=h;
-  initDragCats();
-}
-
-// ── GLISSER-DÉPOSER TACTILE DES CATÉGORIES DANS UN PÔLE ──
-let _dragState={el:null,pole:null,offsetY:0,placeholder:null};
-function _onTouchMoveCats(e){
-  const s=_dragState;if(!s.el)return;
-  e.preventDefault();
-  const y=e.touches[0].clientY;
-  s.el.style.top=(y-s.offsetY)+'px';
-  const conteneur=s.el.parentNode;
-  const autres=[...conteneur.querySelectorAll('.cat-draggable')].filter(el2=>el2!==s.el);
-  let cible=null;
-  for(const el2 of autres){
-    const r=el2.getBoundingClientRect();
-    if(y<r.top+r.height/2){cible=el2;break;}
-  }
-  if(cible)conteneur.insertBefore(s.placeholder,cible);
-  else conteneur.appendChild(s.placeholder);
-}
-function _onTouchEndCats(){
-  const s=_dragState;if(!s.el)return;
-  const conteneur=s.el.parentNode;
-  s.placeholder.replaceWith(s.el);
-  s.el.style.position='';s.el.style.zIndex='';s.el.style.width='';s.el.style.left='';s.el.style.top='';s.el.style.boxShadow='';
-  const items=[...conteneur.querySelectorAll('.cat-draggable')];
-  const poleIdx=s.pole;
-  const ancienOrdre=POLES[poleIdx].cats;
-  const nvCats=items.map(el2=>ancienOrdre[parseInt(el2.dataset.idx)]);
-  POLES[poleIdx].cats=nvCats;
-  _dragState={el:null,pole:null,offsetY:0,placeholder:null};
-  affPoles();
-}
-document.removeEventListener('touchmove',_onTouchMoveCats);
-document.removeEventListener('touchend',_onTouchEndCats);
-document.addEventListener('touchmove',_onTouchMoveCats,{passive:false});
-document.addEventListener('touchend',_onTouchEndCats);
-
-function initDragCats(){
-  document.querySelectorAll('.cat-draggable').forEach(el=>{
-    const poignee=el.querySelector('.poignee-drag');
-    poignee.addEventListener('touchstart',e=>{
-      e.preventDefault();
-      const rect=el.getBoundingClientRect();
-      _dragState.el=el;
-      _dragState.pole=parseInt(el.dataset.pole);
-      _dragState.offsetY=e.touches[0].clientY-rect.top;
-      el.style.position='fixed';
-      el.style.zIndex='999';
-      el.style.width=rect.width+'px';
-      el.style.left=rect.left+'px';
-      el.style.top=rect.top+'px';
-      el.style.boxShadow='0 6px 18px rgba(0,0,0,.25)';
-      const placeholder=document.createElement('div');
-      placeholder.style.height=rect.height+'px';
-      placeholder.style.border='2px dashed var(--bo)';
-      placeholder.style.borderRadius='10px';
-      placeholder.style.marginBottom='6px';
-      el.parentNode.insertBefore(placeholder,el.nextSibling);
-      _dragState.placeholder=placeholder;
-    },{passive:false});
-  });
-}
 function toggleEditionBudget(){
   E.editionBudget=!E.editionBudget;
   // Marque "catégories découvertes" dès la première ouverture du mode Modifier :
@@ -3617,22 +3466,18 @@ function deplacerRevenu(i,sens){
   sauvegarderParams();
   affBudget();
 }
-function ajouterPole(){
-  POLES.push({nom:'Nouveau pôle',cats:[]});
-  affPoles();
-}
 function supprimerPole(i){
   const pole=POLES[i];
   POLES.splice(i,1);
-  affPoles();
   // Rien à exécuter "pour de vrai" ici : POLES n'est écrit dans Google Sheets
-  // qu'au moment où l'utilisateur clique "Enregistrer les pôles" — la suppression
-  // reste donc sans risque tant qu'elle n'est pas sauvegardée, mais on garde le
-  // même mécanisme d'annulation pour une expérience cohérente avec le reste de l'app.
+  // qu'au moment où sauvegarderParams() est appelé par l'appelant (ex:
+  // supprimerPoleDepuisBudget) — la suppression reste donc sans risque tant
+  // qu'elle n'est pas sauvegardée, mais on garde le même mécanisme d'annulation
+  // pour une expérience cohérente avec le reste de l'app.
   actionAvecAnnulation(
     `Pôle "${pole.nom}" supprimé`,
     ()=>{},
-    ()=>{POLES.splice(i,0,pole);affPoles();toast('Suppression annulée');}
+    ()=>{POLES.splice(i,0,pole);affBudget();toast('Suppression annulée');}
   );
 }
 function renommerPole(i,val){
@@ -3643,11 +3488,9 @@ function ajouterCatAuPole(i,cat){
   cat=(cat||'').trim();
   if(!cat)return;
   if(!POLES[i].cats.includes(cat))POLES[i].cats.push(cat);
-  affPoles();
 }
 function retirerCatDePole(i,cat){
   POLES[i].cats=POLES[i].cats.filter(c=>c!==cat);
-  affPoles();
 }
 async function renommerCategorie(ancienNom,nomImpose){
   if(nomImpose){await renommerCategorieVers(ancienNom,nomImpose);return;}
@@ -3684,32 +3527,31 @@ async function renommerCategorieVers(ancienNom,nv){
     // 4. Sauvegarder les pôles avec le nouveau nom et tout rafraîchir
     await sauvegarderParams();
     peuplerCat();peuplerImpCats();
-    affPoles();affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
+    affBudget();if(E.moisOuvert!==null)affDm(E.moisOuvert);
     toast('"'+ancienNom+'" renommée en "'+nv+'" ✓');
   }catch(e){
     toast('Erreur lors du renommage');
   }
 }
-function deplacerCatVersPole(cat,idxPole){
+// Déplace une catégorie de "Autres / Non classé" vers un pôle choisi, et masque une
+// catégorie inutilisée — deux actions accessibles depuis les lignes "Autres / Non
+// classé" du tableau Budget en mode édition (voir la branche pole.auto de ctrlCat
+// dans affBudget()).
+function deplacerCatVersPoleDepuisBudget(cat,idxPole){
   if(idxPole==='')return;
   POLES[parseInt(idxPole)].cats.push(cat);
-  affPoles();
+  sauvegarderParams();
+  affBudget();
 }
-function masquerCategorie(cat){
-  confirmerAction('Masquer "'+cat+'" ? Elle ne sera plus proposée dans la gestion des pôles, mais son historique de transactions reste intact et continuera d\'apparaître dans le tableau annuel et la vue Mois.',async()=>{
+function masquerCategorieDepuisBudget(cat){
+  confirmerAction('Masquer "'+cat+'" ? Elle ne sera plus proposée pour de nouvelles saisies, mais son historique de transactions reste intact et continuera d\'apparaître dans le tableau annuel et la vue Mois.',async()=>{
     if(!CATS_MASQUEES.includes(cat))CATS_MASQUEES.push(cat);
     // La retirer de tous les pôles où elle pourrait encore être listée
     POLES.forEach(p=>{p.cats=p.cats.filter(c=>c!==cat);});
     await sauvegarderParams();
-    affPoles();
+    affBudget();
     toast('"'+cat+'" masquée ✓');
   });
-}
-async function sauvegarderPolesUI(){
-  // Retirer les pôles vides de nom
-  POLES=POLES.filter(p=>p.nom.trim());
-  await sauvegarderParams();peuplerCat();peuplerImpCats();refresh();affPoles();
-  toast('Pôles enregistrés ✓');
 }
 
 // ── IMPORT ──
@@ -3751,13 +3593,6 @@ async function importerMoisVue(mi){
   } else toast('Aucun montant saisi');
 }
 
-async function importerMois(){
-  const an=document.getElementById('imp-an').value;const mi=parseInt(document.getElementById('imp-mo').value);
-  const inputs=document.querySelectorAll('#gi-cats input');
-  const d=`${an}-${String(mi+1).padStart(2,'0')}-15`;let nb=0;
-  for(const inp of inputs){const v=parseFloat(inp.value);if(!v||v<=0)continue;const c=inp.dataset.cat;const t=inp.dataset.type;const id=`imp_${Date.now()}_${nb}`;await ajouter(`TX_${an}`,[id,d,t,c,'',`Import ${MOIS[mi]} ${an}`,v,'','TRUE',v]);E.tx.push({id,date:d,type:t,cat:c,projet:'',desc:`Import ${MOIS[mi]} ${an}`,montant:v,note:'',pointe:true,montant_reel:v,an});nb++;inp.value='';}
-  if(nb>0){refresh();toast(`${nb} catégorie(s) importée(s) ✓`);}else toast('Aucun montant saisi');
-}
 async function genererVueSheets(){
   const btn=document.getElementById('btn-vue-sheets');
   const prog=document.getElementById('prog-vue-sheets');
@@ -3894,19 +3729,6 @@ async function genererVueSheets(){
   }
 }
 
-async function recalerSolde(){
-  const s=parseFloat(document.getElementById('rec-s').value);const d=document.getElementById('rec-d').value;
-  if(isNaN(s)||!d){toast('Remplissez tous les champs');return;}
-  try{
-    await savePts(d,s);
-    const idx=E.pts.findIndex(p=>p.date===d);
-    if(idx>=0)E.pts[idx].solde=s;else{E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));}
-    affBanner();toast('Solde recalé ✓');
-  }catch(e){
-    console.error('recalerSolde:',e);
-    toast('❌ Erreur : le solde n\'a pas pu être enregistré. Vérifiez votre connexion et réessayez.');
-  }
-}
 </script>
 </body>
 </html>
