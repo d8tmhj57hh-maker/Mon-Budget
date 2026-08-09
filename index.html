@@ -1685,10 +1685,10 @@ function affChecklistDemarrage(){
   if(!el)return;
   if(localStorage.getItem('checklist_terminee')){el.innerHTML='';return;}
   const etapes=[
-    {fait:!!localStorage.getItem('poles_visites'),label:'Découvrir mes catégories',action:"aller('reglages')"},
+    {fait:!!localStorage.getItem('poles_visites'),label:'Découvrir mes catégories',action:"aller('budget');if(!E.editionBudget)toggleEditionBudget();"},
     {fait:E.pts.length>0,label:'Saisir mon solde initial',action:"ouvrirRecal()"},
     {fait:E.tx.length>0,label:'Ajouter ma première dépense',action:"ouvrirSaisie()"},
-    {fait:E.prog.length>0,label:'Programmer une dépense récurrente (ex : loyer)',action:"aller('reglages')"},
+    {fait:E.prog.length>0,label:'Programmer une dépense récurrente (ex : loyer)',action:"aller('budget');ouvrirAjoutProg();"},
   ];
   const toutesFaites=etapes.every(e=>e.fait);
   if(toutesFaites){
@@ -3244,7 +3244,6 @@ function masquerProjetDepuisListe(pj){
 
 function affPoles(){
   const el=document.getElementById('liste-poles');if(!el)return;
-  localStorage.setItem('poles_visites','1');
   const toutesCats=toutesCategoriesConnues();
   const reellementUtilisees=categoriesReellementUtilisees();
   // Carte par pôle : nom modifiable + liste des catégories qui lui sont assignées, avec bouton retirer
@@ -3370,9 +3369,13 @@ function initDragCats(){
 }
 function toggleEditionBudget(){
   E.editionBudget=!E.editionBudget;
+  // Marque "catégories découvertes" dès la première ouverture du mode Modifier :
+  // c'est ici (et non plus dans une page Réglages dédiée) que les catégories/pôles
+  // sont visibles et modifiables, depuis leur déplacement dans l'onglet Budget.
+  if(E.editionBudget)localStorage.setItem('poles_visites','1');
   const b=document.getElementById('btn-edition-budget');
   if(b){b.textContent=E.editionBudget?'✓ Terminé':'✏️ Modifier';b.classList.toggle('on',E.editionBudget);}
-  affBudget();
+  affBudget();affChecklistDemarrage();
 }
 function deplacerPole(i,sens){
   const j=i+sens;
