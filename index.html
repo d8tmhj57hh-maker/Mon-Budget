@@ -57,6 +57,9 @@
       outline:2px solid var(--or);outline-offset:2px;
     }
     body{font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s}
+    /* Safari/WebKit (iPad notamment) rend les cases à cocher natives avec un état coché
+       très peu visible sans accent-color — on force la couleur d'accent de l'app. */
+    input[type="checkbox"]{accent-color:var(--or)}
     #tog-slider:before{content:'';position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:var(--wh);border-radius:50%;transition:.2s}
     #tog-dark:checked + #tog-slider{background:var(--or)}
     #tog-dark:checked + #tog-slider:before{transform:translateX(20px)}
@@ -675,7 +678,7 @@
       <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
         <input type="checkbox" id="prog-recur-active" onchange="toggleRecurProg()" style="width:18px;height:18px"/>
         <label for="prog-recur-active" style="font-size:.85rem;font-weight:400;margin:0">Se répète tous les</label>
-        <input type="number" id="prog-recur-n" min="2" max="10" value="2" style="width:55px;padding:6px;border-radius:8px;border:1.5px solid var(--bo);text-align:center" disabled/>
+        <input type="number" id="prog-recur-n" min="1" max="10" value="1" style="width:55px;padding:6px;border-radius:8px;border:1.5px solid var(--bo);text-align:center" disabled/>
         <label for="prog-recur-n" style="font-size:.85rem;font-weight:400;margin:0">an(s)</label>
       </div>
       <p style="font-size:.7rem;color:var(--txl);margin:4px 0 0">Les montants saisis ci-dessous pour <span id="prog-recur-annee-ref"></span> se reproduiront automatiquement aux années suivantes selon ce cycle (ex : tous les 2 ans pour un contrôle technique).</p>
@@ -1637,7 +1640,7 @@ function montantProgPour(p,an,mi){
     const v=p.montantsMois[an][mi];
     if(v!==null&&v!==undefined&&v>0)return v;
   }
-  if(p.recurAns&&p.recurAns>1&&p.recurAnneeRef&&p.montantsMois[p.recurAnneeRef]){
+  if(p.recurAns&&p.recurAns>0&&p.recurAnneeRef&&p.montantsMois[p.recurAnneeRef]){
     const diff=parseInt(an)-parseInt(p.recurAnneeRef);
     if(diff>0&&diff%p.recurAns===0){
       const v=p.montantsMois[p.recurAnneeRef][mi];
@@ -2156,7 +2159,7 @@ async function corrigerOccurrenceProg(pid){
   const newCat=document.getElementById('ov-ca').value||p.cat;
   const newMontant=parseFloat(document.getElementById('ov-mo').value);
   if(isNaN(newMontant)||newMontant<=0){toast('Montant invalide');return;}
-  const anneeRef=(p.recurAns&&p.recurAns>1&&p.recurAnneeRef)?p.recurAnneeRef:E.annee;
+  const anneeRef=(p.recurAns&&p.recurAns>0&&p.recurAnneeRef)?p.recurAnneeRef:E.annee;
   if(!p.montantsMois[anneeRef])p.montantsMois[anneeRef]=Array(12).fill(null);
   p.montantsMois[anneeRef][E.moisOuvert]=newMontant;
   if(newCat!==p.cat)p.cat=newCat; // la catégorie est globale à la programmée, pas par mois
@@ -2755,7 +2758,13 @@ function onToggleRecurSaisie(){
     E.montsMoisEnCours[mi]=mo;
     const inp=document.getElementById('pmois'+mi);if(inp)inp.value=mo;
   }
-  toast('Complétez les autres mois si besoin, puis enregistrez 🔁');
+  // "Ça se répète" a été cochée dans la saisie rapide : on active directement la
+  // récurrence (chaque année par défaut) dans le formulaire Programmé, plutôt que
+  // de rouvrir sur une case décochée que l'utilisateur croirait déjà activée.
+  document.getElementById('prog-recur-active').checked=true;
+  document.getElementById('prog-recur-n').value=1;
+  toggleRecurProg();
+  toast('Récurrence activée (chaque année). Ajustez si besoin, puis enregistrez 🔁');
 }
 
 async function saveTx(){
@@ -2813,7 +2822,7 @@ function affProg(){
   el.innerHTML=E.prog.map(p=>{
     const monts=MOIS.map((m,mi)=>montantProgPour(p,E.annee,mi));
     const defini=monts.filter(v=>v!==null&&v>0);
-    const badgeRecur=(p.recurAns&&p.recurAns>1)?` · 🔁 tous les ${p.recurAns} ans`:'';
+    const badgeRecur=(p.recurAns&&p.recurAns>0)?(p.recurAns===1?' · 🔁 chaque année':` · 🔁 tous les ${p.recurAns} ans`):'';
     const resume=(defini.length?`${defini.length} mois · moy. ${fmtDec(defini.reduce((a,b)=>a+b,0)/defini.length)}`:'Aucun montant pour '+E.annee)+badgeRecur;
     return `<div class="cp3" style="flex-wrap:wrap;gap:8px">
       <button class="tg ${p.actif?'on':''}" onclick="togProg('${p.id}')"></button>
@@ -2841,7 +2850,7 @@ function ouvrirAjoutProg(){
   document.querySelectorAll('#ov-prog .tt').forEach(b=>{b.classList.remove('a');if(b.textContent.includes('Dépense'))b.classList.add('a');});
   peuplerProgCat();
   document.getElementById('prog-recur-active').checked=false;
-  document.getElementById('prog-recur-n').value=2;
+  document.getElementById('prog-recur-n').value=1;
   toggleRecurProg();
   document.getElementById('prog-recur-annee-ref').textContent=E.annee;
   affGrilleMontantsMois(null);
@@ -2862,8 +2871,8 @@ function ouvrirEditProg(pid){
   // L'édition se fait toujours sur l'année de référence de la récurrence si elle existe,
   // sinon sur l'année actuellement affichée, pour ne pas créer une seconde référence ambiguë.
   const anneeEdit=(p.recurAns&&p.recurAnneeRef)?p.recurAnneeRef:E.annee;
-  document.getElementById('prog-recur-active').checked=!!(p.recurAns&&p.recurAns>1);
-  document.getElementById('prog-recur-n').value=p.recurAns>1?p.recurAns:2;
+  document.getElementById('prog-recur-active').checked=!!(p.recurAns&&p.recurAns>0);
+  document.getElementById('prog-recur-n').value=p.recurAns>0?p.recurAns:1;
   toggleRecurProg();
   document.getElementById('prog-recur-annee-ref').textContent=anneeEdit;
   affGrilleMontantsMois(p,anneeEdit);
