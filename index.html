@@ -1790,7 +1790,10 @@ function affBudget(){
        <span class="ic-edit-pole" onclick="renommerPoleDepuisBudget(${idxPole})">✏️</span><span class="ic-edit-pole" onclick="supprimerPoleDepuisBudget(${idxPole})">🗑️</span>`:'';
     h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}${ctrlPole}</td></tr>`;
     catsDuPole.forEach(c=>{let tot=0;
-      const ctrlCat=(E.editionBudget&&!pole.auto)?`<span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${c.replace(/'/g,"\\'")}')">🗑️</span>`:'';
+      const idxCat=POLES[idxPole].cats.indexOf(c);
+      const ctrlCat=(E.editionBudget&&!pole.auto)?
+        `${idxCat>-1?`<span class="reord"><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},-1)" aria-label="Monter">▲</button><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},1)" aria-label="Descendre">▼</button></span>`:''}
+         <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${c.replace(/'/g,"\\'")}')">🗑️</span>`:'';
       h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${ctrlCat}</td>`;
       MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
@@ -3341,6 +3344,14 @@ function deplacerPole(i,sens){
   const j=i+sens;
   if(j<0||j>=POLES.length)return;
   [POLES[i],POLES[j]]=[POLES[j],POLES[i]];
+  sauvegarderParams();
+  affBudget();
+}
+function deplacerCategorieDansPole(idxPole,i,sens){
+  const cats=POLES[idxPole].cats;
+  const j=i+sens;
+  if(j<0||j>=cats.length)return;
+  [cats[i],cats[j]]=[cats[j],cats[i]];
   sauvegarderParams();
   affBudget();
 }
