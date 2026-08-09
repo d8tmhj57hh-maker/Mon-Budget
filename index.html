@@ -702,7 +702,11 @@
 const CID='438546104293-81acihkhskj9n95u88pupgoasl07dq4t.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 const MOIS=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const ANNEES=['2024','2025','2026','2027','2028'];
+// Fenêtre glissante calculée sur la date du jour (année précédente → 3 ans devant) :
+// se décale automatiquement chaque année, sans jamais retoucher le code. Les années
+// plus anciennes (historique) sont ajoutées à l'exécution par initOnglets(), qui
+// détecte les onglets TX_XXXX déjà présents dans le Sheet.
+let ANNEES=(()=>{const y=new Date().getFullYear();const a=[];for(let i=y-1;i<=y+3;i++)a.push(String(i));return a;})();
 
 // Valeurs par défaut
 const DEF_POLES=[
@@ -1319,6 +1323,11 @@ async function ajouter(o,v){
 async function initOnglets(){
   const meta=await gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid});
   const ex=meta.result.sheets.map(s=>s.properties.title);
+  // Détecte tout onglet TX_XXXX déjà présent dans le Sheet (ex: historique importé
+  // manuellement pour une année antérieure à la fenêtre glissante par défaut) et
+  // l'ajoute à ANNEES, pour que ce mois/cette année reste visible et chargée.
+  const anneesDetectees=ex.map(t=>{const m=t.match(/^TX_(\d{4})$/);return m?m[1]:null;}).filter(Boolean);
+  ANNEES=[...new Set([...ANNEES,...anneesDetectees])].sort();
   const req=[];
   ANNEES.forEach(a=>{if(!ex.includes(`TX_${a}`))req.push({addSheet:{properties:{title:`TX_${a}`}}});});
   ['Prog','Soldes','Epargne','Parametres'].forEach(n=>{if(!ex.includes(n))req.push({addSheet:{properties:{title:n}}});});
