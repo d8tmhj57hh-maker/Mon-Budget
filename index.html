@@ -135,6 +135,8 @@
     .reord{display:inline-flex;flex-direction:column;gap:1px;margin-right:6px;vertical-align:middle}
     .reord button{width:18px;height:14px;line-height:14px;padding:0;font-size:.6rem;border:1px solid var(--bo);background:var(--wh);color:var(--tx);border-radius:3px;cursor:pointer}
     .ic-edit-pole,.ic-edit-cat{cursor:pointer;font-size:.8rem;opacity:.85;margin-left:8px}
+    .ic-hc.on{color:var(--or);opacity:1;font-weight:700}
+    .badge-hc{display:inline-block;font-size:.62rem;font-weight:600;color:var(--txl);background:var(--fo);border:1px solid var(--bo);border-radius:6px;padding:1px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle}
     tr.ligne-ajout-cat td{font-style:italic;color:var(--or);cursor:pointer;padding-left:30px!important}
     tr.ligne-ajout-pole td{font-weight:600;color:var(--or);text-align:center;cursor:pointer;background:rgba(232,183,74,.08)}
     :root{--ta-fs:1}
@@ -150,6 +152,10 @@
     /* Revenus / dépenses fixes / variables : noir (pointé) ou gris italique (prévisionnel) — pas de vert/rouge, meilleur contraste pour tous */
     .ta tr.z-rv td.tp,.ta tr.z-fx td.tn,.ta tr.z-vr td.tn{color:var(--tx);font-style:normal}
     .ta tr.z-rv.lt td.tp,.ta tr.z-fx.lt td.tn,.ta tr.z-vr.lt td.tn{color:var(--tx);font-weight:700}
+    /* Catégorie "hors calcul" : visible, mais exclue des totaux — italique, en plus du noir/gris habituel (pointé/prévisionnel) */
+    .ta td.hc{font-style:italic}
+    .ta tr.z-rv td.tp.hc,.ta tr.z-fx td.tn.hc,.ta tr.z-vr td.tn.hc{font-style:italic}
+    .ta tr.z-p0 td.tn.hc,.ta tr.z-p1 td.tn.hc,.ta tr.z-p2 td.tn.hc,.ta tr.z-p3 td.tn.hc,.ta tr.z-p4 td.tn.hc,.ta tr.z-p5 td.tn.hc,.ta tr.z-pa td.tn.hc{font-style:italic}
 
     /* ZONES DE COULEUR PAR SECTION */
     .ta tr.z-ep td{background:var(--zep)!important}
@@ -762,6 +768,7 @@ let BUDGETS_PROJET={}; // budget total optionnel par projet, ex: {"Salle de bain
 let PROJETS_DECLARES=[]; // projets créés à l'avance depuis Réglages, avant toute dépense réelle
 let PROJETS_MASQUES=[]; // projets volontairement retirés de la liste active (historique conservé, retrouvable via Recherche)
 let EXCLUSIONS_PROG={}; // occurrences ponctuelles ignorées sans désactiver la récurrence, ex: {"prog_xxx":["2027-08"]}
+let CATS_HORS_CALCUL=[]; // catégories visibles dans le tableau mais exclues de tous les totaux/soldes, ex: "Salaire — dont impôt"
 let CREV=[...DEF_REV];
 let LIVRETS=[...DEF_LIVRETS];
 let PROG_TYPE='depense';
@@ -1370,6 +1377,8 @@ async function chargerParams(){
     if(ic){ICONES_CAT_PERSO={};ic.forEach(paire=>{const idx=paire.indexOf(':');if(idx<0)return;const cat=paire.slice(0,idx),emoji=paire.slice(idx+1);if(cat&&emoji)ICONES_CAT_PERSO[cat]=emoji;});}
     const exc=get('EXCLUSIONS_PROG');
     if(exc){EXCLUSIONS_PROG={};exc.forEach(paire=>{const idx=paire.indexOf(':');if(idx<0)return;const pid=paire.slice(0,idx),mois=paire.slice(idx+1).split(',').filter(Boolean);if(pid&&mois.length)EXCLUSIONS_PROG[pid]=mois;});}
+    const hc=get('CATS_HORS_CALCUL');
+    if(hc)CATS_HORS_CALCUL=hc;
     // Pôles : ligne POLES_ORDRE liste les noms dans l'ordre, puis une ligne POLE_<nom> par pôle avec ses catégories
     const ordre=get('POLES_ORDRE');
     if(ordre&&ordre.length){
@@ -1388,7 +1397,7 @@ async function sauvegarderParams(){
   const budgetsProjetStr=Object.entries(BUDGETS_PROJET).map(([p,m])=>`${p}:${m}`).join('|');
   const iconesStr=Object.entries(ICONES_CAT_PERSO).map(([c,e])=>`${c}:${e}`).join('|');
   const exclusionsStr=Object.entries(EXCLUSIONS_PROG).filter(([,m])=>m.length).map(([pid,mois])=>`${pid}:${mois.join(',')}`).join('|');
-  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['PROJETS_MASQUES',PROJETS_MASQUES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr]];
+  const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['PROJETS_MASQUES',PROJETS_MASQUES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr],['CATS_HORS_CALCUL',CATS_HORS_CALCUL.join('|')]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
 }
@@ -1407,7 +1416,7 @@ function calcSolde(j){
   // Seules les transactions réellement pointées comptent comme de vrais mouvements
   // d'argent (qu'elles viennent d'une saisie manuelle ou d'un élément programmé validé).
   // Une transaction non pointée reste prévisionnelle et ne doit pas affecter le solde.
-  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j&&t.pointe);
+  const txp=E.tx.filter(t=>t.date>=ref.date&&t.date<=j&&t.pointe&&!CATS_HORS_CALCUL.includes(t.cat));
   let d=0;
   txp.forEach(t=>{const m=t.montant_reel||t.montant;t.type==='revenu'?d+=m:d-=m;});
   return ref.solde+d;
@@ -1428,7 +1437,7 @@ function calcSoldePrevisionnel(dateLimite){
   const aj=today();
   let d=0;
   // Transactions déjà saisies, futures, pas encore pointées
-  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
+  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe&&!CATS_HORS_CALCUL.includes(t.cat)).forEach(t=>{
     t.type==='revenu'?d+=t.montant:d-=t.montant;
   });
   // Éléments programmés actifs, pour les mois restants jusqu'à dateLimite,
@@ -1440,6 +1449,7 @@ function calcSoldePrevisionnel(dateLimite){
   if(anLim===anAuj){
     for(let mi=moisAuj;mi<=moisLim;mi++){
       progActifsMois(mi,anLim).forEach(p=>{
+        if(CATS_HORS_CALCUL.includes(p.cat))return;
         // Si une transaction pointée existe déjà pour ce prog ce mois-ci, ne pas compter deux fois
         const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&new Date(t.date).getMonth()===mi&&t.an===anLim);
         if(dejaPointe)return;
@@ -1463,7 +1473,7 @@ function calcSoldePrevisionnelGeneral(dateLimite){
   const aj=today();
   if(dateLimite<=aj)return null; // pas de prévisionnel pour une date déjà passée
   let d=0;
-  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe).forEach(t=>{
+  E.tx.filter(t=>t.date>=aj&&t.date<=dateLimite&&!t.pointe&&!CATS_HORS_CALCUL.includes(t.cat)).forEach(t=>{
     t.type==='revenu'?d+=t.montant:d-=t.montant;
   });
   // Parcourir mois par mois, année par année, entre aujourd'hui et la date limite
@@ -1475,6 +1485,7 @@ function calcSoldePrevisionnelGeneral(dateLimite){
     const anStr=String(curAn);
     if(ANNEES.includes(anStr)){
       progActifsMois(curMi,anStr).forEach(p=>{
+        if(CATS_HORS_CALCUL.includes(p.cat))return;
         const dejaPointe=E.tx.some(t=>t.note===`prog:${p.id}`&&t.pointe&&new Date(t.date).getMonth()===curMi&&t.an===anStr);
         if(dejaPointe)return;
         const m=montantProgPour(p,anStr,curMi)||0;
@@ -1557,7 +1568,7 @@ function setProgType(t,btn){PROG_TYPE=t;document.querySelectorAll('#ov-prog .tt'
 // chiffre projeté (calcAnnuelPrevisionnel), pour comparer "où j'en suis" et "où je vais".
 function calcAnnuelReel(an){
   const aj=today();
-  const txA=E.tx.filter(t=>t.an===an&&t.date<=aj);
+  const txA=E.tx.filter(t=>t.an===an&&t.date<=aj&&!CATS_HORS_CALCUL.includes(t.cat));
   const v=t=>t.pointe&&t.montant_reel?t.montant_reel:t.montant;
   const rev=txA.filter(t=>t.type==='revenu').reduce((a,t)=>a+v(t),0);
   const dep=txA.filter(t=>t.type==='depense').reduce((a,t)=>a+v(t),0);
@@ -1567,8 +1578,8 @@ function calcAnnuelPrevisionnel(an){
   const txA=E.tx.filter(t=>t.an===an);
   const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
   txA.forEach(t=>{const m=new Date(t.date).getMonth();const v=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const b=t.type==='revenu'?'rev':'dep';if(!data[m][b][t.cat])data[m][b][t.cat]=0;data[m][b][t.cat]+=v;});
-  const catsRev=[...new Set([...CREV,...txA.filter(t=>t.type==='revenu').map(t=>t.cat)])];
-  const catsDep=[...new Set([...POLES.flatMap(p=>p.cats),...txA.filter(t=>t.type==='depense').map(t=>t.cat)])];
+  const catsRev=[...new Set([...CREV,...txA.filter(t=>t.type==='revenu').map(t=>t.cat)])].filter(c=>!CATS_HORS_CALCUL.includes(c));
+  const catsDep=[...new Set([...POLES.flatMap(p=>p.cats),...txA.filter(t=>t.type==='depense').map(t=>t.cat)])].filter(c=>!CATS_HORS_CALCUL.includes(c));
   let rev=0,dep=0;
   MOIS.forEach((_,i)=>{
     const prev=prevMois(i,an);
@@ -1745,17 +1756,19 @@ function affBudget(){
   const totRevMois=Array(12).fill(0);
   cR.forEach(cat=>{let tot=0;
     const idxRev=CREV.indexOf(cat);
+    const horsCalcul=CATS_HORS_CALCUL.includes(cat);
     const ctrlRev=E.editionBudget?
       `${idxRev>-1?`<span class="reord"><button onclick="deplacerRevenu(${idxRev},-1)" aria-label="Monter">▲</button><button onclick="deplacerRevenu(${idxRev},1)" aria-label="Descendre">▼</button></span>`:''}
+       <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${cat.replace(/'/g,"\\'")}')">€</span>
        <span class="ic-edit-cat" onclick="renommerRevenuDepuisBudget('${cat.replace(/'/g,"\\'")}')">✏️</span><span class="ic-edit-cat" onclick="supprimerRevenuDepuisBudget('${cat.replace(/'/g,"\\'")}')">🗑️</span>`:'';
-    h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}${ctrlRev}</td>`;
+    h+=`<tr class="z-rv cat-row" data-cat="${cat}" data-bloc="rv"><td>${iconePourCategorie(cat)} ${cat}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlRev}</td>`;
     MOIS.forEach((_,i)=>{
       const reel=data[i].rev[cat]||0;
       const prev=reel>0?0:(prevMois(i,E.annee).rev[cat]||0);
-      const val=reel+prev;tot+=val;totRevMois[i]+=val;
-      h+=`<td class="${reel?'tp':prev?'prev':''}">` + (val?fmtDec(val):'—') + '</td>';
+      const val=reel+prev;tot+=val;if(!horsCalcul)totRevMois[i]+=val;
+      h+=`<td class="${reel?'tp':prev?'prev':''}${horsCalcul?' hc':''}">` + (val?fmtDec(val):'—') + '</td>';
     });
-    h+=`<td class="tp">${fmtDec(tot)}</td></tr>`;
+    h+=`<td class="tp${horsCalcul?' hc':''}">${fmtDec(tot)}</td></tr>`;
   });
   if(E.editionBudget)h+=`<tr class="ligne-ajout-cat" onclick="ajouterRevenuDepuisBudget()"><td colspan="${nc}">+ Ajouter une catégorie de revenu</td></tr>`;
   let tRA=0;h+=`<tr class="lt z-rv"><td>Total revenus</td>`;
@@ -1791,11 +1804,13 @@ function affBudget(){
     h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}${ctrlPole}</td></tr>`;
     catsDuPole.forEach(c=>{let tot=0;
       const idxCat=POLES[idxPole].cats.indexOf(c);
+      const horsCalcul=CATS_HORS_CALCUL.includes(c);
       const ctrlCat=(E.editionBudget&&!pole.auto)?
         `${idxCat>-1?`<span class="reord"><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},-1)" aria-label="Monter">▲</button><button onclick="deplacerCategorieDansPole(${idxPole},${idxCat},1)" aria-label="Descendre">▼</button></span>`:''}
+         <span class="ic-edit-cat ic-hc${horsCalcul?' on':''}" title="${horsCalcul?'Exclue du calcul — cliquer pour la réintégrer':'Comptée dans le calcul — cliquer pour l\u2019exclure (ligne visible mais non comptée)'}" onclick="toggleHorsCalculCat('${c.replace(/'/g,"\\'")}')">€</span>
          <span class="ic-edit-cat" onclick="retirerCategorieDepuisBudget(${idxPole},'${c.replace(/'/g,"\\'")}')">🗑️</span>`:'';
-      h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${ctrlCat}</td>`;
-      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${reel?'tn':'prev'}">${val?fmtDec(val):'—'}</td>`;});
+      h+=`<tr class="${zcls} cat-row" data-cat="${esc(c)}" data-bloc="pole"><td>${iconePourCategorie(c)} ${esc(c)}${horsCalcul?' <span class="badge-hc" title="Visible mais non comptée dans les totaux">hors calcul</span>':''}${ctrlCat}</td>`;
+      MOIS.forEach((_,i)=>{const reel=data[i].dep[c]||0;const prev=prevMois(i,E.annee).dep[c]||0;const val=reel||prev;tot+=val;h+=`<td class="${(reel?'tn':'prev')}${horsCalcul?' hc':''}">${val?fmtDec(val):'—'}</td>`;});
       const budgetAn=BUDGETS_CAT_AN[c];
       let badgeAn='';
       if(budgetAn){
@@ -1803,11 +1818,12 @@ function affBudget(){
         if(tot>budgetAn)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:var(--ro)" title="Dépasse le budget annuel de ${fmtDec(budgetAn)}">⚠️${pctAn}%</span>`;
         else if(pctAn>=80)badgeAn=` <span style="font-size:.62rem;font-weight:600;color:var(--or2)" title="Budget annuel : ${fmtDec(budgetAn)}">${pctAn}%</span>`;
       }
-      h+=`<td class="tn">${fmtDec(tot)}${badgeAn}</td></tr>`;
+      h+=`<td class="tn${horsCalcul?' hc':''}">${fmtDec(tot)}${badgeAn}</td></tr>`;
     });
     if(E.editionBudget&&!pole.auto)h+=`<tr class="ligne-ajout-cat" onclick="ajouterCategorieDepuisBudget(${idxPole})"><td colspan="${nc}">+ Ajouter une catégorie à ce pôle</td></tr>`;
     let totPole=0;h+=`<tr class="lt ${zcls}"><td>Total ${esc(pole.nom)}</td>`;
-    MOIS.forEach((_,i)=>{const r=catsDuPole.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
+    const catsDuPoleComptees=catsDuPole.filter(c=>!CATS_HORS_CALCUL.includes(c));
+    MOIS.forEach((_,i)=>{const r=catsDuPoleComptees.reduce((a,c)=>a+(data[i].dep[c]||prevMois(i,E.annee).dep[c]||0),0);totPole+=r;totGlobalDep[i]+=r;h+=`<td class="tn">${fmtDec(r)}</td>`;});
     h+=`<td class="tn">${fmtDec(totPole)}</td></tr>`;
   });
   if(E.editionBudget)h+=`<tr class="ligne-ajout-pole" onclick="ajouterPoleDepuisBudget()"><td colspan="${nc}">+ Nouveau pôle</td></tr>`;
@@ -1970,8 +1986,8 @@ function initSwipeMois(){
 
 function affDm(mi){
   const txM=E.tx.filter(t=>t.an===E.annee&&new Date(t.date).getMonth()===mi);
-  const rev=txM.filter(t=>t.type==='revenu').reduce((a,t)=>a+t.montant,0);
-  const dep=txM.filter(t=>t.type==='depense').reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
+  const rev=txM.filter(t=>t.type==='revenu'&&!CATS_HORS_CALCUL.includes(t.cat)).reduce((a,t)=>a+t.montant,0);
+  const dep=txM.filter(t=>t.type==='depense'&&!CATS_HORS_CALCUL.includes(t.cat)).reduce((a,t)=>a+(t.pointe&&t.montant_reel?t.montant_reel:t.montant),0);
   const r=rev-dep;
   const dF=fmtISO(new Date(parseInt(E.annee),mi+1,0));
   const dD=`${E.annee}-${String(mi+1).padStart(2,'0')}-01`;
@@ -3454,6 +3470,22 @@ function supprimerRevenuDepuisBudget(nom){
     sauvegarderParams();
     affBudget();
   });
+}
+// Bascule "hors calcul" : la catégorie reste visible dans le tableau (ligne, montants)
+// mais son montant est exclu de tous les totaux et du solde — utile pour une ligne
+// purement informative (ex: "Salaire — dont impôt" pour vérifier le prélèvement à la source).
+function toggleHorsCalculCat(nom){
+  const actif=CATS_HORS_CALCUL.includes(nom);
+  const titre=actif?'Réintégrer dans le calcul':'Exclure du calcul';
+  const message=actif
+    ?`"${nom}" sera de nouveau comptée dans les totaux et dans le solde.`
+    :`"${nom}" restera visible dans le tableau, mais son montant ne sera plus compté ni dans le total de sa section, ni dans le solde. À utiliser pour une ligne d'information (ex : "dont impôt" sous Salaire).`;
+  confirmerAction(message,()=>{
+    if(actif)CATS_HORS_CALCUL=CATS_HORS_CALCUL.filter(c=>c!==nom);
+    else CATS_HORS_CALCUL.push(nom);
+    sauvegarderParams();
+    affBudget();
+  },titre);
 }
 function deplacerRevenu(i,sens){
   const j=i+sens;
