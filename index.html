@@ -1360,6 +1360,38 @@ async function ajouter(o,v){
     });
   });
 }
+// values.append() détermine où insérer une nouvelle ligne en repérant la fin du
+// "tableau" de données contiguës à partir de l'ancre — une ligne entièrement vide
+// au milieu du tableau peut le faire croire (à tort) que le tableau s'arrête là,
+// et insérer les lignes suivantes au mauvais endroit au lieu de les ajouter en fin
+// de feuille. C'est ce mécanisme, documenté mais peu connu, qui provoque des lignes
+// vides et des données mal placées après plusieurs suppressions + ajouts successifs.
+// D'où l'usage de supprimerLigneSheet() (suppression réelle de la ligne, via
+// deleteDimension) plutôt qu'un simple vidage de son contenu par ecrire().
+let _sheetIdsCache=null;
+async function obtenirSheetId(nomOnglet){
+  // Rafraîchit aussi si l'onglet demandé est absent du cache (ex: nouvel onglet
+  // TX_XXXX créé en cours de session), pas seulement au tout premier appel.
+  if(!_sheetIdsCache||_sheetIdsCache[nomOnglet]===undefined){
+    const meta=await appelAvecRetry(async()=>gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid}));
+    _sheetIdsCache={};
+    meta.result.sheets.forEach(s=>{_sheetIdsCache[s.properties.title]=s.properties.sheetId;});
+  }
+  return _sheetIdsCache[nomOnglet];
+}
+// idxLigneDonnees : position 0-based de la ligne DANS LES DONNÉES (ex: l'index
+// renvoyé par rows.findIndex() sur un lire('Onglet!A2:J')), donc hors ligne d'en-tête.
+async function supprimerLigneSheet(nomOnglet,idxLigneDonnees){
+  const sheetId=await obtenirSheetId(nomOnglet);
+  if(sheetId===undefined)throw new Error(`Onglet "${nomOnglet}" introuvable`);
+  const debut=idxLigneDonnees+1; // +1 pour sauter la ligne d'en-tête (index 0-based sur toute la feuille)
+  await appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId:E.sid,
+      resource:{requests:[{deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:debut,endIndex:debut+1}}}]}
+    });
+  });
+}
 
 async function initOnglets(){
   const meta=await gapi.client.sheets.spreadsheets.get({spreadsheetId:E.sid});
@@ -2395,7 +2427,7 @@ function suppTx(){
     async ()=>{
       try{
         const rows=await lire(`TX_${t.an}!A2:J`);const idx=rows.findIndex(r=>r[0]===t.id);
-        if(idx>=0)await ecrire(`TX_${t.an}!A${idx+2}:J${idx+2}`,[['','','','','','','','','','']]);
+        if(idx>=0)await supprimerLigneSheet(`TX_${t.an}`,idx);
       }catch(e){toast('Erreur lors de la suppression définitive');}
     },
     ()=>{E.tx.push(t);refresh();toast('Suppression annulée');}
@@ -3099,8 +3131,14 @@ async function saveProg(){
         if(val!==null){
           await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[[lid,nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']]);
         } else {
-          // Effacer seulement cette ligne précise (montant nul = pas prévu ce mois)
-          await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[['','','','','','','','','']]);
+          // Supprimer réellement cette ligne précise (montant nul = pas prévu ce
+          // mois), pas juste vider son contenu — une ligne vidée mais laissée en
+          // place perturbe values.append() (voir supprimerLigneSheet()), qui repère
+          // la fin du tableau de données et peut ensuite insérer les nouvelles
+          // programmées au mauvais endroit. rows est mis à jour en local pour que
+          // les index calculés aux prochains tours de boucle restent corrects.
+          await supprimerLigneSheet('Prog',idxExist);
+          rows.splice(idxExist,1);
         }
       } else if(val!==null){
         // Ajouter nouvelle ligne
@@ -3156,8 +3194,10 @@ function suppProg(id){
     async ()=>{
       try{
         const rows=await lire('Prog!A2:I');
+        // Du dernier index vers le premier : supprimer une ligne ne peut alors
+        // jamais invalider l'index des lignes pas encore traitées dans cette boucle.
         for(let i=rows.length-1;i>=0;i--){
-          if(rows[i][0]&&rows[i][0].startsWith(id)){await ecrire(`Prog!A${i+2}:I${i+2}`,[['','','','','','','','','']]);}
+          if(rows[i][0]&&rows[i][0].startsWith(id)){await supprimerLigneSheet('Prog',i);}
         }
         await sauvegarderParams();
       }catch(e){toast('Erreur lors de la suppression définitive');}
