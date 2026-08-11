@@ -267,7 +267,11 @@
     .tt.a{background:var(--bl);color:var(--wf);border-color:var(--bl)}
     .ch3{margin-bottom:11px}
     .ch3 label{display:block;font-size:.72rem;font-weight:500;color:var(--txl);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
-    .ch3 input,.ch3 select,.ch3 textarea{width:100%;padding:11px 13px;border:1.5px solid var(--bo);border-radius:12px;font-size:.875rem;font-family:'Inter',sans-serif;color:var(--tx);background:var(--wh);outline:none;-webkit-appearance:none}
+    /* :not([type=checkbox]):not([type=radio]) — ce style (dont -webkit-appearance:none,
+       qui supprime le rendu natif de la case) ne doit s'appliquer qu'aux champs texte.
+       Appliqué à une checkbox, il la fait apparaître comme un simple carré vide, toujours
+       identique, sans jamais montrer visuellement l'état coché/décoché. */
+    .ch3 input:not([type="checkbox"]):not([type="radio"]),.ch3 select,.ch3 textarea{width:100%;padding:11px 13px;border:1.5px solid var(--bo);border-radius:12px;font-size:.875rem;font-family:'Inter',sans-serif;color:var(--tx);background:var(--wh);outline:none;-webkit-appearance:none}
     .ch3 input:focus,.ch3 select:focus{border-color:var(--bl)}
     .ch3 textarea{resize:vertical;min-height:60px}
     .cm3{position:relative}.cm3 input{padding-right:28px}
@@ -1861,7 +1865,12 @@ function affBudget(){
   polesAffiches.forEach((pole,idxPole)=>{
     const zcls=pole.auto?'z-pa':('z-p'+(idxPole%6));
     h+=`<tr class="esp"><td colspan="${nc}"></td></tr>`;
-    const catsDuPole=aucuneDepenseSaisie&&!pole.auto?[...pole.cats]:
+    // En mode édition, afficher toutes les catégories du pôle (y compris celles sans
+    // aucune dépense cette année) pour qu'une catégorie tout juste créée via "+ Ajouter
+    // une catégorie à ce pôle" soit immédiatement visible et gérable — sinon elle est
+    // bien enregistrée mais invisible tant qu'aucune dépense n'y est encore rattachée,
+    // ce qui donne l'impression que rien ne s'est passé.
+    const catsDuPole=(aucuneDepenseSaisie||E.editionBudget)&&!pole.auto?[...pole.cats]:
       [...new Set([...pole.cats.filter(c=>txA.some(t=>t.type==='depense'&&t.cat===c)),...E.prog.filter(p=>p.type==='depense'&&p.actif&&pole.cats.includes(p.cat)).map(p=>p.cat)])];
     if(!catsDuPole.length&&!(E.editionBudget&&!pole.auto))return; // pôle vide cette année, on ne l'affiche pas (sauf en édition)
     const ctrlPole=(E.editionBudget&&!pole.auto)?
