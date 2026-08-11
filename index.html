@@ -1751,8 +1751,16 @@ function affChecklistDemarrage(){
   const el=document.getElementById('checklist-demarrage');
   if(!el)return;
   if(localStorage.getItem('checklist_terminee')){el.innerHTML='';return;}
+  // "Découvrir mes catégories" : ne pas se fier uniquement au flag local
+  // poles_visites (posé sur l'appareil qui a ouvert "Modifier" au moins une
+  // fois) — sur un compte dont les pôles ont été personnalisés depuis un
+  // AUTRE appareil (ex: Aurélie configure les catégories de Florence), ce
+  // flag reste éternellement absent sur l'appareil de Florence alors que la
+  // vraie donnée (POLES, stockée dans le Google Sheet du compte, donc
+  // partagée entre appareils) montre bien que c'est déjà fait.
+  const polesPersonnalises=JSON.stringify(POLES)!==JSON.stringify(DEF_POLES);
   const etapes=[
-    {fait:!!localStorage.getItem('poles_visites'),label:'Découvrir mes catégories',action:"aller('budget');if(!E.editionBudget)toggleEditionBudget();"},
+    {fait:!!localStorage.getItem('poles_visites')||polesPersonnalises,label:'Découvrir mes catégories',action:"aller('budget');if(!E.editionBudget)toggleEditionBudget();"},
     {fait:E.pts.length>0,label:'Saisir mon solde initial',action:"ouvrirRecal()"},
     {fait:E.tx.length>0,label:'Ajouter ma première dépense',action:"ouvrirSaisie()"},
     {fait:E.prog.length>0,label:'Programmer une dépense récurrente (ex : loyer)',action:"aller('budget');ouvrirAjoutProg();"},
