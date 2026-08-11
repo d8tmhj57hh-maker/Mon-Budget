@@ -1233,11 +1233,16 @@ const RETRY_TENTATIVES=3;
 const RETRY_DELAI_MS=1500;
 function estErreurReseau(e){
   // Une vraie coupure réseau ne renvoie en général aucun code HTTP exploitable.
-  // Une erreur d'autorisation/quota (401/403/429) a une cause différente et ne
-  // doit pas être retentée à l'identique sans en informer l'utilisateur.
+  // Une erreur d'autorisation (401/403) a une cause différente et ne doit pas
+  // être retentée à l'identique sans en informer l'utilisateur. 429 (quota
+  // dépassé) est en revanche transitoire par nature — Google impose des
+  // limites par fenêtre glissante de 100s, facilement atteintes par plusieurs
+  // rechargements rapprochés de la page (chaque chargement fait une dizaine
+  // d'appels Sheets) — et se résout de lui-même après un court délai, d'où le
+  // traitement identique à une coupure réseau plutôt qu'un abandon immédiat.
   if(!navigator.onLine)return true;
   const status=e&&(e.status||(e.result&&e.result.error&&e.result.error.code));
-  return !status||status===0;
+  return !status||status===0||status===429;
 }
 function codeErreurApi(e){
   return e&&(e.status||(e.result&&e.result.error&&e.result.error.code));
@@ -1448,7 +1453,10 @@ async function chargerParams(){
   }catch(e){
     _paramsChargesOk=false;
     console.error('Erreur chargement des paramètres:',e);
-    toast('⚠️ Paramètres non chargés (problème réseau) — rechargez la page avant de modifier vos réglages');
+    // Bannière persistante plutôt qu'un toast (qui disparaît en 2,5s et passe
+    // facilement inaperçu) : tant qu'elle reste affichée, on sait que les
+    // pôles/catégories ne pourront pas être créés ni modifiés dans cette session.
+    afficherBanniereConnexion('⚠️ Paramètres non chargés — '+messageErreurApi(e)+'. Rechargez la page avant de créer ou modifier un pôle/catégorie.',true);
   }
 }
 // forcer=true réservé au tout premier bootstrap (initOnglets), quand l'onglet
@@ -1457,8 +1465,8 @@ async function chargerParams(){
 async function sauvegarderParams(forcer){
   if(!forcer&&!_paramsChargesOk){
     console.error('sauvegarderParams: annulé, les paramètres n\'ont jamais été chargés avec succès dans cette session');
-    toast('⚠️ Sauvegarde annulée — paramètres non chargés. Rechargez la page.');
-    return;
+    afficherBanniereConnexion('⚠️ Sauvegarde annulée — paramètres non chargés. Rechargez la page.',true);
+    return false;
   }
   const budgetsStr=Object.entries(BUDGETS_CAT).map(([c,m])=>`${c}:${m}`).join('|');
   const budgetsAnStr=Object.entries(BUDGETS_CAT_AN).map(([c,m])=>`${c}:${m}`).join('|');
@@ -1468,6 +1476,7 @@ async function sauvegarderParams(forcer){
   const lignes=[['REVENUS',CREV.join('|')],['LIVRETS',LIVRETS.join('|')],['POLES_ORDRE',POLES.map(p=>p.nom).join('|')],['CATS_MASQUEES',CATS_MASQUEES.join('|')],['BUDGETS_CAT',budgetsStr],['BUDGETS_CAT_AN',budgetsAnStr],['BUDGETS_PROJET',budgetsProjetStr],['PROJETS_DECLARES',PROJETS_DECLARES.join('|')],['PROJETS_MASQUES',PROJETS_MASQUES.join('|')],['ICONES_CAT_PERSO',iconesStr],['EXCLUSIONS_PROG',exclusionsStr],['CATS_HORS_CALCUL',CATS_HORS_CALCUL.join('|')]];
   POLES.forEach(p=>lignes.push(['POLE_'+p.nom,p.cats.join('|')]));
   await ecrire(`Parametres!A1:B${lignes.length}`,lignes);
+  return true;
 }
 
 async function savePts(d,s){
@@ -3348,11 +3357,18 @@ function deplacerCategorieDansPole(idxPole,i,sens){
   affBudget();
 }
 function ajouterCategorieDepuisBudget(i){
-  promptModal('Nouvelle catégorie','Nom de la nouvelle catégorie :','',(cat)=>{
+  promptModal('Nouvelle catégorie','Nom de la nouvelle catégorie :','',async(cat)=>{
     if(!cat)return;
     ajouterCatAuPole(i,cat);
-    sauvegarderParams();
     affBudget();
+    try{
+      // sauvegarderParams() renvoie false (sans lever d'erreur) si les paramètres
+      // n'ont pas pu être chargés au démarrage — dans ce cas la bannière de
+      // connexion l'explique déjà, pas besoin d'un toast de succès trompeur.
+      if(await sauvegarderParams())toast('"'+cat+'" ajoutée ✓');
+    }catch(e){
+      toast('❌ '+messageErreurApi(e));
+    }
   });
 }
 function retirerCategorieDepuisBudget(i,cat){
@@ -3378,20 +3394,24 @@ function supprimerPoleDepuisBudget(i){
   });
 }
 function ajouterPoleDepuisBudget(){
-  promptModal('Nouveau pôle','Nom du nouveau pôle :','',(nv)=>{
+  promptModal('Nouveau pôle','Nom du nouveau pôle :','',async(nv)=>{
     if(!nv)return;
     POLES.push({nom:nv,cats:[]});
-    sauvegarderParams();
     affBudget();
+    try{
+      if(await sauvegarderParams())toast('"'+nv+'" créé ✓');
+    }catch(e){toast('❌ '+messageErreurApi(e));}
   });
 }
 function ajouterLivretDepuisBudget(){
-  promptModal('Nouveau compte / livret','Nom du nouveau compte / livret :','',(nv)=>{
+  promptModal('Nouveau compte / livret','Nom du nouveau compte / livret :','',async(nv)=>{
     if(!nv)return;
     if(LIVRETS.includes(nv)){toast('Ce compte existe déjà');return;}
     LIVRETS.push(nv);
-    sauvegarderParams();
     affBudget();affEpargne();
+    try{
+      if(await sauvegarderParams())toast('"'+nv+'" créé ✓');
+    }catch(e){toast('❌ '+messageErreurApi(e));}
   });
 }
 function renommerLivretDepuisBudget(ancienNom){
@@ -3429,12 +3449,14 @@ function deplacerLivret(i,sens){
   affBudget();affEpargne();
 }
 function ajouterRevenuDepuisBudget(){
-  promptModal('Nouvelle catégorie de revenu','Nom de la nouvelle catégorie de revenu :','',(nv)=>{
+  promptModal('Nouvelle catégorie de revenu','Nom de la nouvelle catégorie de revenu :','',async(nv)=>{
     if(!nv)return;
     if(CREV.includes(nv)){toast('Cette catégorie existe déjà');return;}
     CREV.push(nv);
-    sauvegarderParams();
     affBudget();
+    try{
+      if(await sauvegarderParams())toast('"'+nv+'" ajoutée ✓');
+    }catch(e){toast('❌ '+messageErreurApi(e));}
   });
 }
 function renommerRevenuDepuisBudget(ancienNom){
