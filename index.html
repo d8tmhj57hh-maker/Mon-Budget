@@ -1531,6 +1531,19 @@ function calcSolde(j){
   return ref.solde+d;
 }
 function soldeAuj(){return calcSolde(today());}
+// Affiche le solde réel à une date choisie librement — utile pour comparer directement
+// au solde de fin de relevé bancaire papier, qui ne tombe pas forcément en fin de mois
+// civil. Reçoit le champ date lui-même (plutôt qu'un id fixe) car la bannière du solde
+// est injectée deux fois dans la page (onglets Budget et Mois, voir affBanner()) — un id
+// fixe serait dupliqué et getElementById ne trouverait jamais que la première instance.
+function verifierSoldeADate(champDate){
+  const d=champDate.value;
+  const res=champDate.nextElementSibling;
+  if(!res)return;
+  if(!d){res.textContent='';return;}
+  const s=calcSolde(d);
+  res.textContent=s===null?'— (aucun point de solde connu avant cette date)':'= '+fmtDec(s);
+}
 
 // Solde prévisionnel à une date donnée : part du solde réel actuel et ajoute
 // les mouvements à venir avant cette date — transactions futures déjà saisies
@@ -1709,7 +1722,14 @@ function affBanner(){
   const soldePrev=solde!==null?calcSoldePrevisionnel(finMois):null;
   const nomMoisAuj=MOIS[new Date().getMonth()];
   const ligPrev=(soldePrev!==null&&Math.abs(soldePrev-solde)>0.01)?`<div class="su" style="margin-top:2px">📈 Prévisionnel fin ${nomMoisAuj} : <strong>${fmtDec(soldePrev)}</strong></div>`:'';
-  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}</div><div class="g3">
+  // Permet de comparer directement le solde calculé par Cashorizon à celui d'un relevé
+  // papier, quelle que soit sa date d'arrêté (souvent pas le 1er ni le dernier du mois).
+  const verifSolde=`<div style="margin-top:8px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:.72rem">
+    <span style="opacity:.7">🔍 Vérifier le solde au</span>
+    <input type="date" onchange="verifierSoldeADate(this)" style="padding:4px 7px;border-radius:6px;border:none;background:rgba(255,255,255,.9);color:var(--tx);font-size:.72rem;font-family:'Inter',sans-serif"/>
+    <strong></strong>
+  </div>`;
+  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}${verifSolde}</div><div class="g3">
     <div class="ms"><div class="v2"><span class="vreel vp">${fmtDec(revReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vp">${fmtDec(revProj)}</span><span class="vlbl">projeté</span></div><div class="l">Revenus ${E.annee}</div></div>
     <div class="ms"><div class="v2"><span class="vreel vn">${fmtDec(depReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vn">${fmtDec(depProj)}</span><span class="vlbl">projeté</span></div><div class="l">Dépenses ${E.annee}</div></div>
     <div class="ms"><div class="v2"><span class="vreel ${rReel>=0?'vp':'vn'}">${fmtDec(rReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj ${rProj>=0?'vp':'vn'}">${fmtDec(rProj)}</span><span class="vlbl">projeté</span></div><div class="l">Reste ${E.annee}</div></div>
