@@ -106,6 +106,15 @@
   .lien-discret{display:block;text-align:center;background:none;border:none;color:rgba(255,255,255,.5);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;margin-top:16px;padding:4px}
   .lien-discret:hover{color:var(--wf)}
 
+  .ligne-nom{margin-bottom:8px}
+  .ligne-nom:last-child{margin-bottom:0}
+  .ligne-nom input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:var(--wf);font-size:.85rem;font-family:'Inter',sans-serif;outline:none}
+  .ligne-nom input::placeholder{color:rgba(255,255,255,.35)}
+  .noms{margin-top:10px}
+
+  .astuce{color:rgba(255,255,255,.55);font-size:.76rem;text-align:center;line-height:1.5;margin:14px 4px 0}
+  .astuce b{color:rgba(255,255,255,.8);font-weight:500}
+
   .apercu-vif{margin:16px -22px -20px;border-top:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16);padding:12px 22px 14px;cursor:pointer;flex-shrink:0}
   .apercu-vif .resume{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.75);font-size:.78rem}
   .apercu-vif .resume b{color:var(--or)}
@@ -157,19 +166,27 @@ let S={
   logementMontant:'',
   enfants:0,
   vehicules:0,
+  nomsEnfants:[],
+  nomsVehicules:[],
   suggEnfants:SUGG_ENFANTS.map(s=>({...s,on:true})),
   suggVehicules:SUGG_VEHICULES.map(s=>({...s,on:true}))
 };
 
+function nomsSuffixe(arr){
+  const noms=arr.map(n=>n.trim()).filter(Boolean);
+  return noms.length?' ('+noms.join(', ')+')':'';
+}
+
 function lignesPretes(){
   const l=[];
-  S.revenus.forEach(r=>{ if(r.label.trim()) l.push({groupe:'Revenus',label:r.label.trim(),montant:r.montant}); });
+  S.revenus.forEach((r,i)=>{ if(r.label.trim()) l.push({groupe:'Revenus',label:r.label.trim(),montant:r.montant,ref:{type:'revenu',idx:i}}); });
   if(S.logementType){
     const lb=S.logementType==='locataire'?'Loyer':S.logementType==='credit'?'Crédit immobilier':null;
-    if(lb) l.push({groupe:'Charge fixe',label:lb,montant:S.logementMontant});
+    if(lb) l.push({groupe:'Charge fixe',label:lb,montant:S.logementMontant,ref:{type:'logement'}});
   }
-  if(S.enfants>0) S.suggEnfants.forEach(s=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb,em:s.em,montant:s.montant||''}); });
-  if(S.vehicules>0) S.suggVehicules.forEach(s=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb,em:s.em,montant:s.montant||''}); });
+  const sufEnfants=nomsSuffixe(S.nomsEnfants), sufVehicules=nomsSuffixe(S.nomsVehicules);
+  if(S.enfants>0) S.suggEnfants.forEach((s,i)=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb+sufEnfants,em:s.em,montant:s.montant||'',ref:{type:'sugg',arr:'suggEnfants',idx:i}}); });
+  if(S.vehicules>0) S.suggVehicules.forEach((s,i)=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb+sufVehicules,em:s.em,montant:s.montant||'',ref:{type:'sugg',arr:'suggVehicules',idx:i}}); });
   return l;
 }
 
@@ -234,6 +251,7 @@ function ecranRevenus(){
           <input type="number" inputmode="decimal" value="${esc(r.montant)}" placeholder="0,00 €" oninput="S.revenus[${i}].montant=this.value;maj()"/>
         </div>`).join('')}
       </div>
+      <p class="astuce">💡 Salaire variable ? Indiquez une estimation — vous pourrez ajuster ce montant chaque mois dans votre tableau.</p>
       ${apercuVifHtml()}
       <div class="nav"><button class="btn-sec" onclick="step=0;render()">← Retour</button><button class="btn-prim" onclick="step=2;render()">Suivant →</button></div>
     </div>
@@ -261,6 +279,7 @@ function ecranLogement(){
         </div>
         ${montrerMontant?`<div class="champ" style="margin-top:14px"><label>${S.logementType==='locataire'?'Loyer mensuel':'Mensualité de crédit'}</label><input type="number" inputmode="decimal" value="${esc(S.logementMontant)}" placeholder="0,00 €" oninput="S.logementMontant=this.value;maj()"/></div>`:''}
       </div>
+      ${montrerMontant?'<p class="astuce">💡 Une estimation suffit pour démarrer — modifiable à tout moment.</p>':''}
       ${apercuVifHtml()}
       <div class="nav"><button class="btn-sec" onclick="step=1;render()">← Retour</button><button class="btn-prim" onclick="step=3;render()">Suivant →</button></div>
     </div>
@@ -278,11 +297,14 @@ function ecranFoyer(){
           <div class="stepper-txt"><strong>Enfants à charge</strong></div>
           <div class="stepper"><button onclick="chgFoyer('enfants',-1)" ${S.enfants<=0?'disabled':''}>−</button><span class="val">${S.enfants}</span><button onclick="chgFoyer('enfants',1)" ${S.enfants>=6?'disabled':''}>+</button></div>
         </div>
+        ${S.enfants>0?nomsInputsHtml('enfants','Prénom'):''}
         <div class="stepper-row">
           <div class="stepper-txt"><strong>Véhicules</strong></div>
           <div class="stepper"><button onclick="chgFoyer('vehicules',-1)" ${S.vehicules<=0?'disabled':''}>−</button><span class="val">${S.vehicules}</span><button onclick="chgFoyer('vehicules',1)" ${S.vehicules>=4?'disabled':''}>+</button></div>
         </div>
+        ${S.vehicules>0?nomsInputsHtml('vehicules','Nom du véhicule'):''}
       </div>
+      ${S.enfants>0||S.vehicules>0?'<p class="astuce">Les prénoms et noms de véhicule personnalisent vos catégories — vous pourrez les changer plus tard.</p>':''}
       ${S.enfants>0?`<div class="suggestions"><div class="titre-sugg">Suggéré pour vos enfants</div>${S.suggEnfants.map((s,i)=>chipHtml('suggEnfants',i,s)).join('')}</div>`:''}
       ${S.vehicules>0?`<div class="suggestions"><div class="titre-sugg">Suggéré pour vos véhicules</div>${S.suggVehicules.map((s,i)=>chipHtml('suggVehicules',i,s)).join('')}</div>`:''}
       ${apercuVifHtml()}
@@ -292,12 +314,21 @@ function ecranFoyer(){
 }
 
 function chipHtml(cle,i,s){
-  return `<div class="chip ${s.on?'on':''}" onclick="S.${cle}[${i}].on=!S.${cle}[${i}].on;render()"><span class="coche">${s.on?'✓':''}</span><span class="em">${s.em}</span><span class="lb">${esc(s.lb)}</span></div>`;
+  const suf=nomsSuffixe(cle==='suggEnfants'?S.nomsEnfants:S.nomsVehicules);
+  return `<div class="chip ${s.on?'on':''}" onclick="S.${cle}[${i}].on=!S.${cle}[${i}].on;render()"><span class="coche">${s.on?'✓':''}</span><span class="em">${s.em}</span><span class="lb" id="chip-lb-${cle}-${i}">${esc(s.lb+suf)}</span></div>`;
 }
 function chgFoyer(cle,d){
   const max=cle==='enfants'?6:4;
   S[cle]=Math.max(0,Math.min(max,S[cle]+d));
+  const nomsCle=cle==='enfants'?'nomsEnfants':'nomsVehicules';
+  while(S[nomsCle].length<S[cle]) S[nomsCle].push('');
+  while(S[nomsCle].length>S[cle]) S[nomsCle].pop();
   render();
+}
+
+function nomsInputsHtml(cle,placeholder){
+  const nomsCle=cle==='enfants'?'nomsEnfants':'nomsVehicules';
+  return `<div class="noms">${S[nomsCle].map((n,i)=>`<div class="ligne-nom"><input type="text" value="${esc(n)}" placeholder="${placeholder} ${i+1} (optionnel)" oninput="S.${nomsCle}[${i}]=this.value;maj()"/></div>`).join('')}</div>`;
 }
 
 function ecranRecap(){
@@ -323,6 +354,7 @@ function ecranRecap(){
         }).join('')}
         ${!lignes.length?'<p style="color:rgba(255,255,255,.5);font-size:.82rem;text-align:center;margin:6px 0">Rien à ajouter pour le moment — vous pouvez revenir en arrière.</p>':''}
       </div>
+      ${lignes.length?'<p class="astuce">Tous ces montants restent <b>modifiables à tout moment</b> depuis votre tableau — inutile d\'être exact aujourd\'hui.</p>':''}
       <div class="nav"><button class="btn-sec" onclick="step=3;render()">← Retour</button><button class="btn-prim" onclick="allerFin('ok')" ${!lignes.length?'disabled':''}>Remplir mon tableau (${lignes.length})</button></div>
       <button class="lien-discret" onclick="allerFin('skip')">Plus tard</button>
     </div>
@@ -332,13 +364,14 @@ function ecranRecap(){
 function majMontantRecap(idx,val){
   const lignes=lignesPretes();
   const l=lignes[idx];
-  if(!l)return;
-  if(l.groupe==='Revenus'){ const r=S.revenus.find(r=>r.label.trim()===l.label); if(r)r.montant=val; }
-  else if(l.groupe==='Charge fixe'){ S.logementMontant=val; }
-  else { const arr=S.enfants>0&&S.suggEnfants.some(s=>s.lb===l.label)?S.suggEnfants:S.suggVehicules; const s=arr.find(s=>s.lb===l.label); if(s)s.montant=val; }
+  if(!l||!l.ref)return;
+  const ref=l.ref;
+  if(ref.type==='revenu') S.revenus[ref.idx].montant=val;
+  else if(ref.type==='logement') S.logementMontant=val;
+  else if(ref.type==='sugg') S[ref.arr][ref.idx].montant=val;
 }
 
-function maj(){ /* re-render léger pour tenir l'aperçu vif à jour sans perdre le focus clavier */
+function maj(){ /* mises à jour légères pour ne pas perdre le focus clavier pendant la saisie */
   const badge=document.querySelector('.apercu-vif .resume b');
   if(badge){
     const n=lignesPretes().length;
@@ -346,17 +379,26 @@ function maj(){ /* re-render léger pour tenir l'aperçu vif à jour sans perdre
     const s=badge.parentElement;
     s.childNodes[2].textContent=` ligne${n>1?'s':''} prête${n>1?'s':''} pour votre tableau`;
   }
+  ['suggEnfants','suggVehicules'].forEach(cle=>{
+    S[cle].forEach((s,i)=>{
+      const el=document.getElementById('chip-lb-'+cle+'-'+i);
+      if(el) el.textContent=s.lb+nomsSuffixe(cle==='suggEnfants'?S.nomsEnfants:S.nomsVehicules);
+    });
+  });
 }
 
 function allerFin(type){ step=type==='ok'?5:6; render(); }
 
 function ecranFin(){
   const lignes=lignesPretes();
+  const tousNoms=[...S.nomsEnfants,...S.nomsVehicules].map(n=>n.trim()).filter(Boolean);
+  const clin=tousNoms.length?`<p class="sub" style="margin-top:-10px">On a pensé à ${tousNoms.join(', ')} en préparant vos catégories.</p>`:'';
   return `<div class="ecran fin">
     <div class="corps">
       <div class="emoji">🎉</div>
       <h2>C'est fait !</h2>
       <p class="sub">${lignes.length} ligne${lignes.length>1?'s ont':' a'} été ajoutée${lignes.length>1?'s':''} à votre tableau. Retrouvez-les dans l'onglet Budget pour les ajuster.</p>
+      ${clin}
       <div class="fin-liste">${lignes.map(l=>`<div class="item"><span>${l.em?l.em+' ':''}${esc(l.label)}</span><b>${fmtMontant(l.montant)}</b></div>`).join('')}</div>
       <button class="btn-prim" onclick="reinitialiser()">Découvrir mon tableau →</button>
     </div>
@@ -377,6 +419,7 @@ function ecranSkip(){
 function reinitialiser(){
   step=0;apercuOuvert=false;
   S={revenus:[{label:'Salaire',montant:''}],logementType:null,logementMontant:'',enfants:0,vehicules:0,
+     nomsEnfants:[],nomsVehicules:[],
      suggEnfants:SUGG_ENFANTS.map(s=>({...s,on:true})),suggVehicules:SUGG_VEHICULES.map(s=>({...s,on:true}))};
   render();
 }
