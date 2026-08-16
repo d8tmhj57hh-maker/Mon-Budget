@@ -89,6 +89,71 @@
     .bo2{margin-top:10px;width:100%;padding:14px;border-radius:12px;border:none;background:var(--or);color:var(--bl);font-weight:600;font-size:.95rem;font-family:'Inter',sans-serif;cursor:pointer}
     .ci2{background:rgba(255,255,255,.1);border-radius:16px;padding:24px;width:100%;max-width:360px}
 
+    /* QUESTIONNAIRE DE DÉMARRAGE */
+    .q-topbar{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:360px;min-height:22px;margin-bottom:4px}
+    .q-dots{display:flex;justify-content:center;gap:6px;flex:1}
+    .q-passer{background:none;border:none;color:rgba(255,255,255,.55);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;padding:4px 2px;white-space:nowrap}
+    .q-passer:hover{color:var(--wf)}
+    .q-spacer{width:44px;flex-shrink:0}
+    .q-emoji{font-size:2.4rem;text-align:center;margin-bottom:14px}
+    .q-carte{width:100%;max-width:360px}
+    .q-carte .ci2{margin-bottom:0}
+    .q-row2{display:flex;gap:8px;margin-bottom:10px}
+    .q-row2:last-child{margin-bottom:0}
+    .q-input{width:100%;padding:12px 13px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:var(--wf);font-size:.9rem;font-family:'Inter',sans-serif;outline:none;box-sizing:border-box}
+    .q-input::placeholder{color:rgba(255,255,255,.35)}
+    .q-input:focus{border-color:var(--or)}
+    .q-label{display:block;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+    .q-champ{margin-bottom:14px}
+    .q-champ:last-child{margin-bottom:0}
+    .q-noms{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    .q-stepper-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .q-stepper-row+.q-stepper-row{margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.12)}
+    .q-stepper-txt{color:var(--wf);font-size:.9rem;font-weight:500}
+    .q-stepper{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .q-stepper button{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:var(--wf);font-size:1.05rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .q-stepper button:disabled{opacity:.3;cursor:default}
+    .q-stepper .q-val{width:18px;text-align:center;color:var(--wf);font-weight:600;font-variant-numeric:tabular-nums}
+    .q-pills{display:flex;flex-direction:column;gap:9px}
+    .q-pill{display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:var(--wf);font-size:.87rem;font-family:'Inter',sans-serif;cursor:pointer;text-align:left}
+    .q-pill .q-puce{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex-shrink:0}
+    .q-pill.sel{border-color:var(--or);background:rgba(141,110,224,.18)}
+    .q-pill.sel .q-puce{border-color:var(--or);background:var(--or)}
+    .q-suggestions{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+    .q-titre-sugg{color:rgba(255,255,255,.55);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:4px 0 2px}
+    .q-chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);cursor:pointer}
+    .q-coche{width:19px;height:19px;border-radius:6px;border:1.5px solid rgba(255,255,255,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--bl);cursor:pointer}
+    .q-coche.on{background:var(--or);border-color:var(--or)}
+    .q-chip.on{background:rgba(141,110,224,.16);border-color:var(--or)}
+    .q-chip .q-em{font-size:1rem}
+    .q-chip .q-lb{color:var(--wf);font-size:.84rem;flex:1}
+    .q-astuce{color:rgba(255,255,255,.55);font-size:.76rem;text-align:center;line-height:1.5;margin:14px 4px 0;max-width:360px}
+    .q-astuce b{color:rgba(255,255,255,.8);font-weight:500}
+    .q-recap-groupe{margin-bottom:16px}
+    .q-recap-groupe:last-child{margin-bottom:0}
+    .q-recap-groupe h3{color:rgba(255,255,255,.55);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+    .q-recap-ligne{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+    .q-recap-groupe .q-recap-ligne:last-child{border-bottom:none}
+    .q-recap-ligne .q-lb{flex:1;color:var(--wf);font-size:.85rem}
+    .q-recap-ligne .q-input{width:78px;padding:7px 8px;border-radius:8px;font-size:.8rem;text-align:right}
+    .q-apercu-vif{width:100%;max-width:360px;margin-top:14px;border-top:1px solid rgba(255,255,255,.12);padding-top:10px;cursor:pointer}
+    .q-apercu-vif .q-resume{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.75);font-size:.78rem}
+    .q-apercu-vif .q-resume b{color:var(--or)}
+    .q-apercu-vif .q-chevron{margin-left:auto;color:rgba(255,255,255,.4);font-size:.7rem;transition:transform .2s}
+    .q-apercu-vif.ouvert .q-chevron{transform:rotate(180deg)}
+    .q-apercu-vif .q-detail{max-height:0;overflow:hidden;transition:max-height .25s ease}
+    .q-apercu-vif.ouvert .q-detail{max-height:180px;overflow-y:auto;margin-top:10px}
+    .q-apercu-vif .q-item{display:flex;justify-content:space-between;font-size:.78rem;color:rgba(255,255,255,.7);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+    .q-apercu-vif .q-item span:last-child{color:var(--wf);font-variant-numeric:tabular-nums}
+    .q-nav{display:flex;gap:10px;width:100%;max-width:360px;margin-top:20px}
+    .q-nav .bo2,.q-nav .bs2{margin:0}
+    .q-lien-discret{display:block;text-align:center;background:none;border:none;color:rgba(255,255,255,.5);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;margin-top:14px;padding:4px;width:100%;max-width:360px}
+    .q-lien-discret:hover{color:var(--wf)}
+    .q-fin-liste{background:rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin:4px 0 18px;width:100%;max-width:360px}
+    .q-fin-liste .q-item{display:flex;justify-content:space-between;font-size:.82rem;color:rgba(255,255,255,.8);padding:6px 0}
+    .q-fin-liste .q-item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.1)}
+    .q-fin-liste .q-item b{color:var(--wf);font-weight:500}
+
     /* APP */
     #app{display:none;min-height:100vh;flex-direction:column}
     .hd{background:var(--bl);padding:52px 20px 16px;display:flex;align-items:center;justify-content:space-between}
@@ -429,6 +494,11 @@
     <div class="ca"><label>À la date du</label><input type="date" id="init-d"/></div>
     <button class="bo2" onclick="validerInit()">Commencer →</button>
   </div>
+</div>
+
+<!-- QUESTIONNAIRE DE DÉMARRAGE -->
+<div id="ec-questionnaire" class="ea" style="display:none;align-items:stretch;justify-content:flex-start;padding:0">
+  <div id="q-shell" style="flex:1;display:flex;flex-direction:column;align-items:center;padding:32px 24px;overflow-y:auto"></div>
 </div>
 
 <!-- TUTORIEL -->
@@ -1076,8 +1146,7 @@ async function demarrer(){
   // Si des points de solde existent dans Sheets → pas besoin d'init
   if(E.pts.length>0){
     localStorage.setItem('init_fait','1');
-    if(!localStorage.getItem('tuto_vu'))afficherTuto();
-    else lancerApp();
+    qMaybeAfficher();
   } else if(!localStorage.getItem('init_fait')){
     document.getElementById('ec-conn').style.display='none';
     document.getElementById('ec-init').style.display='flex';
@@ -1157,8 +1226,7 @@ async function validerInit(){
     E.pts.push({date:d,solde:s});E.pts.sort((a,b)=>a.date.localeCompare(b.date));
     localStorage.setItem('init_fait','1');
     document.getElementById('ec-init').style.display='none';
-    if(!localStorage.getItem('tuto_vu'))afficherTuto();
-    else lancerApp();
+    qMaybeAfficher();
   }catch(e){
     console.error('validerInit:',e);
     toast('❌ Erreur : impossible d\'enregistrer le solde initial. Vérifiez votre connexion et réessayez.');
@@ -1213,6 +1281,331 @@ function fermerTuto(){
   document.getElementById('app').style.display='flex';
   majSelAnnee();refresh();
 }
+
+// ── QUESTIONNAIRE DE DÉMARRAGE ──
+// Écran plein écran affiché une seule fois (comme le tutoriel), uniquement pour un
+// compte encore vide (pas de dépense ni de programmée). Passer ou valider pose le
+// flag questionnaire_vu : il ne s'impose plus jamais ensuite, il reste seulement
+// accessible à la demande depuis le bandeau "Pour bien démarrer" (affChecklistDemarrage).
+const QUEST_SUGG_ENFANTS=[
+  {id:'ecole',em:'🎒',lb:'Frais scolaires / cantine'},
+  {id:'activites',em:'🎵',lb:'Activités extrascolaires'}
+];
+const QUEST_SUGG_VEHICULES=[
+  {id:'carburant',em:'⛽',lb:'Carburant'},
+  {id:'assurance',em:'🛡️',lb:'Assurance auto'},
+  {id:'entretien',em:'🚗',lb:'Entretien véhicule'}
+];
+let qEtape=0; // 0 intro,1 revenus,2 logement,3 foyer,4 recap,5 fin,6 skip
+let qApercuOuvert=false;
+let qEnCours=false;
+let Q=qEtatInitial();
+function qEtatInitial(){
+  return {
+    revenus:[{label:'Salaire',montant:''}],
+    logementType:null,
+    logementMontant:'',
+    enfants:0,
+    vehicules:0,
+    nomsEnfants:[],
+    nomsVehicules:[],
+    suggEnfants:QUEST_SUGG_ENFANTS.map(s=>({...s,on:true,montant:''})),
+    suggVehicules:QUEST_SUGG_VEHICULES.map(s=>({...s,on:true,montant:''}))
+  };
+}
+// Ne s'affiche que si le compte n'a ni dépense ni programmée réelle — sinon on
+// enchaîne directement sur le tutoriel/l'app comme avant, sans jamais interrompre
+// un compte déjà utilisé (y compris les comptes existants créés avant cette fonctionnalité).
+function qMaybeAfficher(){
+  if(!localStorage.getItem('questionnaire_vu')&&E.tx.length===0&&E.prog.length===0){
+    afficherQuestionnaire();
+  } else if(!localStorage.getItem('tuto_vu')){
+    afficherTuto();
+  } else {
+    lancerApp();
+  }
+}
+function afficherQuestionnaire(){
+  qEtape=0;qApercuOuvert=false;qEnCours=false;
+  Q=qEtatInitial();
+  document.getElementById('app').style.display='none';
+  document.getElementById('ec-conn').style.display='none';
+  document.getElementById('ec-init').style.display='none';
+  document.getElementById('ec-tuto').style.display='none';
+  document.getElementById('ec-questionnaire').style.display='flex';
+  qRender();
+}
+// Rouvre le questionnaire à la demande (lien du bandeau "Pour bien démarrer").
+function ouvrirQuestionnaireDemarrage(){afficherQuestionnaire();}
+function qTerminer(){
+  localStorage.setItem('questionnaire_vu','1');
+  document.getElementById('ec-questionnaire').style.display='none';
+  if(!localStorage.getItem('tuto_vu'))afficherTuto();
+  else{document.getElementById('app').style.display='flex';majSelAnnee();refresh();}
+}
+
+function qNomsSuffixe(arr){
+  const noms=arr.map(n=>n.trim()).filter(Boolean);
+  return noms.length?' ('+noms.join(', ')+')':'';
+}
+function qFmtMontant(m){return m?fmtDec(parseFloat(m)):'—';}
+function qLignesPretes(){
+  const l=[];
+  Q.revenus.forEach((r,i)=>{ if(r.label.trim()) l.push({groupe:'Revenus',label:r.label.trim(),montant:r.montant,ref:{type:'revenu',idx:i}}); });
+  if(Q.logementType){
+    const lb=Q.logementType==='locataire'?'Loyer':Q.logementType==='credit'?'Crédit immobilier':null;
+    if(lb) l.push({groupe:'Charge fixe',label:lb,montant:Q.logementMontant,ref:{type:'logement'}});
+  }
+  const sufEnfants=qNomsSuffixe(Q.nomsEnfants),sufVehicules=qNomsSuffixe(Q.nomsVehicules);
+  if(Q.enfants>0) Q.suggEnfants.forEach((s,i)=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb+sufEnfants,em:s.em,montant:s.montant||'',ref:{type:'sugg',arr:'suggEnfants',idx:i,pole:'Enfants'}}); });
+  if(Q.vehicules>0) Q.suggVehicules.forEach((s,i)=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb+sufVehicules,em:s.em,montant:s.montant||'',ref:{type:'sugg',arr:'suggVehicules',idx:i,pole:'Transport'}}); });
+  return l;
+}
+function qApercuVifHtml(){
+  const lignes=qLignesPretes();
+  if(!lignes.length)return '';
+  return `<div class="q-apercu-vif ${qApercuOuvert?'ouvert':''}" onclick="qApercuOuvert=!qApercuOuvert;qRender()">
+    <div class="q-resume">🧾 <b>${lignes.length}</b> ligne${lignes.length>1?'s':''} prête${lignes.length>1?'s':''} pour votre tableau<span class="q-chevron">▾</span></div>
+    <div class="q-detail">${lignes.map(l=>`<div class="q-item"><span>${l.em?l.em+' ':''}${esc(l.label)}</span><span>${qFmtMontant(l.montant)}</span></div>`).join('')}</div>
+  </div>`;
+}
+function qTopRow(dotIdx,total){
+  let dots='';
+  for(let i=0;i<total;i++) dots+=`<span class="tuto-dot ${i===dotIdx?'actif':''}"></span>`;
+  return `<div class="q-topbar"><span class="q-spacer"></span><div class="q-dots">${dots}</div><button class="q-passer" onclick="qSkip()">Passer</button></div>`;
+}
+function qRender(){
+  const el=document.getElementById('q-shell');
+  if(qEtape===0) el.innerHTML=qEcranIntro();
+  else if(qEtape===1) el.innerHTML=qEcranRevenus();
+  else if(qEtape===2) el.innerHTML=qEcranLogement();
+  else if(qEtape===3) el.innerHTML=qEcranFoyer();
+  else if(qEtape===4) el.innerHTML=qEcranRecap();
+  else if(qEtape===5) el.innerHTML=qEcranFin();
+  else if(qEtape===6) el.innerHTML=qEcranSkip();
+}
+function qEcranIntro(){
+  return `<div class="q-emoji">👋</div>
+    <h2>Avant de vous lancer</h2>
+    <p>Trois questions rapides pour préremplir votre tableau. Vous pourrez tout modifier ou supprimer ensuite, à tout moment.</p>
+    <div class="ci2" style="max-width:360px">
+      <button class="bo2" style="margin-top:0" onclick="qEtape=1;qRender()">Commencer (2 min)</button>
+      <button class="bs2" onclick="qSkip()">Non merci, je remplirai moi-même</button>
+    </div>`;
+}
+function qEcranRevenus(){
+  const n=Q.revenus.length;
+  return `${qTopRow(0,4)}
+    <h2>Vos revenus fixes</h2>
+    <p>Salaire, retraite, allocations... Combien en avez-vous régulièrement ?</p>
+    <div class="q-carte">
+      <div class="ci2">
+        <div class="q-stepper-row" style="margin-bottom:${n?'16px':'0'}">
+          <div class="q-stepper-txt">Nombre de revenus</div>
+          <div class="q-stepper">
+            <button onclick="qChgRevenus(-1)" ${n<=0?'disabled':''}>−</button>
+            <span class="q-val">${n}</span>
+            <button onclick="qChgRevenus(1)" ${n>=5?'disabled':''}>+</button>
+          </div>
+        </div>
+        ${Q.revenus.map((r,i)=>`<div class="q-row2">
+          <input class="q-input" style="flex:1.3" type="text" value="${esc(r.label)}" placeholder="Ex : Salaire" oninput="Q.revenus[${i}].label=this.value;qMaj()"/>
+          <input class="q-input" style="flex:1" type="number" inputmode="decimal" value="${esc(r.montant)}" placeholder="0,00 €" oninput="Q.revenus[${i}].montant=this.value;qMaj()"/>
+        </div>`).join('')}
+      </div>
+    </div>
+    <p class="q-astuce">💡 Salaire variable ? Indiquez une estimation — vous pourrez ajuster ce montant chaque mois dans votre tableau.</p>
+    ${qApercuVifHtml()}
+    <div class="q-nav"><button class="bs2" style="flex:1" onclick="qEtape=0;qRender()">← Retour</button><button class="bo2" style="flex:2" onclick="qEtape=2;qRender()">Suivant →</button></div>`;
+}
+function qChgRevenus(d){
+  const n=Math.max(0,Math.min(5,Q.revenus.length+d));
+  while(Q.revenus.length<n) Q.revenus.push({label:'',montant:''});
+  while(Q.revenus.length>n) Q.revenus.pop();
+  qRender();
+}
+function qEcranLogement(){
+  const opts=[['locataire','Locataire'],['credit','Remboursement de crédit'],['proprietaire','Propriétaire, aucune charge fixe']];
+  const montrerMontant=Q.logementType==='locataire'||Q.logementType==='credit';
+  return `${qTopRow(1,4)}
+    <h2>Votre logement</h2>
+    <p>Pour poser votre plus grosse charge fixe du mois.</p>
+    <div class="q-carte">
+      <div class="ci2">
+        <div class="q-pills">
+          ${opts.map(([id,lb])=>`<button class="q-pill ${Q.logementType===id?'sel':''}" onclick="Q.logementType='${id}';qRender()"><span class="q-puce"></span>${lb}</button>`).join('')}
+        </div>
+        ${montrerMontant?`<div class="q-champ" style="margin-top:14px"><label class="q-label">${Q.logementType==='locataire'?'Loyer mensuel':'Mensualité de crédit'}</label><input class="q-input" type="number" inputmode="decimal" value="${esc(Q.logementMontant)}" placeholder="0,00 €" oninput="Q.logementMontant=this.value;qMaj()"/></div>`:''}
+      </div>
+    </div>
+    ${montrerMontant?'<p class="q-astuce">💡 Une estimation suffit pour démarrer — modifiable à tout moment.</p>':''}
+    ${qApercuVifHtml()}
+    <div class="q-nav"><button class="bs2" style="flex:1" onclick="qEtape=1;qRender()">← Retour</button><button class="bo2" style="flex:2" onclick="qEtape=3;qRender()">Suivant →</button></div>`;
+}
+function qEcranFoyer(){
+  return `${qTopRow(2,4)}
+    <h2>Votre foyer</h2>
+    <p>Pour vous suggérer quelques catégories utiles — à garder ou non.</p>
+    <div class="q-carte">
+      <div class="ci2">
+        <div class="q-stepper-row">
+          <div class="q-stepper-txt">Enfants à charge</div>
+          <div class="q-stepper"><button onclick="qChgFoyer('enfants',-1)" ${Q.enfants<=0?'disabled':''}>−</button><span class="q-val">${Q.enfants}</span><button onclick="qChgFoyer('enfants',1)" ${Q.enfants>=6?'disabled':''}>+</button></div>
+        </div>
+        ${Q.enfants>0?qNomsInputsHtml('enfants','Prénom'):''}
+        <div class="q-stepper-row">
+          <div class="q-stepper-txt">Véhicules</div>
+          <div class="q-stepper"><button onclick="qChgFoyer('vehicules',-1)" ${Q.vehicules<=0?'disabled':''}>−</button><span class="q-val">${Q.vehicules}</span><button onclick="qChgFoyer('vehicules',1)" ${Q.vehicules>=4?'disabled':''}>+</button></div>
+        </div>
+        ${Q.vehicules>0?qNomsInputsHtml('vehicules','Nom du véhicule'):''}
+      </div>
+    </div>
+    ${Q.enfants>0||Q.vehicules>0?'<p class="q-astuce">Les prénoms et noms de véhicule personnalisent vos catégories — vous pourrez les changer plus tard.</p>':''}
+    ${Q.enfants>0?`<div class="q-suggestions" style="width:100%;max-width:360px"><div class="q-titre-sugg">Suggéré pour vos enfants</div>${Q.suggEnfants.map((s,i)=>qChipHtml('suggEnfants',i,s)).join('')}</div>`:''}
+    ${Q.vehicules>0?`<div class="q-suggestions" style="width:100%;max-width:360px"><div class="q-titre-sugg">Suggéré pour vos véhicules</div>${Q.suggVehicules.map((s,i)=>qChipHtml('suggVehicules',i,s)).join('')}</div>`:''}
+    ${qApercuVifHtml()}
+    <div class="q-nav"><button class="bs2" style="flex:1" onclick="qEtape=2;qRender()">← Retour</button><button class="bo2" style="flex:2" onclick="qEtape=4;qRender()">Suivant →</button></div>`;
+}
+function qChipHtml(cle,i,s){
+  const suf=qNomsSuffixe(cle==='suggEnfants'?Q.nomsEnfants:Q.nomsVehicules);
+  return `<div class="q-chip ${s.on?'on':''}" onclick="Q.${cle}[${i}].on=!Q.${cle}[${i}].on;qRender()"><span class="q-coche">${s.on?'✓':''}</span><span class="q-em">${s.em}</span><span class="q-lb" id="q-chip-lb-${cle}-${i}">${esc(s.lb+suf)}</span></div>`;
+}
+function qChgFoyer(cle,d){
+  const max=cle==='enfants'?6:4;
+  Q[cle]=Math.max(0,Math.min(max,Q[cle]+d));
+  const nomsCle=cle==='enfants'?'nomsEnfants':'nomsVehicules';
+  while(Q[nomsCle].length<Q[cle]) Q[nomsCle].push('');
+  while(Q[nomsCle].length>Q[cle]) Q[nomsCle].pop();
+  qRender();
+}
+function qNomsInputsHtml(cle,placeholder){
+  const nomsCle=cle==='enfants'?'nomsEnfants':'nomsVehicules';
+  return `<div class="q-noms">${Q[nomsCle].map((n,i)=>`<input class="q-input" type="text" value="${esc(n)}" placeholder="${placeholder} ${i+1} (optionnel)" oninput="Q.${nomsCle}[${i}]=this.value;qMaj()"/>`).join('')}</div>`;
+}
+function qEcranRecap(){
+  const lignes=qLignesPretes();
+  const groupes=[['Revenus','💰'],['Charge fixe','🏠'],['Suggestions','✨']];
+  return `${qTopRow(3,4)}
+    <h2>On y est presque</h2>
+    <p>Voici ce qui sera ajouté à votre tableau. Vérifiez les montants, décochez les suggestions que vous ne voulez pas garder.</p>
+    <div class="q-carte">
+      <div class="ci2">
+        ${groupes.map(([g,em])=>{
+          const items=lignes.filter(l=>l.groupe===g);
+          if(!items.length)return '';
+          return `<div class="q-recap-groupe"><h3>${em} ${g}</h3>${items.map(l=>{
+            const idx=lignes.indexOf(l);
+            const coche=l.ref.type==='sugg'?`<span class="q-coche on" onclick="Q.${l.ref.arr}[${l.ref.idx}].on=false;qRender()">✓</span>`:'';
+            return `<div class="q-recap-ligne">
+              ${coche}
+              <span class="q-lb">${l.em?l.em+' ':''}${esc(l.label)}</span>
+              <input class="q-input" type="number" inputmode="decimal" value="${esc(l.montant)}" placeholder="0,00" oninput="qMajMontantRecap(${idx},this.value)"/>
+            </div>`;
+          }).join('')}</div>`;
+        }).join('')}
+        ${!lignes.length?'<p style="color:rgba(255,255,255,.5);font-size:.82rem;text-align:center;margin:6px 0">Rien à ajouter pour le moment — vous pouvez revenir en arrière.</p>':''}
+      </div>
+    </div>
+    ${lignes.length?'<p class="q-astuce">Tous ces montants restent <b>modifiables à tout moment</b> depuis votre tableau — inutile d\'être exact aujourd\'hui.</p>':''}
+    <div class="q-nav"><button class="bs2" style="flex:1" onclick="qEtape=3;qRender()">← Retour</button><button class="bo2" style="flex:2" onclick="qValiderQuestionnaire()" ${!lignes.length||qEnCours?'disabled':''}>${qEnCours?'Enregistrement...':'Remplir mon tableau ('+lignes.length+')'}</button></div>
+    <button class="q-lien-discret" onclick="qSkip()">Plus tard</button>`;
+}
+function qMajMontantRecap(idx,val){
+  const lignes=qLignesPretes();
+  const l=lignes[idx];
+  if(!l||!l.ref)return;
+  const ref=l.ref;
+  if(ref.type==='revenu') Q.revenus[ref.idx].montant=val;
+  else if(ref.type==='logement') Q.logementMontant=val;
+  else if(ref.type==='sugg') Q[ref.arr][ref.idx].montant=val;
+}
+function qMaj(){ // mise à jour légère (sans re-render complet) pour ne pas perdre le focus clavier pendant la saisie
+  const badge=document.querySelector('.q-apercu-vif .q-resume b');
+  if(badge){
+    const n=qLignesPretes().length;
+    badge.textContent=n;
+    const s=badge.parentElement;
+    s.childNodes[2].textContent=` ligne${n>1?'s':''} prête${n>1?'s':''} pour votre tableau`;
+  }
+  ['suggEnfants','suggVehicules'].forEach(cle=>{
+    Q[cle].forEach((s,i)=>{
+      const elLb=document.getElementById('q-chip-lb-'+cle+'-'+i);
+      if(elLb)elLb.textContent=s.lb+qNomsSuffixe(cle==='suggEnfants'?Q.nomsEnfants:Q.nomsVehicules);
+    });
+  });
+}
+function qSkip(){qEtape=6;qRender();}
+// Trouve le pôle par nom, le crée s'il n'existe pas encore — même logique que
+// la création de pôle depuis Réglages (ajouterPoleDepuisBudget), pour rester
+// cohérent avec le reste de l'app.
+function qPoleIndexOuCree(nom){
+  let i=POLES.findIndex(p=>p.nom===nom);
+  if(i<0){POLES.push({nom,cats:[]});i=POLES.length-1;}
+  return i;
+}
+// Crée une programmée en pilotant directement le formulaire existant (#ov-prog) plutôt
+// que de dupliquer la logique d'écriture Sheets (stratégie SAFE lire/mettre à jour/ajouter,
+// voir saveProg) — le formulaire n'a pas besoin d'être visible pour que saveProg() fonctionne,
+// elle lit uniquement les valeurs en mémoire (E.montsMoisEnCours, E.progAnneeEdit).
+async function qCreerProg(nom,type,cat,montant){
+  document.getElementById('prog-nom').value=nom;
+  document.getElementById('prog-id-edit').value='';
+  PROG_TYPE=type;
+  peuplerProgCat();
+  document.getElementById('prog-cat').value=cat;
+  document.getElementById('prog-recur-active').checked=false;
+  E.progAnneeEdit=E.annee;
+  E.montsMoisEnCours=Array(12).fill(montant);
+  await saveProg();
+}
+async function qValiderQuestionnaire(){
+  if(qEnCours)return;
+  const lignes=qLignesPretes();
+  if(!lignes.length)return;
+  qEnCours=true;qRender();
+  try{
+    for(const l of lignes){
+      const montant=parseFloat(l.montant);
+      const montantValide=!isNaN(montant)&&montant>0;
+      const ref=l.ref;
+      if(ref.type==='revenu'){
+        if(!CREV.includes(l.label))CREV.push(l.label);
+        if(montantValide)await qCreerProg(l.label,'revenu',l.label,montant);
+      } else if(ref.type==='logement'){
+        if(montantValide)await qCreerProg(l.label,'depense','Logement',montant);
+      } else if(ref.type==='sugg'){
+        const s=Q[ref.arr][ref.idx];
+        const poleIdx=qPoleIndexOuCree(ref.pole);
+        ajouterCatAuPole(poleIdx,s.lb);
+        if(montantValide)await qCreerProg(s.lb,'depense',s.lb,montant);
+      }
+    }
+    await sauvegarderParams();
+    qEnCours=false;
+    qEtape=5;qRender();
+  }catch(e){
+    console.error('qValiderQuestionnaire:',e);
+    qEnCours=false;qRender();
+    toast('❌ '+messageErreurApi(e));
+  }
+}
+function qEcranFin(){
+  const lignes=qLignesPretes();
+  const tousNoms=[...Q.nomsEnfants,...Q.nomsVehicules].map(n=>n.trim()).filter(Boolean);
+  return `<div class="q-emoji">🎉</div>
+    <h2>C'est fait !</h2>
+    <p>${lignes.length} ligne${lignes.length>1?'s ont':' a'} été ajoutée${lignes.length>1?'s':''} à votre tableau. Retrouvez-les dans l'onglet Budget pour les ajuster.</p>
+    ${tousNoms.length?`<p style="color:rgba(255,255,255,.65);font-size:.875rem;text-align:center;margin-top:-24px;margin-bottom:24px">On a pensé à ${esc(tousNoms.join(', '))} en préparant vos catégories.</p>`:''}
+    <div class="q-fin-liste">${lignes.map(l=>`<div class="q-item"><span>${l.em?l.em+' ':''}${esc(l.label)}</span><b>${qFmtMontant(l.montant)}</b></div>`).join('')}</div>
+    <div class="ci2" style="max-width:360px"><button class="bo2" style="margin-top:0" onclick="qTerminer()">Découvrir mon tableau →</button></div>`;
+}
+function qEcranSkip(){
+  return `<div class="q-emoji">👍</div>
+    <h2>Pas de souci</h2>
+    <p>Vous pouvez remplir votre tableau à votre rythme, à la main. Ce questionnaire ne s'affichera plus en plein écran — retrouvez-le quand vous voulez dans le bandeau « Pour bien démarrer » de votre tableau.</p>
+    <div class="ci2" style="max-width:360px"><button class="bo2" style="margin-top:0" onclick="qTerminer()">Retour à mon tableau</button></div>`;
+}
+
 function ouvrirPageAide(){
   let h='';
   TUTO_SLIDES.forEach(s=>{h+=`<div class="ban" style="margin-bottom:14px;padding:14px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
@@ -1831,6 +2224,7 @@ function affChecklistDemarrage(){
         <span style="font-size:.85rem;${e.fait?'text-decoration:line-through':''}">${e.label}</span>
       </div>`).join('')}
     </div>
+    <button class="brec" onclick="ouvrirQuestionnaireDemarrage()">✨ Ou laissez-nous vous aider — remplir mon tableau en 2 minutes</button>
   </div>`;
 }
 
