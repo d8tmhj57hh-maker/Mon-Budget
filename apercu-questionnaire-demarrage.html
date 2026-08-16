@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Aperçu — Questionnaire de démarrage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=DM+Serif+Display&display=swap" rel="stylesheet"/>
+<style>
+  :root{
+    --bl:#15102a;--blc:#2e2358;--or:#8d6ee0;--fo:#f8f7fb;--wh:#fff;--tx:#1a1c26;--txl:#5b6478;
+    --ve:#0b7a55;--vec:#e3f6ef;--bo:#e3e0ee;--wf:#fff;
+    --sh:0 1px 2px rgba(21,16,42,.04), 0 8px 24px -4px rgba(21,16,42,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bl:#0d0a1a;--blc:#1f1640;--or:#a78bfa;--fo:#11101c;--wh:#1a1826;--tx:#f0eef7;--txl:#9994b3;
+      --ve:#34e0a1;--vec:#11261f;--bo:#2a2640;
+      --sh:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -4px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bl:#0d0a1a;--blc:#1f1640;--or:#a78bfa;--fo:#11101c;--wh:#1a1826;--tx:#f0eef7;--txl:#9994b3;
+    --ve:#34e0a1;--vec:#11261f;--bo:#2a2640;
+    --sh:0 1px 2px rgba(0,0,0,.3), 0 10px 28px -4px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Inter',sans-serif;background:var(--fo);color:var(--tx);min-height:100vh}
+
+  .revue{max-width:640px;margin:0 auto;padding:28px 20px 8px;text-align:center}
+  .revue .tag{display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--or);background:var(--vec);border-radius:20px;padding:5px 12px;margin-bottom:10px}
+  .revue h1{font-family:'DM Serif Display',serif;font-size:1.5rem;font-weight:400;margin:0 0 6px}
+  .revue p{color:var(--txl);font-size:.85rem;line-height:1.5;margin:0 auto;max-width:440px}
+
+  .scene{display:flex;justify-content:center;padding:24px 16px 60px}
+  .phone{width:100%;max-width:390px;height:780px;background:var(--wh);border-radius:36px;box-shadow:var(--sh), 0 0 0 1px var(--bo);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  @media (max-width:460px){.phone{height:88vh;border-radius:24px}}
+
+  .ecran{flex:1;display:flex;flex-direction:column;background:linear-gradient(160deg,var(--bl) 0%,var(--blc) 100%);padding:26px 22px 20px;overflow-y:auto;position:relative}
+  .top-row{display:flex;align-items:center;justify-content:space-between;min-height:22px;margin-bottom:6px}
+  .dots{display:flex;justify-content:center;gap:6px;flex:1}
+  .dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:.2s}
+  .dot.actif{background:var(--or);width:22px;border-radius:4px}
+  .passer{background:none;border:none;color:rgba(255,255,255,.6);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;padding:4px 2px;white-space:nowrap}
+  .passer:hover{color:var(--wf)}
+  .spacer28{width:44px}
+
+  .corps{flex:1;display:flex;flex-direction:column;justify-content:center;padding-top:6px}
+  .corps.top{justify-content:flex-start;padding-top:10px}
+  .emoji{font-size:2.4rem;text-align:center;margin-bottom:14px}
+  .ecran h2{font-family:'DM Serif Display',serif;font-weight:400;color:var(--wf);font-size:1.55rem;text-align:center;margin:0 0 8px;text-wrap:balance}
+  .ecran .sub{color:rgba(255,255,255,.65);font-size:.83rem;text-align:center;line-height:1.5;margin:0 0 22px}
+
+  .carte{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:18px}
+  .champ{margin-bottom:14px}
+  .champ:last-child{margin-bottom:0}
+  .champ label{display:block;color:rgba(255,255,255,.7);font-size:.72rem;font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+  .champ input[type="text"],.champ input[type="number"]{width:100%;padding:12px 13px;border-radius:11px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:var(--wf);font-size:.9rem;font-family:'Inter',sans-serif;outline:none}
+  .champ input::placeholder{color:rgba(255,255,255,.35)}
+  .champ input:focus{border-color:var(--or)}
+
+  .ligne-revenu{display:flex;gap:8px;margin-bottom:10px}
+  .ligne-revenu input[type="text"]{flex:1.3}
+  .ligne-revenu input[type="number"]{flex:1}
+  .ligne-revenu:last-child{margin-bottom:0}
+
+  .stepper-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .stepper-row+.stepper-row{margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,.12)}
+  .stepper-txt strong{display:block;color:var(--wf);font-size:.9rem;font-weight:500}
+  .stepper-txt span{display:block;color:rgba(255,255,255,.5);font-size:.74rem;margin-top:2px}
+  .stepper{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .stepper button{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:var(--wf);font-size:1.05rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .stepper button:disabled{opacity:.3;cursor:default}
+  .stepper .val{width:18px;text-align:center;color:var(--wf);font-weight:600;font-variant-numeric:tabular-nums}
+
+  .pills{display:flex;flex-direction:column;gap:9px}
+  .pill{display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:12px;border:1.5px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:var(--wf);font-size:.87rem;font-family:'Inter',sans-serif;cursor:pointer;text-align:left}
+  .pill .puce{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);flex-shrink:0}
+  .pill.sel{border-color:var(--or);background:rgba(141,110,224,.18)}
+  .pill.sel .puce{border-color:var(--or);background:var(--or)}
+
+  .suggestions{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+  .suggestions .titre-sugg{color:rgba(255,255,255,.55);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:4px 0 2px}
+  .chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.05);cursor:pointer;transition:.15s}
+  .chip .coche{width:19px;height:19px;border-radius:6px;border:1.5px solid rgba(255,255,255,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.68rem;color:var(--bl)}
+  .chip.on{background:rgba(141,110,224,.16);border-color:var(--or)}
+  .chip.on .coche{background:var(--or);border-color:var(--or)}
+  .chip .em{font-size:1rem}
+  .chip .lb{color:var(--wf);font-size:.84rem;flex:1}
+
+  .recap-groupe{margin-bottom:16px}
+  .recap-groupe:last-child{margin-bottom:0}
+  .recap-groupe h3{color:rgba(255,255,255,.55);font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+  .recap-ligne{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .recap-groupe .recap-ligne:last-child{border-bottom:none}
+  .recap-ligne .coche{width:18px;height:18px;border-radius:6px;border:1.5px solid rgba(255,255,255,.35);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.65rem;cursor:pointer;color:var(--bl)}
+  .recap-ligne .coche.on{background:var(--or);border-color:var(--or)}
+  .recap-ligne .lb{flex:1;color:var(--wf);font-size:.85rem}
+  .recap-ligne .lb small{display:block;color:rgba(255,255,255,.45);font-size:.7rem;margin-top:1px}
+  .recap-ligne input[type="number"]{width:78px;padding:7px 8px;border-radius:8px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:var(--wf);font-size:.8rem;text-align:right;font-family:'Inter',sans-serif;outline:none}
+
+  .nav{display:flex;gap:10px;margin-top:20px}
+  .btn-prim{flex:1;padding:14px;border-radius:12px;border:none;background:var(--or);color:var(--bl);font-weight:600;font-size:.9rem;font-family:'Inter',sans-serif;cursor:pointer}
+  .btn-prim:disabled{opacity:.4;cursor:default}
+  .btn-sec{padding:14px 18px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:var(--wf);font-weight:500;font-size:.87rem;font-family:'Inter',sans-serif;cursor:pointer}
+  .lien-discret{display:block;text-align:center;background:none;border:none;color:rgba(255,255,255,.5);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer;margin-top:16px;padding:4px}
+  .lien-discret:hover{color:var(--wf)}
+
+  .apercu-vif{margin:16px -22px -20px;border-top:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.16);padding:12px 22px 14px;cursor:pointer;flex-shrink:0}
+  .apercu-vif .resume{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.75);font-size:.78rem}
+  .apercu-vif .resume b{color:var(--or)}
+  .apercu-vif .chevron{margin-left:auto;color:rgba(255,255,255,.4);font-size:.7rem;transition:transform .2s}
+  .apercu-vif.ouvert .chevron{transform:rotate(180deg)}
+  .apercu-vif .detail{max-height:0;overflow:hidden;transition:max-height .25s ease}
+  .apercu-vif.ouvert .detail{max-height:220px;overflow-y:auto;margin-top:10px}
+  .apercu-vif .item{display:flex;justify-content:space-between;font-size:.78rem;color:rgba(255,255,255,.7);padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .apercu-vif .item span:last-child{color:var(--wf);font-variant-numeric:tabular-nums}
+
+  .fin .emoji{font-size:3rem}
+  .fin-liste{background:rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;margin:18px 0}
+  .fin-liste .item{display:flex;justify-content:space-between;font-size:.82rem;color:rgba(255,255,255,.8);padding:6px 0}
+  .fin-liste .item:not(:last-child){border-bottom:1px solid rgba(255,255,255,.1)}
+  .fin-liste .item b{color:var(--wf);font-weight:500}
+  .note-bas{color:rgba(255,255,255,.4);font-size:.72rem;text-align:center;line-height:1.5;margin-top:auto;padding-top:16px}
+</style>
+</head>
+<body>
+
+<div class="revue">
+  <span class="tag">Maquette — non connectée aux données</span>
+  <h1>Questionnaire de démarrage</h1>
+  <p>Remplace/complète le tutoriel pour les nouveaux comptes : quelques questions rapides préremplissent le tableau au lieu de le laisser vide. Réapparaît à l'ouverture tant qu'aucune donnée réelle n'a été ajoutée — comme le fait déjà le bandeau « Pour bien démarrer ».</p>
+</div>
+
+<div class="scene">
+  <div class="phone" id="phone"></div>
+</div>
+
+<script>
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+const SUGG_ENFANTS=[
+  {id:'ecole',em:'🎒',lb:'Frais scolaires / cantine'},
+  {id:'activites',em:'🎵',lb:'Activités extrascolaires'}
+];
+const SUGG_VEHICULES=[
+  {id:'carburant',em:'⛽',lb:'Carburant'},
+  {id:'assurance',em:'🛡️',lb:'Assurance auto'},
+  {id:'entretien',em:'🚗',lb:'Entretien véhicule'}
+];
+
+let step=0; // 0 intro,1 revenus,2 logement,3 foyer,4 recap,5 fin,6 skip
+let apercuOuvert=false;
+let S={
+  revenus:[{label:'Salaire',montant:''}],
+  logementType:null,
+  logementMontant:'',
+  enfants:0,
+  vehicules:0,
+  suggEnfants:SUGG_ENFANTS.map(s=>({...s,on:true})),
+  suggVehicules:SUGG_VEHICULES.map(s=>({...s,on:true}))
+};
+
+function lignesPretes(){
+  const l=[];
+  S.revenus.forEach(r=>{ if(r.label.trim()) l.push({groupe:'Revenus',label:r.label.trim(),montant:r.montant}); });
+  if(S.logementType){
+    const lb=S.logementType==='locataire'?'Loyer':S.logementType==='credit'?'Crédit immobilier':null;
+    if(lb) l.push({groupe:'Charge fixe',label:lb,montant:S.logementMontant});
+  }
+  if(S.enfants>0) S.suggEnfants.forEach(s=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb,em:s.em,montant:s.montant||''}); });
+  if(S.vehicules>0) S.suggVehicules.forEach(s=>{ if(s.on) l.push({groupe:'Suggestions',label:s.lb,em:s.em,montant:s.montant||''}); });
+  return l;
+}
+
+function fmtMontant(m){ return m?parseFloat(m).toFixed(2).replace('.',',')+' €':'—'; }
+
+function apercuVifHtml(){
+  const lignes=lignesPretes();
+  if(!lignes.length)return '';
+  return `<div class="apercu-vif ${apercuOuvert?'ouvert':''}" onclick="apercuOuvert=!apercuOuvert;render()">
+    <div class="resume">🧾 <b>${lignes.length}</b> ligne${lignes.length>1?'s':''} prête${lignes.length>1?'s':''} pour votre tableau<span class="chevron">▾</span></div>
+    <div class="detail">${lignes.map(l=>`<div class="item"><span>${l.em?l.em+' ':''}${esc(l.label)}</span><span>${fmtMontant(l.montant)}</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function topRow(dotIdx,total){
+  let dots='';
+  for(let i=0;i<total;i++) dots+=`<span class="dot ${i===dotIdx?'actif':''}"></span>`;
+  return `<div class="top-row"><span class="spacer28"></span><div class="dots">${dots}</div><button class="passer" onclick="allerFin('skip')">Passer</button></div>`;
+}
+
+function render(){
+  const el=document.getElementById('phone');
+  if(step===0) el.innerHTML=ecranIntro();
+  else if(step===1) el.innerHTML=ecranRevenus();
+  else if(step===2) el.innerHTML=ecranLogement();
+  else if(step===3) el.innerHTML=ecranFoyer();
+  else if(step===4) el.innerHTML=ecranRecap();
+  else if(step===5) el.innerHTML=ecranFin();
+  else if(step===6) el.innerHTML=ecranSkip();
+}
+
+function ecranIntro(){
+  return `<div class="ecran">
+    <div class="corps">
+      <div class="emoji">👋</div>
+      <h2>Avant de vous lancer</h2>
+      <p class="sub">Trois questions rapides pour préremplir votre tableau. Vous pourrez tout modifier ou supprimer ensuite, à tout moment.</p>
+      <button class="btn-prim" onclick="step=1;render()">Commencer (2 min)</button>
+      <button class="lien-discret" onclick="allerFin('skip')">Non merci, je remplirai moi-même</button>
+    </div>
+  </div>`;
+}
+
+function ecranRevenus(){
+  const n=S.revenus.length;
+  return `<div class="ecran">
+    ${topRow(0,4)}
+    <div class="corps top">
+      <h2>Vos revenus fixes</h2>
+      <p class="sub">Salaire, retraite, allocations... Combien en avez-vous régulièrement ?</p>
+      <div class="carte">
+        <div class="stepper-row" style="margin-bottom:${n?'16px':'0'}">
+          <div class="stepper-txt"><strong>Nombre de revenus</strong></div>
+          <div class="stepper">
+            <button onclick="chgRevenus(-1)" ${n<=0?'disabled':''}>−</button>
+            <span class="val">${n}</span>
+            <button onclick="chgRevenus(1)" ${n>=5?'disabled':''}>+</button>
+          </div>
+        </div>
+        ${S.revenus.map((r,i)=>`<div class="ligne-revenu">
+          <input type="text" value="${esc(r.label)}" placeholder="Ex : Salaire" oninput="S.revenus[${i}].label=this.value;maj()"/>
+          <input type="number" inputmode="decimal" value="${esc(r.montant)}" placeholder="0,00 €" oninput="S.revenus[${i}].montant=this.value;maj()"/>
+        </div>`).join('')}
+      </div>
+      ${apercuVifHtml()}
+      <div class="nav"><button class="btn-sec" onclick="step=0;render()">← Retour</button><button class="btn-prim" onclick="step=2;render()">Suivant →</button></div>
+    </div>
+  </div>`;
+}
+
+function chgRevenus(d){
+  const n=Math.max(0,Math.min(5,S.revenus.length+d));
+  while(S.revenus.length<n) S.revenus.push({label:'',montant:''});
+  while(S.revenus.length>n) S.revenus.pop();
+  render();
+}
+
+function ecranLogement(){
+  const opts=[['locataire','Locataire'],['credit','Remboursement de crédit'],['proprietaire','Propriétaire, aucune charge fixe']];
+  const montrerMontant=S.logementType==='locataire'||S.logementType==='credit';
+  return `<div class="ecran">
+    ${topRow(1,4)}
+    <div class="corps top">
+      <h2>Votre logement</h2>
+      <p class="sub">Pour poser votre plus grosse charge fixe du mois.</p>
+      <div class="carte">
+        <div class="pills">
+          ${opts.map(([id,lb])=>`<button class="pill ${S.logementType===id?'sel':''}" onclick="S.logementType='${id}';render()"><span class="puce"></span>${lb}</button>`).join('')}
+        </div>
+        ${montrerMontant?`<div class="champ" style="margin-top:14px"><label>${S.logementType==='locataire'?'Loyer mensuel':'Mensualité de crédit'}</label><input type="number" inputmode="decimal" value="${esc(S.logementMontant)}" placeholder="0,00 €" oninput="S.logementMontant=this.value;maj()"/></div>`:''}
+      </div>
+      ${apercuVifHtml()}
+      <div class="nav"><button class="btn-sec" onclick="step=1;render()">← Retour</button><button class="btn-prim" onclick="step=3;render()">Suivant →</button></div>
+    </div>
+  </div>`;
+}
+
+function ecranFoyer(){
+  return `<div class="ecran">
+    ${topRow(2,4)}
+    <div class="corps top">
+      <h2>Votre foyer</h2>
+      <p class="sub">Pour vous suggérer quelques catégories utiles — à garder ou non.</p>
+      <div class="carte">
+        <div class="stepper-row">
+          <div class="stepper-txt"><strong>Enfants à charge</strong></div>
+          <div class="stepper"><button onclick="chgFoyer('enfants',-1)" ${S.enfants<=0?'disabled':''}>−</button><span class="val">${S.enfants}</span><button onclick="chgFoyer('enfants',1)" ${S.enfants>=6?'disabled':''}>+</button></div>
+        </div>
+        <div class="stepper-row">
+          <div class="stepper-txt"><strong>Véhicules</strong></div>
+          <div class="stepper"><button onclick="chgFoyer('vehicules',-1)" ${S.vehicules<=0?'disabled':''}>−</button><span class="val">${S.vehicules}</span><button onclick="chgFoyer('vehicules',1)" ${S.vehicules>=4?'disabled':''}>+</button></div>
+        </div>
+      </div>
+      ${S.enfants>0?`<div class="suggestions"><div class="titre-sugg">Suggéré pour vos enfants</div>${S.suggEnfants.map((s,i)=>chipHtml('suggEnfants',i,s)).join('')}</div>`:''}
+      ${S.vehicules>0?`<div class="suggestions"><div class="titre-sugg">Suggéré pour vos véhicules</div>${S.suggVehicules.map((s,i)=>chipHtml('suggVehicules',i,s)).join('')}</div>`:''}
+      ${apercuVifHtml()}
+      <div class="nav"><button class="btn-sec" onclick="step=2;render()">← Retour</button><button class="btn-prim" onclick="step=4;render()">Suivant →</button></div>
+    </div>
+  </div>`;
+}
+
+function chipHtml(cle,i,s){
+  return `<div class="chip ${s.on?'on':''}" onclick="S.${cle}[${i}].on=!S.${cle}[${i}].on;render()"><span class="coche">${s.on?'✓':''}</span><span class="em">${s.em}</span><span class="lb">${esc(s.lb)}</span></div>`;
+}
+function chgFoyer(cle,d){
+  const max=cle==='enfants'?6:4;
+  S[cle]=Math.max(0,Math.min(max,S[cle]+d));
+  render();
+}
+
+function ecranRecap(){
+  const lignes=lignesPretes();
+  const groupes=[['Revenus','💰'],['Charge fixe','🏠'],['Suggestions','✨']];
+  return `<div class="ecran">
+    ${topRow(3,4)}
+    <div class="corps top">
+      <h2>On y est presque</h2>
+      <p class="sub">Voici ce qui sera ajouté à votre tableau. Décochez ce que vous ne voulez pas garder.</p>
+      <div class="carte">
+        ${groupes.map(([g,em])=>{
+          const items=lignes.filter(l=>l.groupe===g);
+          if(!items.length)return '';
+          return `<div class="recap-groupe"><h3>${em} ${g}</h3>${items.map(l=>{
+            const idx=lignes.indexOf(l);
+            return `<div class="recap-ligne">
+              <span class="coche on">✓</span>
+              <span class="lb">${l.em?l.em+' ':''}${esc(l.label)}</span>
+              <input type="number" inputmode="decimal" value="${esc(l.montant)}" placeholder="0,00" oninput="majMontantRecap(${idx},this.value)"/>
+            </div>`;
+          }).join('')}</div>`;
+        }).join('')}
+        ${!lignes.length?'<p style="color:rgba(255,255,255,.5);font-size:.82rem;text-align:center;margin:6px 0">Rien à ajouter pour le moment — vous pouvez revenir en arrière.</p>':''}
+      </div>
+      <div class="nav"><button class="btn-sec" onclick="step=3;render()">← Retour</button><button class="btn-prim" onclick="allerFin('ok')" ${!lignes.length?'disabled':''}>Remplir mon tableau (${lignes.length})</button></div>
+      <button class="lien-discret" onclick="allerFin('skip')">Plus tard</button>
+    </div>
+  </div>`;
+}
+
+function majMontantRecap(idx,val){
+  const lignes=lignesPretes();
+  const l=lignes[idx];
+  if(!l)return;
+  if(l.groupe==='Revenus'){ const r=S.revenus.find(r=>r.label.trim()===l.label); if(r)r.montant=val; }
+  else if(l.groupe==='Charge fixe'){ S.logementMontant=val; }
+  else { const arr=S.enfants>0&&S.suggEnfants.some(s=>s.lb===l.label)?S.suggEnfants:S.suggVehicules; const s=arr.find(s=>s.lb===l.label); if(s)s.montant=val; }
+}
+
+function maj(){ /* re-render léger pour tenir l'aperçu vif à jour sans perdre le focus clavier */
+  const badge=document.querySelector('.apercu-vif .resume b');
+  if(badge){
+    const n=lignesPretes().length;
+    badge.textContent=n;
+    const s=badge.parentElement;
+    s.childNodes[2].textContent=` ligne${n>1?'s':''} prête${n>1?'s':''} pour votre tableau`;
+  }
+}
+
+function allerFin(type){ step=type==='ok'?5:6; render(); }
+
+function ecranFin(){
+  const lignes=lignesPretes();
+  return `<div class="ecran fin">
+    <div class="corps">
+      <div class="emoji">🎉</div>
+      <h2>C'est fait !</h2>
+      <p class="sub">${lignes.length} ligne${lignes.length>1?'s ont':' a'} été ajoutée${lignes.length>1?'s':''} à votre tableau. Retrouvez-les dans l'onglet Budget pour les ajuster.</p>
+      <div class="fin-liste">${lignes.map(l=>`<div class="item"><span>${l.em?l.em+' ':''}${esc(l.label)}</span><b>${fmtMontant(l.montant)}</b></div>`).join('')}</div>
+      <button class="btn-prim" onclick="reinitialiser()">Découvrir mon tableau →</button>
+    </div>
+  </div>`;
+}
+
+function ecranSkip(){
+  return `<div class="ecran">
+    <div class="corps">
+      <div class="emoji">👍</div>
+      <h2>Pas de souci</h2>
+      <p class="sub">Vous pouvez remplir votre tableau à votre rythme, à la main. Cette question réapparaîtra à l'ouverture tant qu'aucune donnée n'aura été ajoutée.</p>
+      <button class="btn-prim" onclick="reinitialiser()">Retour à mon tableau</button>
+    </div>
+  </div>`;
+}
+
+function reinitialiser(){
+  step=0;apercuOuvert=false;
+  S={revenus:[{label:'Salaire',montant:''}],logementType:null,logementMontant:'',enfants:0,vehicules:0,
+     suggEnfants:SUGG_ENFANTS.map(s=>({...s,on:true})),suggVehicules:SUGG_VEHICULES.map(s=>({...s,on:true}))};
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
