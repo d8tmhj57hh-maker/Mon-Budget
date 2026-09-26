@@ -275,8 +275,8 @@
     .ch3 input:focus,.ch3 select:focus{border-color:var(--bl)}
     .ch3 textarea{resize:vertical;min-height:60px}
     .cm3{position:relative}.cm3 input{padding-right:28px}
-    .cm3::after{content:'€';position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--txl);pointer-events:none}
-    .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .cm3::after{content:'€';position:absolute;right:12px;bottom:0;height:var(--h-champ,42px);display:flex;align-items:center;color:var(--txl);pointer-events:none}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
     .bp{width:100%;padding:13px;background:var(--bl);color:var(--wf);border:none;border-radius:12px;font-size:.9rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:4px}
     .bs2{width:100%;padding:11px;background:var(--fo);color:var(--tx);border:1.5px solid var(--bo);border-radius:12px;font-size:.875rem;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;margin-top:7px}
     .er{background:var(--roc);border:1px solid #f5c6c3;border-radius:12px;padding:10px 13px;color:var(--ro);font-size:.8rem;margin-bottom:11px;display:none}
@@ -373,6 +373,132 @@
     .ltx:active{transform:scale(.985)}
     .cm{transition:transform .12s ease}
     .cm:active{transform:scale(.97)}
+
+    /* Mode sombre : --bl (bleu nuit) y devient quasi noir — l'onglet actif, le lien
+       « Tous les mois » et le titre du formulaire de saisie devenaient illisibles. */
+    body.dark .nb.a,body.dark .bret,body.dark .saisie-rapide h3{color:var(--tx)}
+
+    /* Actions du détail d'un mois (import PDF, relevé papier, totaux, épargne) */
+    .dm-actions{display:grid;gap:8px}
+    .dm-actions .bs2{margin-top:0;font-size:.82rem;padding:11px}
+
+    /* ── TACTILE (téléphone et tablette) : cibles d'au moins ~44px, recommandation
+       Apple/WCAG, pour les petits contrôles pensés à l'origine pour la souris. ── */
+    @media(pointer:coarse){
+      .dm-fleche{width:44px;height:44px;font-size:.95rem}
+      .bf{width:44px;height:44px;margin:-10px -10px 0 0;display:flex;align-items:center;justify-content:center}
+      .btn-taille{width:44px!important;height:44px!important}
+      .reord{gap:3px}
+      .reord button{width:30px;height:24px;line-height:22px;font-size:.72rem}
+      .ic-edit-pole,.ic-edit-cat{display:inline-block;padding:6px 4px;margin-left:4px;font-size:.9rem}
+      .bedit{padding:10px 16px}
+      .tg{width:48px;height:28px;border-radius:14px}
+      .tg::after{width:22px;height:22px}
+      .tg.on::after{transform:translateX(20px)}
+      .toast-undo button{padding:11px 16px}
+      .brec{padding:11px}
+      .ch3 input[type="checkbox"]{width:22px!important;height:22px!important}
+    }
+    /* Survol réservé aux appareils qui ont vraiment un survol : sur tablette, un
+       :hover reste « collé » après un appui et laisse le bouton faussement actif. */
+    /* Souris : retour visuel au survol sur les éléments cliquables. */
+    @media(hover:hover) and (pointer:fine){
+      .ltx:hover,.cm:hover,.cr3:hover{box-shadow:0 0 0 1.5px var(--or),var(--sh)}
+      .bs2:hover,.bedit:not(.on):hover,.tt:not(.a):hover{border-color:var(--or)}
+      .bp:hover,.bo2:hover{filter:brightness(1.15)}
+      .nb:not(.a):hover{color:var(--tx)}
+      .bret:hover{text-decoration:underline}
+      .ta tbody tr.cat-row:not(.sel):hover td{filter:brightness(.96)}
+      body.dark .ta tbody tr.cat-row:not(.sel):hover td{filter:brightness(1.2)}
+    }
+    @media(hover:none){
+      .dm-fleche:hover{background:var(--wh)}
+      .tw::-webkit-scrollbar-thumb:hover{background:var(--bo)}
+    }
+
+    /* ── TABLETTE (≥700px) : l'app ne se contente plus d'étirer la mise en page
+       téléphone. Contenu centré à largeur lisible, texte et cibles plus grands,
+       modales centrées plutôt qu'en tiroir pleine largeur. ── */
+    @media(min-width:700px){
+      .hd{padding-left:28px;padding-right:28px}
+      .hd h1{font-size:1.7rem}
+      .san{padding:9px 12px;font-size:.95rem}
+      .nav{justify-content:center}
+      .nb{flex:0 1 220px;padding:16px 12px;font-size:.92rem}
+      .con{padding:22px 28px 120px}
+      /* Vues de lecture/saisie : largeur confortable plutôt que 1100px de lignes étirées.
+         Le tableau Budget garde toute la largeur (il en a besoin). */
+      #o-mois,#o-recherche,#o-reglages{max-width:960px;margin:0 auto}
+      .gm{grid-template-columns:repeat(4,1fr);gap:14px}
+      .cm{padding:16px 14px}
+      .cm .cn{font-size:.74rem}
+      .cm .cr{font-size:1rem}
+      .dm-actions{grid-template-columns:1fr 1fr}
+      .dm-nav h2{font-size:1.35rem!important}
+      .ltx{padding:13px 16px;gap:12px}
+      .inf .de{font-size:.92rem}
+      .inf .so{font-size:.74rem}
+      .mtx{font-size:.95rem}
+      .itx{width:32px;height:32px}
+      .sec-ti .sn{font-size:.72rem}
+      .sec-ti .st{font-size:.9rem}
+      .ch3 input:not([type="checkbox"]):not([type="radio"]),.ch3 select,.ch3 textarea,.br2 input{padding:13px 15px;font-size:1rem}
+      .br2 input{padding-left:42px}
+      .cm3{--h-champ:48px}
+      .tt{padding:13px;font-size:.9rem}
+      .bp{padding:15px;font-size:1rem}
+      .bs2,.bd{padding:13px;font-size:.92rem}
+      .saisie-rapide{padding:20px}
+      .saisie-rapide h3{font-size:.95rem}
+      .si{padding:20px}
+      .si h3{font-size:.95rem}
+      .si p{font-size:.84rem}
+      /* Tableau Budget : un cran plus grand par défaut (le réglage « Taille du texte »
+         continue de s'appliquer par-dessus via --ta-fs), et lignes plus hautes pour
+         viser la bonne cellule au doigt. */
+      .ta{font-size:calc(.82rem * var(--ta-fs))}
+      .ta td{padding:11px 10px}
+      .ta th{padding:12px 10px}
+      .ta tr.ch td{font-size:calc(.74rem * var(--ta-fs))}
+      .ta tr.lr td{font-size:calc(1rem * var(--ta-fs))}
+      .ta th:first-child{min-width:200px}
+      .fab{width:60px;height:60px;font-size:1.6rem;right:28px;bottom:28px}
+      .toast{bottom:104px;font-size:.88rem;padding:12px 18px}
+
+      /* Modales : boîte centrée, largeur de formulaire, au lieu d'un tiroir qui
+         remonte du bas sur toute la largeur de l'écran. */
+      .ov{align-items:center;justify-content:center;padding:32px}
+      .modal{max-width:560px;border-radius:20px;padding:24px 26px 26px;max-height:86vh;animation:modalIn .2s ease;box-shadow:0 24px 60px -12px rgba(0,0,0,.45)}
+      .modal .mh{display:none}
+      .modal h2{font-size:1.15rem}
+      #ov-prog .modal,#ov-liste-projets .modal,#ov-liste-prog .modal,#ov-aide .modal,#ov-ep .modal{max-width:680px}
+      #ov-confirm .modal,#ov-prompt .modal,#ov-sol .modal{max-width:440px}
+      #prog-mois-sel{grid-template-columns:repeat(3,1fr)!important}
+    }
+    @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+
+    /* ── TABLETTE EN PAYSAGE (≥1000px) : on profite de la largeur. ── */
+    @media(min-width:1000px){
+      #o-mois,#o-recherche,#o-reglages{max-width:1180px}
+      .gm{grid-template-columns:repeat(6,1fr)}
+      /* Détail d'un mois sur deux colonnes : résumé + actions + formulaire de saisie
+         à gauche (reste en vue pendant qu'on défile), transactions à droite — on voit
+         la ligne apparaître dans la liste au moment où on l'enregistre. #cdm passe en
+         display:contents pour que ses deux colonnes et le formulaire (#saisie-rapide,
+         hors de #cdm) partagent la même grille. */
+      .dm.v{display:grid;grid-template-columns:minmax(360px,420px) minmax(0,1fr);column-gap:24px;align-items:start}
+      .dm .bret{grid-column:1/-1}
+      #cdm{display:contents}
+      .dm-col-g{grid-column:1;grid-row:2}
+      #saisie-rapide{grid-column:1;grid-row:3}
+      .dm-col-d{grid-column:2;grid-row:2/span 2;min-width:0}
+      .dm-actions{grid-template-columns:1fr}
+      /* Réglages : deux colonnes de cartes plutôt qu'une longue pile étirée. */
+      #o-reglages{columns:2;column-gap:18px}
+      #o-reglages>*{break-inside:avoid}
+      /* Recherche : résultats sur deux colonnes. */
+      .res-liste{display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
+    }
   </style>
   <!-- Firebase SDK compat (fonctionne sur Safari iOS PWA) -->
   
@@ -536,9 +662,9 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--bo)">
           <p style="margin:0">Taille du texte (tableau Budget)</p>
           <div style="display:flex;align-items:center;gap:10px">
-            <button onclick="ajusterTailleTableau(-1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">−</button>
+            <button class="btn-taille" onclick="ajusterTailleTableau(-1)" aria-label="Réduire le texte du tableau" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">−</button>
             <span id="lbl-taille-tableau" style="font-size:.8rem;color:var(--txl);min-width:34px;text-align:center">100%</span>
-            <button onclick="ajusterTailleTableau(1)" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">+</button>
+            <button class="btn-taille" onclick="ajusterTailleTableau(1)" aria-label="Agrandir le texte du tableau" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-size:1rem;font-weight:600;cursor:pointer">+</button>
           </div>
         </div>
       </div>
@@ -972,6 +1098,17 @@ function confirmerAction(message,onConfirm,titre){
   document.getElementById('ov-confirm').classList.add('v');
 }
 function fOv(id){document.getElementById(id).classList.remove('v');}
+// Ordinateur : Échap ferme la fenêtre du dessus, en passant par son propre bouton
+// ✕ (ou Annuler) pour conserver les actions propres à chaque fenêtre à la fermeture
+// (ex : rafraîchir le mois après une saisie de relevé).
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const ouvertes=[...document.querySelectorAll('.ov.v')];
+  if(!ouvertes.length)return;
+  const ov=ouvertes.find(o=>o.id==='ov-confirm'||o.id==='ov-prompt')||ouvertes[ouvertes.length-1];
+  const btn=ov.querySelector('.bf')||[...ov.querySelectorAll('button')].find(b=>/fOv\(/.test(b.getAttribute('onclick')||''));
+  if(btn){e.preventDefault();btn.click();}
+});
 // Remplace les prompt() natifs (mêmes défauts que confirm() : incohérents
 // visuellement, bloquants, désactivés dans certaines webviews) par une modale de
 // saisie cohérente avec le reste de l'application. onValider reçoit le texte saisi
@@ -2161,7 +2298,9 @@ function affDm(mi){
   const catsCouvertes=new Set(txM.filter(t=>t.pointe).map(t=>t.cat));
   const pointeesIds=new Set([...pointeesParNote,...E.prog.filter(p=>catsCouvertes.has(p.cat)).map(p=>p.id)]);
 
-  let h=`<div class="dm-nav"><button class="dm-fleche" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;">${MOIS[mi]} ${E.annee}</h2><button class="dm-fleche" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>`;
+  // Deux colonnes sur tablette en paysage (voir CSS .dm-col-g/.dm-col-d) :
+  // à gauche le résumé du mois et les actions, à droite la liste des lignes.
+  let h=`<div class="dm-col-g"><div class="dm-nav"><button class="dm-fleche" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;">${MOIS[mi]} ${E.annee}</h2><button class="dm-fleche" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>`;
   const couleurEtat=sF!==null?(sF>=0?'vp':'vn'):'';
   h+=`<div class="ban" style="margin-bottom:11px;">
     <div class="g3">
@@ -2179,13 +2318,15 @@ function affDm(mi){
   // Bouton import relevé bancaire pour ce mois
   h+=`<div style="margin-bottom:14px">
     <input type="file" id="inp-photo-releve" accept="image/*,application/pdf" style="display:none" onchange="analyserReleve(this)"/>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF (lecture auto)</button>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="ouvrirSaisieManuelle()">⌨️ Saisir un relevé papier (manuel)</button>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px;margin-bottom:8px" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
-    <button class="bs2" style="width:100%;font-size:.82rem;padding:11px" onclick="ouvrirSaisieEp(${mi})">🏦 Mettre à jour l'épargne</button>
+    <div class="dm-actions">
+      <button class="bs2" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF (lecture auto)</button>
+      <button class="bs2" onclick="ouvrirSaisieManuelle()">⌨️ Saisir un relevé papier (manuel)</button>
+      <button class="bs2" onclick="toggleImportTotaux(${mi})">📊 Importer des totaux pour ce mois</button>
+      <button class="bs2" onclick="ouvrirSaisieEp(${mi})">🏦 Mettre à jour l'épargne</button>
+    </div>
     <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
     <div id="bloc-import-totaux" style="display:none;margin-top:10px"></div>
-  </div>`;
+  </div></div><div class="dm-col-d">`;
 
   // Dépenses à classer (extraites d'un relevé, en attente de validation)
   if(E.aClasser&&E.aClasser.length){
@@ -2243,6 +2384,7 @@ function affDm(mi){
     <button class="bp" style="margin-top:0" onclick="ouvrirSaisie()">+ Ajouter ma première dépense</button>
     <button class="bs2" style="font-size:.82rem" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF</button>
   </div>`;
+  h+=`</div>`;
   document.getElementById('cdm').innerHTML=h;
   affListeAClasserMois();
 }
@@ -3325,7 +3467,7 @@ function chercher(q){
   let h=`<p style="font-size:.78rem;color:var(--txl);margin-bottom:9px">${res.length} résultat(s)</p>`;
   if(tD>0)h+=`<span class="bt" style="background:var(--ro);color:#fff">Dépenses : ${fmtDec(tD)}</span>`;
   if(tR>0)h+=`<span class="bt" style="background:var(--ve);color:#fff">Revenus : ${fmtDec(tR)}</span>`;
-  h+=`<div style="margin-top:12px">`;
+  h+=`<div class="res-liste" style="margin-top:12px">`;
   res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${esc(t.desc||t.cat)} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${esc(s)}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
   h+=`</div>`;el.innerHTML=h;
 }
