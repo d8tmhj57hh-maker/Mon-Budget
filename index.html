@@ -3387,9 +3387,16 @@ function anneeAProgrammees(an){
 // Cible : l'année affichée si elle est encore vide et que la précédente ne l'est pas
 // (on vient de passer à 2027), sinon l'année qui suit celle affichée.
 function anneesPreparation(){
-  const a=parseInt(E.annee,10);
+  const a=parseInt(E.annee,10),auj=new Date();
   if(!anneeAProgrammees(a)&&anneeAProgrammees(a-1))return {source:String(a-1),cible:String(a)};
+  // Janvier–mars de l'année affichée : on propose d'actualiser cette année à partir
+  // de la précédente, désormais complète (décembre compris), plutôt que l'année d'après.
+  if(a===auj.getFullYear()&&auj.getMonth()<3&&anneeAProgrammees(a-1))return {source:String(a-1),cible:String(a)};
   return {source:String(a),cible:String(a+1)};
+}
+function changerCiblePreparation(cible){
+  construirePreparation(String(parseInt(cible,10)-1),String(cible));
+  affPreparerAnnee();
 }
 // Nombre de mois de la source dont le réel est connu : tous pour une année passée,
 // ceux qui précèdent le mois en cours pour l'année en cours, aucun pour une année future.
@@ -3405,29 +3412,49 @@ function construirePreparation(source,cible){
   const nbReels=moisReelsConnus(source);
   const groupes={};
   const cle=(type,cat)=>type+'|'+cat;
-  const obtenir=(type,cat)=>groupes[cle(type,cat)]||(groupes[cle(type,cat)]={type,cat,progs:[],auto:[],prevu:Array(12).fill(0),reel:Array(12).fill(0),deja:false});
+  const obtenir=(type,cat)=>groupes[cle(type,cat)]||(groupes[cle(type,cat)]={type,cat,progs:[],auto:[],cibleSeules:[],prevu:Array(12).fill(0),reel:Array(12).fill(0),deja:false});
+  const aMontants=(p,an)=>!!(p.montantsMois[an]&&p.montantsMois[an].some(v=>v>0));
   E.prog.filter(p=>p.actif).forEach(p=>{
     const montsSource=MOIS.map((_,mi)=>montantProgPour(p,source,mi)||0);
-    if(!montsSource.some(v=>v>0))return;
-    const g=obtenir(p.type,p.cat);
+    const dansSource=montsSource.some(v=>v>0);
     // Les programmées à récurrence (« tous les N ans ») suivent leur propre cycle :
     // on ne les reconduit pas, elles apparaissent (ou non) d'elles-mêmes.
-    if(p.recurAns>0){g.auto.push(p);return;}
-    g.progs.push(p);
-    montsSource.forEach((v,mi)=>g.prevu[mi]+=v);
-    if(p.montantsMois[cible]&&p.montantsMois[cible].some(v=>v>0))g.deja=true;
+    if(p.recurAns>0){if(dansSource)obtenir(p.type,p.cat).auto.push(p);return;}
+    if(dansSource){
+      const g=obtenir(p.type,p.cat);
+      g.progs.push(p);
+      montsSource.forEach((v,mi)=>g.prevu[mi]+=v);
+      if(aMontants(p,cible))g.deja=true;
+    }else if(aMontants(p,cible)){
+      // Programmée qui n'existe que dans l'année cible — typiquement créée par une
+      // préparation précédente (catégorie regroupée ou sans programmée). La relance
+      // doit la réutiliser ou la vider, jamais en créer une seconde à côté.
+      const g=obtenir(p.type,p.cat);
+      g.cibleSeules.push(p);g.deja=true;
+    }
   });
   E.tx.filter(t=>t.an===source&&t.pointe).forEach(t=>{
-    const g=groupes[cle(t.type,t.cat)]||(E.prog.some(p=>p.actif&&p.cat===t.cat&&p.type===t.type)?null:obtenir(t.type,t.cat));
-    if(!g)return;
-    g.reel[moisDe(t.date)]+=(t.montant_reel||t.montant||0);
+    obtenir(t.type,t.cat).reel[moisDe(t.date)]+=(t.montant_reel||t.montant||0);
   });
   const lignes=Object.values(groupes).filter(g=>g.progs.length||g.auto.length||g.reel.some(v=>v>0)).map(g=>{
     const autre=!g.progs.length&&!g.auto.length;
     const peutReel=nbReels>0&&g.reel.some(v=>v>0);
-    return {...g,id:cle(g.type,g.cat),autre,
-      coche:g.progs.length>0&&!g.deja,
-      src:g.prevu.some(v=>v>0)?'prevu':'reel',peutReel,ouvert:false};
+    // Cochée par défaut dès qu'il y a quelque chose à reconduire, y compris à la
+    // relance (actualiser l'estimation de septembre en décembre, par exemple).
+    // Une catégorie « autre » n'est cochée que si une préparation l'a déjà retenue.
+    const coche=autre?(g.deja&&peutReel):g.progs.length>0;
+    // Source par défaut. À la relance, on retrouve le choix précédent : si les montants
+    // déjà programmés pour la cible sont exactement le prévu de la source, c'était « Prévu » ;
+    // sinon (réel, ou programmée regroupée/créée) c'était « Réel ».
+    let src=g.prevu.some(v=>v>0)?'prevu':'reel';
+    if(autre)src='reel';
+    else if(g.deja&&peutReel){
+      const dejaCible=Array(12).fill(0);
+      [...g.progs,...g.cibleSeules].forEach(p=>(p.montantsMois[cible]||[]).forEach((v,mi)=>dejaCible[mi]+=v||0));
+      const egalPrevu=dejaCible.every((v,mi)=>Math.abs(v-g.prevu[mi])<0.005);
+      if(!egalPrevu)src='reel';
+    }
+    return {...g,id:cle(g.type,g.cat),autre,coche,src,peutReel,ouvert:false};
   });
   const ordre=l=>(l.type==='revenu'?0:1);
   lignes.sort((a,b)=>ordre(a)-ordre(b)||a.cat.localeCompare(b.cat,'fr'));
@@ -3460,7 +3487,12 @@ function affPreparerAnnee(){
   const explReel=P.nbReels===12?`Réel : montants pointés en ${P.source}.`
     :P.nbReels>0?`Réel : montants pointés jusqu'à fin ${nomMoisReel} ${P.source}, puis le prévu pour les mois suivants (en violet dans le détail).`
     :`Pas encore de réel pour ${P.source} : seul le prévu est disponible.`;
-  let h=entete+`<p class="pa-intro">Les catégories cochées sont programmées pour ${P.cible}, mois par mois, à partir de ${P.source}. Rien n'est modifié en ${P.source}. ${explReel}</p>`;
+  const choixAnnees=[...new Set([...ANNEES,P.cible])].map(Number).sort((a,b)=>a-b).filter(a=>ANNEES.includes(String(a-1)));
+  const selAnnee=`<select id="pa-annee" onchange="changerCiblePreparation(this.value)" style="font:inherit;font-weight:600;padding:6px 8px;border-radius:8px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx)">${choixAnnees.map(a=>`<option value="${a}" ${String(a)===P.cible?'selected':''}>${a} à partir de ${a-1}</option>`).join('')}</select>`;
+  const dejaPrepare=P.lignes.some(l=>l.deja);
+  let h=entete+`<p class="pa-intro"><label for="pa-annee">Année à préparer :</label> ${selAnnee}</p>`;
+  if(dejaPrepare)h+=`<p class="pa-intro" style="background:var(--zep);color:var(--tx);padding:9px 12px;border-radius:10px">🔄 ${P.cible} a déjà des montants programmés. Relancer les <b>remplace</b> pour les catégories cochées : c'est ainsi qu'on actualise l'estimation avec les derniers mois pointés. Décochez celles que vous avez ajustées à la main.</p>`;
+  h+=`<p class="pa-intro">Les catégories cochées sont programmées pour ${P.cible}, mois par mois, à partir de ${P.source}. Rien n'est modifié en ${P.source}. ${explReel}</p>`;
   const reconductibles=P.lignes.filter(l=>l.progs.length||l.autre);
   const tousPrevu=reconductibles.filter(l=>l.prevu.some(v=>v>0)).every(l=>l.src==='prevu');
   const tousReel=reconductibles.filter(l=>l.peutReel).every(l=>l.src==='reel');
@@ -3503,7 +3535,7 @@ function ligneHtmlPreparation(l){
   if(l.auto.length)notes+=`<div class="pa-note">${esc(l.auto.map(x=>x.nom).join(', '))} : récurrence propre, non concernée.</div>`;
   if(l.coche&&l.src==='reel'&&l.progs.length>1)notes+=`<div class="pa-note">Les ${l.progs.length} programmées seront regroupées en une seule « ${esc(l.cat)} » pour ${P.cible}.</div>`;
   if(l.coche&&l.autre)notes+=`<div class="pa-note">Une programmée « ${esc(l.cat)} » sera créée.</div>`;
-  if(l.deja)notes+=`<div class="pa-note warn">Déjà programmée en ${P.cible}${l.coche?` — ses montants ${P.cible} seront remplacés.`:'.'}</div>`;
+  if(l.deja)notes+=`<div class="pa-note warn">Déjà programmée en ${P.cible}${l.coche?` — ses montants ${P.cible} seront remplacés.`:' — non modifiée.'}</div>`;
   const detail=l.ouvert?`<div class="pa-mois">${montantsPreparation(l).map((m,mi)=>`<div class="${m.compl?'pa-compl':''}"><span>${MOIS_COURTS[mi]}</span><span>${m.v?fmtDec(m.v):'—'}</span></div>`).join('')}</div>`:'';
   return `<div class="pa-ligne${l.coche?'':' off'}"><input type="checkbox" id="pa-c-${i}" ${l.coche?'checked':''} onchange="cochePreparation(${i},this.checked)">
     <div><label class="pa-nom" for="pa-c-${i}">${titre}</label><div class="pa-det">${det}${det?' · ':''}<button type="button" class="pa-lien" onclick="detailPreparation(${i})">${l.ouvert?'masquer':'voir'} les 12 mois</button></div></div>
@@ -3525,13 +3557,21 @@ async function validerPreparerAnnee(){
   const plan=[]; // {p, monts, nouvelle}
   let k=0;
   sel.forEach(l=>{
+    const cibles=new Set();
     if(l.src==='prevu'){
-      l.progs.forEach(p=>plan.push({p,monts:MOIS.map((_,mi)=>{const v=montantProgPour(p,P.source,mi);return v>0?v:null;})}));
+      l.progs.forEach(p=>{cibles.add(p);plan.push({p,monts:MOIS.map((_,mi)=>{const v=montantProgPour(p,P.source,mi);return v>0?v:null;})});});
     }else{
       const monts=montantsPreparation(l).map(m=>m.v>0?m.v:null);
-      if(l.progs.length===1)plan.push({p:l.progs[0],monts});
-      else plan.push({p:{id:`prog_${Date.now()}_${k++}`,nom:l.cat,type:l.type,cat:l.cat,actif:true,montantsMois:{},recurAns:0,recurAnneeRef:null},monts,nouvelle:true});
+      // Une seule programmée : elle reçoit le réel. Sinon on regroupe dans la
+      // programmée déjà créée par une préparation précédente, ou dans une nouvelle.
+      const p=l.progs.length===1?l.progs[0]:(l.cibleSeules[0]||{id:`prog_${Date.now()}_${k++}`,nom:l.cat,type:l.type,cat:l.cat,actif:true,montantsMois:{},recurAns:0,recurAnneeRef:null,_nouvelle:true});
+      cibles.add(p);plan.push({p,monts,nouvelle:!!p._nouvelle});delete p._nouvelle;
     }
+    // Toutes les autres programmées de la catégorie sont vidées pour l'année cible :
+    // passer de Réel à Prévu (ou l'inverse) ne laisse jamais deux jeux de montants.
+    [...l.progs,...l.cibleSeules].forEach(p=>{
+      if(!cibles.has(p)&&p.montantsMois[P.cible]&&p.montantsMois[P.cible].some(v=>v>0))plan.push({p,monts:Array(12).fill(null)});
+    });
   });
   P.enCours=true;affPreparerAnnee();
   try{
