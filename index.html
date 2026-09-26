@@ -412,6 +412,41 @@
        « Tous les mois » et le titre du formulaire de saisie devenaient illisibles. */
     body.dark .nb.a,body.dark .bret,body.dark .saisie-rapide h3{color:var(--tx)}
 
+    /* PRÉPARER L'ANNÉE SUIVANTE */
+    .pa-intro{font-size:.84rem;color:var(--txl);margin:-6px 0 12px;line-height:1.5}
+    .pa-global{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-size:.84rem;padding-bottom:12px;border-bottom:1px solid var(--bo)}
+    .pa-seg{display:inline-flex;background:var(--fo);border:1px solid var(--bo);border-radius:10px;padding:3px;gap:3px}
+    .pa-seg button{font:600 .78rem 'Inter',sans-serif;border:0;background:transparent;color:var(--txl);padding:8px 11px;border-radius:8px;cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .pa-seg button[aria-pressed="true"]{background:var(--wh);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+    .pa-seg button:disabled{opacity:.4;cursor:not-allowed}
+    .pa-groupe{padding-top:14px}
+    .pa-groupe h3{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--txl);margin:0 0 4px}
+    .pa-ligne{display:grid;grid-template-columns:26px 1fr auto;gap:8px 12px;align-items:center;padding:11px 0;border-top:1px solid var(--bo)}
+    .pa-groupe h3+.pa-ligne{border-top:0}
+    .pa-ligne input[type=checkbox]{width:22px;height:22px;margin:0}
+    .pa-nom{font-weight:600;font-size:.9rem;cursor:pointer}
+    .pa-det{font-size:.74rem;color:var(--txl)}
+    .pa-ligne.off .pa-nom,.pa-ligne.off .pa-seg{opacity:.5}
+    .pa-note{grid-column:2/-1;font-size:.74rem;padding:6px 10px;border-radius:8px;background:var(--fo);color:var(--txl)}
+    .pa-note.warn{background:var(--or2c);color:var(--or2)}
+    .pa-auto{font-size:.76rem;font-weight:600;color:var(--ve);background:var(--vec);padding:5px 10px;border-radius:20px;white-space:nowrap}
+    .pa-mois{grid-column:2/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;font-size:.7rem;font-variant-numeric:tabular-nums}
+    .pa-mois div{background:var(--fo);border-radius:6px;padding:4px 6px;display:grid}
+    .pa-mois div span:first-child{color:var(--txl);font-size:.6rem;text-transform:uppercase;letter-spacing:.04em}
+    .pa-mois div.pa-compl{background:var(--zep)}
+    .pa-lien{background:none;border:0;padding:0;font:500 .74rem 'Inter',sans-serif;color:var(--or);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+    .pa-recap{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.84rem;font-variant-numeric:tabular-nums;padding:12px 0 4px;border-top:1px solid var(--bo);margin-top:8px}
+    .pa-fait{text-align:center;padding:18px 4px 4px;display:grid;gap:8px;justify-items:center}
+    .pa-fait .pa-coche{width:52px;height:52px;border-radius:50%;background:var(--vec);color:var(--ve);display:grid;place-items:center;font-size:1.5rem}
+    .carte-preparer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;background:var(--zep);border:1px solid var(--zep3);border-radius:14px;padding:14px 16px;margin-bottom:14px;font-size:.88rem}
+    .carte-preparer .bp{width:auto;margin:0;padding:11px 16px;font-size:.88rem}
+    @media(max-width:560px){
+      .pa-ligne{grid-template-columns:26px 1fr}
+      .pa-ligne .pa-seg,.pa-ligne .pa-auto{grid-column:2}
+      .pa-mois{grid-template-columns:repeat(4,1fr)}
+    }
+    #ov-prep .modal{max-width:720px}
+
     /* Actions du détail d'un mois (import PDF, relevé papier, totaux, épargne) */
     .dm-actions{display:grid;gap:8px}
     .remplir-mois{grid-column:1/-1;display:flex;gap:8px;align-items:stretch;margin-bottom:12px}
@@ -630,6 +665,7 @@
       <div class="ld" id="ld-budget"><div class="sp"></div><span>Chargement...</span></div>
       <div id="cv" style="display:none">
         <div id="checklist-demarrage"></div>
+        <div id="carte-preparer-annee"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="barre-edition-budget">
           <div class="zoom-ta" role="group" aria-label="Taille du tableau">
@@ -848,7 +884,12 @@
     <p style="font-size:.82rem;color:var(--txl);margin:4px 0 14px">Loyer, salaire estimé, EDF... Apparaissent en italique dans la vue Mois. Tapez dessus pour pointer avec le vrai montant.</p>
     <div id="lp"><div class="ld"><div class="sp"></div></div></div>
     <button class="bs2" style="margin-top:10px" onclick="ouvrirAjoutProg()">+ Ajouter un élément programmé</button>
+    <button class="bs2" id="btn-preparer-annee" onclick="fOv('ov-liste-prog');ouvrirPreparerAnnee()">📅 Préparer l'année suivante…</button>
   </div>
+</div>
+<!-- OVERLAY PRÉPARER L'ANNÉE SUIVANTE (reconduction des programmées) -->
+<div class="ov" id="ov-prep">
+  <div class="modal"><div id="ov-prep-body"></div></div>
 </div>
 <div class="ov" id="ov-prog">
   <div class="modal">
@@ -1600,6 +1641,31 @@ function idxLigneProg(rows,id,annee,mi){
   return rows.findIndex(r=>r[0]&&r[0].split('_m')[0]===id&&String(r[4])===String(annee)&&parseInt(r[5],10)===mi);
 }
 function idLigneProg(id,annee,mi){return `${id}_m${mi}_${annee}`;}
+// Écritures en lot (une requête au lieu d'une par ligne) : la reconduction d'une
+// année peut toucher des centaines de lignes, et l'API Sheets limite le nombre
+// d'écritures par minute.
+async function ajouterLignes(o,lignes){
+  if(!lignes.length)return;
+  return appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.values.append({spreadsheetId:E.sid,range:`${o}!A1`,valueInputOption:'RAW',insertDataOption:'INSERT_ROWS',resource:{values:lignes}});
+  });
+}
+async function ecrireLot(data){
+  if(!data.length)return;
+  return appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.values.batchUpdate({spreadsheetId:E.sid,resource:{valueInputOption:'RAW',data}});
+  });
+}
+async function supprimerLignesSheet(nomOnglet,idxLignesDonnees){
+  if(!idxLignesDonnees.length)return;
+  const sheetId=await obtenirSheetId(nomOnglet);
+  if(sheetId===undefined)throw new Error(`Onglet "${nomOnglet}" introuvable`);
+  // Du bas vers le haut : chaque suppression laisse intacts les index restants.
+  const requests=[...new Set(idxLignesDonnees)].sort((a,b)=>b-a).map(i=>({deleteDimension:{range:{sheetId,dimension:'ROWS',startIndex:i+1,endIndex:i+2}}}));
+  await appelAvecRetry(async()=>{
+    await gapi.client.sheets.spreadsheets.batchUpdate({spreadsheetId:E.sid,resource:{requests}});
+  });
+}
 async function ajouter(o,v){
   // Utiliser A:A comme ancre pour forcer l'insertion depuis la colonne A
   return appelAvecRetry(async()=>{
@@ -1889,7 +1955,7 @@ function aller(id,btn){
 }
 
 function changerAnnee(a){E.annee=a;localStorage.setItem('annee',a);refresh();}
-function refresh(){affChecklistDemarrage();affBudget();affGrille();affBanner();if(E.moisOuvert!==null)affDm(E.moisOuvert);}
+function refresh(){affChecklistDemarrage();affCartePreparerAnnee();affBudget();affGrille();affBanner();if(E.moisOuvert!==null)affDm(E.moisOuvert);}
 
 function peuplerSels(){
   const s=document.getElementById('sel-an');if(s)s.innerHTML=ANNEES.map(a=>`<option ${a===E.annee?'selected':''}>${a}</option>`).join('');
@@ -3304,7 +3370,214 @@ function affProg(){
 }
 
 function ouvrirListeProjets(){affProjets();document.getElementById('ov-liste-projets').classList.add('v');}
-function ouvrirListeProg(){affProg();document.getElementById('ov-liste-prog').classList.add('v');}
+function ouvrirListeProg(){
+  affProg();
+  const {source,cible}=anneesPreparation();
+  const b=document.getElementById('btn-preparer-annee');
+  if(b)b.textContent=`📅 Préparer ${cible} à partir de ${source}…`;
+  document.getElementById('ov-liste-prog').classList.add('v');
+}
+
+// ── PRÉPARER L'ANNÉE SUIVANTE ──
+// Reconduit, catégorie par catégorie, les programmées d'une année (source) sur la
+// suivante (cible), avec au choix les montants prévus ou les montants réels pointés.
+function anneeAProgrammees(an){
+  return E.prog.some(p=>p.actif&&MOIS.some((_,mi)=>montantProgPour(p,String(an),mi)>0));
+}
+// Cible : l'année affichée si elle est encore vide et que la précédente ne l'est pas
+// (on vient de passer à 2027), sinon l'année qui suit celle affichée.
+function anneesPreparation(){
+  const a=parseInt(E.annee,10);
+  if(!anneeAProgrammees(a)&&anneeAProgrammees(a-1))return {source:String(a-1),cible:String(a)};
+  return {source:String(a),cible:String(a+1)};
+}
+// Nombre de mois de la source dont le réel est connu : tous pour une année passée,
+// ceux qui précèdent le mois en cours pour l'année en cours, aucun pour une année future.
+function moisReelsConnus(source){
+  const auj=new Date(),an=parseInt(source,10);
+  if(an<auj.getFullYear())return 12;
+  if(an>auj.getFullYear())return 0;
+  return auj.getMonth();
+}
+const MOIS_COURTS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+let PREP=null;
+function construirePreparation(source,cible){
+  const nbReels=moisReelsConnus(source);
+  const groupes={};
+  const cle=(type,cat)=>type+'|'+cat;
+  const obtenir=(type,cat)=>groupes[cle(type,cat)]||(groupes[cle(type,cat)]={type,cat,progs:[],auto:[],prevu:Array(12).fill(0),reel:Array(12).fill(0),deja:false});
+  E.prog.filter(p=>p.actif).forEach(p=>{
+    const montsSource=MOIS.map((_,mi)=>montantProgPour(p,source,mi)||0);
+    if(!montsSource.some(v=>v>0))return;
+    const g=obtenir(p.type,p.cat);
+    // Les programmées à récurrence (« tous les N ans ») suivent leur propre cycle :
+    // on ne les reconduit pas, elles apparaissent (ou non) d'elles-mêmes.
+    if(p.recurAns>0){g.auto.push(p);return;}
+    g.progs.push(p);
+    montsSource.forEach((v,mi)=>g.prevu[mi]+=v);
+    if(p.montantsMois[cible]&&p.montantsMois[cible].some(v=>v>0))g.deja=true;
+  });
+  E.tx.filter(t=>t.an===source&&t.pointe).forEach(t=>{
+    const g=groupes[cle(t.type,t.cat)]||(E.prog.some(p=>p.actif&&p.cat===t.cat&&p.type===t.type)?null:obtenir(t.type,t.cat));
+    if(!g)return;
+    g.reel[moisDe(t.date)]+=(t.montant_reel||t.montant||0);
+  });
+  const lignes=Object.values(groupes).filter(g=>g.progs.length||g.auto.length||g.reel.some(v=>v>0)).map(g=>{
+    const autre=!g.progs.length&&!g.auto.length;
+    const peutReel=nbReels>0&&g.reel.some(v=>v>0);
+    return {...g,id:cle(g.type,g.cat),autre,
+      coche:g.progs.length>0&&!g.deja,
+      src:g.prevu.some(v=>v>0)?'prevu':'reel',peutReel,ouvert:false};
+  });
+  const ordre=l=>(l.type==='revenu'?0:1);
+  lignes.sort((a,b)=>ordre(a)-ordre(b)||a.cat.localeCompare(b.cat,'fr'));
+  PREP={source,cible,nbReels,lignes,fait:null,enCours:false};
+}
+function montantsPreparation(l){
+  const arr=v=>Math.round(v*100)/100;
+  if(l.src==='prevu')return l.prevu.map(v=>({v:arr(v),compl:false}));
+  return l.reel.map((v,mi)=>mi<PREP.nbReels?{v:arr(v),compl:false}:{v:arr(l.prevu[mi]),compl:l.prevu[mi]>0});
+}
+const totalPreparation=l=>montantsPreparation(l).reduce((a,m)=>a+m.v,0);
+function ouvrirPreparerAnnee(){
+  const {source,cible}=anneesPreparation();
+  construirePreparation(source,cible);
+  affPreparerAnnee();
+  document.getElementById('ov-prep').classList.add('v');
+}
+function affPreparerAnnee(){
+  const P=PREP,el=document.getElementById('ov-prep-body');
+  const entete=`<div class="mh"></div><button class="bf" onclick="fOv('ov-prep')" aria-label="Fermer">✕</button><h2>📅 Préparer ${P.cible}</h2>`;
+  if(P.fait){
+    el.innerHTML=entete+`<div class="pa-fait"><div class="pa-coche" aria-hidden="true">✓</div>
+      <p style="font-weight:600;margin:0">${P.cible} est prêt</p>
+      <p class="pa-intro" style="margin:0">${esc(P.fait)}</p></div>
+      ${ANNEES.includes(P.cible)?`<button class="bp" onclick="fOv('ov-prep');changerAnnee('${P.cible}');majSelAnnee();aller('budget')">Voir le budget ${P.cible}</button>`:''}
+      <button class="bs2" onclick="fOv('ov-prep')">Fermer</button>`;
+    return;
+  }
+  const nomMoisReel=P.nbReels>0?MOIS[P.nbReels-1].toLowerCase():'';
+  const explReel=P.nbReels===12?`Réel : montants pointés en ${P.source}.`
+    :P.nbReels>0?`Réel : montants pointés jusqu'à fin ${nomMoisReel} ${P.source}, puis le prévu pour les mois suivants (en violet dans le détail).`
+    :`Pas encore de réel pour ${P.source} : seul le prévu est disponible.`;
+  let h=entete+`<p class="pa-intro">Les catégories cochées sont programmées pour ${P.cible}, mois par mois, à partir de ${P.source}. Rien n'est modifié en ${P.source}. ${explReel}</p>`;
+  const reconductibles=P.lignes.filter(l=>l.progs.length||l.autre);
+  const tousPrevu=reconductibles.filter(l=>l.prevu.some(v=>v>0)).every(l=>l.src==='prevu');
+  const tousReel=reconductibles.filter(l=>l.peutReel).every(l=>l.src==='reel');
+  h+=`<div class="pa-global"><span>Pour toutes les catégories :</span><div class="pa-seg" role="group" aria-label="Source pour toutes les catégories">
+    <button type="button" onclick="sourcePreparationTout('prevu')" aria-pressed="${tousPrevu}">Prévu ${P.source}</button>
+    <button type="button" onclick="sourcePreparationTout('reel')" aria-pressed="${tousReel&&!tousPrevu}" ${P.nbReels?'':'disabled'}>Réel ${P.source}</button></div></div>`;
+  const groupe=(titre,f)=>{const l=P.lignes.filter(f);return l.length?`<div class="pa-groupe"><h3>${titre}</h3>${l.map(ligneHtmlPreparation).join('')}</div>`:'';};
+  h+=groupe('Revenus',l=>l.type==='revenu'&&!l.autre);
+  h+=groupe(`Dépenses programmées en ${P.source}`,l=>l.type==='depense'&&!l.autre);
+  h+=groupe(`Autres catégories avec du réel en ${P.source}`,l=>l.autre);
+  if(!P.lignes.length)h+=`<div class="vi" style="margin-top:14px"><p>Aucune programmée ni dépense pointée en ${P.source}.</p></div>`;
+  const sel=P.lignes.filter(l=>l.coche&&(l.progs.length||l.autre));
+  const rev=sel.filter(l=>l.type==='revenu').reduce((a,l)=>a+totalPreparation(l),0);
+  const dep=sel.filter(l=>l.type==='depense').reduce((a,l)=>a+totalPreparation(l),0);
+  h+=`<div class="pa-recap"><span><b>${sel.length}</b> catégorie${sel.length>1?'s':''} cochée${sel.length>1?'s':''}</span>
+    <span>Revenus : <b style="color:var(--ve)">${fmtDec(rev)}</b></span><span>Dépenses : <b style="color:var(--ro)">${fmtDec(dep)}</b></span></div>`;
+  h+=`<div class="er" id="er-prep"></div>
+    <button class="bp" id="btn-valider-prep" onclick="validerPreparerAnnee()" ${sel.length&&!P.enCours?'':'disabled'}>${P.enCours?'Enregistrement…':`Programmer ${sel.length} catégorie${sel.length>1?'s':''} en ${P.cible}`}</button>
+    <button class="bs2" onclick="fOv('ov-prep')">Annuler</button>`;
+  el.innerHTML=h;
+}
+function ligneHtmlPreparation(l){
+  const P=PREP,i=P.lignes.indexOf(l);
+  const noms=l.progs.map(p=>p.nom);
+  const det=noms.length?`${noms.length>1?noms.length+' programmées : ':'Programmée : '}${esc(noms.join(', '))}`:(l.autre?`Aucune programmée en ${P.source}`:'');
+  const titre=`${iconePourCategorie(l.cat)} ${esc(l.cat)}`;
+  if(!l.progs.length&&!l.autre){
+    const p=l.auto[0];
+    const due=MOIS.some((_,mi)=>montantProgPour(p,P.cible,mi)>0);
+    return `<div class="pa-ligne off"><input type="checkbox" disabled aria-label="${esc(l.cat)}"><div><div class="pa-nom">${titre}</div><div class="pa-det">Programmée : ${esc(l.auto.map(x=>x.nom).join(', '))}</div></div>
+      <span class="pa-auto">${due?'🔁 Déjà reconduite':`🔁 Tous les ${p.recurAns} ans`}</span></div>`;
+  }
+  const peutPrevu=l.prevu.some(v=>v>0);
+  const totPrevu=l.prevu.reduce((a,b)=>a+b,0);
+  const totReel=totalPreparation({...l,src:'reel'});
+  const seg=`<div class="pa-seg" role="group" aria-label="Source pour ${esc(l.cat)}">
+    <button type="button" onclick="sourcePreparation(${i},'prevu')" aria-pressed="${l.src==='prevu'}" ${peutPrevu?'':'disabled'}>Prévu ${peutPrevu?fmtDec(totPrevu):'—'}</button>
+    <button type="button" onclick="sourcePreparation(${i},'reel')" aria-pressed="${l.src==='reel'}" ${l.peutReel?'':'disabled'}>Réel ${l.peutReel?fmtDec(totReel):'—'}</button></div>`;
+  let notes='';
+  if(l.auto.length)notes+=`<div class="pa-note">${esc(l.auto.map(x=>x.nom).join(', '))} : récurrence propre, non concernée.</div>`;
+  if(l.coche&&l.src==='reel'&&l.progs.length>1)notes+=`<div class="pa-note">Les ${l.progs.length} programmées seront regroupées en une seule « ${esc(l.cat)} » pour ${P.cible}.</div>`;
+  if(l.coche&&l.autre)notes+=`<div class="pa-note">Une programmée « ${esc(l.cat)} » sera créée.</div>`;
+  if(l.deja)notes+=`<div class="pa-note warn">Déjà programmée en ${P.cible}${l.coche?` — ses montants ${P.cible} seront remplacés.`:'.'}</div>`;
+  const detail=l.ouvert?`<div class="pa-mois">${montantsPreparation(l).map((m,mi)=>`<div class="${m.compl?'pa-compl':''}"><span>${MOIS_COURTS[mi]}</span><span>${m.v?fmtDec(m.v):'—'}</span></div>`).join('')}</div>`:'';
+  return `<div class="pa-ligne${l.coche?'':' off'}"><input type="checkbox" id="pa-c-${i}" ${l.coche?'checked':''} onchange="cochePreparation(${i},this.checked)">
+    <div><label class="pa-nom" for="pa-c-${i}">${titre}</label><div class="pa-det">${det}${det?' · ':''}<button type="button" class="pa-lien" onclick="detailPreparation(${i})">${l.ouvert?'masquer':'voir'} les 12 mois</button></div></div>
+    ${seg}${notes}${detail}</div>`;
+}
+function sourcePreparation(i,src){PREP.lignes[i].src=src;affPreparerAnnee();}
+function sourcePreparationTout(src){
+  PREP.lignes.forEach(l=>{if(src==='prevu'?l.prevu.some(v=>v>0):l.peutReel)l.src=src;});
+  affPreparerAnnee();
+}
+function cochePreparation(i,v){PREP.lignes[i].coche=v;affPreparerAnnee();}
+function detailPreparation(i){PREP.lignes[i].ouvert=!PREP.lignes[i].ouvert;affPreparerAnnee();}
+
+async function validerPreparerAnnee(){
+  const P=PREP;if(!P||P.enCours)return;
+  const sel=P.lignes.filter(l=>l.coche&&(l.progs.length||l.autre));
+  if(!sel.length)return;
+  // 1. Plan : pour chaque programmée concernée, ses 12 montants de l'année cible
+  const plan=[]; // {p, monts, nouvelle}
+  let k=0;
+  sel.forEach(l=>{
+    if(l.src==='prevu'){
+      l.progs.forEach(p=>plan.push({p,monts:MOIS.map((_,mi)=>{const v=montantProgPour(p,P.source,mi);return v>0?v:null;})}));
+    }else{
+      const monts=montantsPreparation(l).map(m=>m.v>0?m.v:null);
+      if(l.progs.length===1)plan.push({p:l.progs[0],monts});
+      else plan.push({p:{id:`prog_${Date.now()}_${k++}`,nom:l.cat,type:l.type,cat:l.cat,actif:true,montantsMois:{},recurAns:0,recurAnneeRef:null},monts,nouvelle:true});
+    }
+  });
+  P.enCours=true;affPreparerAnnee();
+  try{
+    // 2. Lignes Sheets : mise à jour, suppression (montant vide) ou ajout, en 3 requêtes
+    const rows=await lire('Prog!A2:I');
+    const maj=[],suppr=[],ajouts=[];
+    plan.forEach(({p,monts})=>{
+      monts.forEach((val,mi)=>{
+        const idx=idxLigneProg(rows,p.id,P.cible,mi);
+        if(idx>=0){
+          if(val!==null)maj.push({range:`Prog!A${idx+2}:I${idx+2}`,values:[[rows[idx][0],p.nom,p.type,p.cat,P.cible,mi,val,'TRUE','']]});
+          else suppr.push(idx);
+        }else if(val!==null)ajouts.push([idLigneProg(p.id,P.cible,mi),p.nom,p.type,p.cat,P.cible,mi,val,'TRUE','']);
+      });
+    });
+    await ecrireLot(maj);
+    await supprimerLignesSheet('Prog',suppr);
+    await ajouterLignes('Prog',ajouts);
+    // 3. Mémoire, une fois le Sheet à jour
+    plan.forEach(({p,monts,nouvelle})=>{
+      if(nouvelle)E.prog.push(p);
+      p.montantsMois[P.cible]=monts;
+    });
+    const nbNouv=plan.filter(x=>x.nouvelle).length;
+    P.fait=`${sel.length} catégorie${sel.length>1?'s':''} programmée${sel.length>1?'s':''} pour ${P.cible}`+
+      (nbNouv?` (dont ${nbNouv} nouvelle${nbNouv>1?'s':''} programmée${nbNouv>1?'s':''})`:'')+
+      `. Chaque montant reste modifiable depuis « 🔄 Programmées » en affichant ${P.cible}.`;
+    P.enCours=false;
+    refresh();affPreparerAnnee();
+  }catch(e){
+    console.error(e);P.enCours=false;affPreparerAnnee();
+    const er=document.getElementById('er-prep');
+    if(er){er.textContent=`L'enregistrement n'a pas abouti (connexion ?). Rien n'a été perdu en ${P.source} ; vous pouvez relancer : les lignes déjà écrites seront mises à jour, pas dupliquées.`;er.classList.add('v');}
+  }
+}
+// Carte « Préparer 2027 » en haut du Budget : l'année affichée est vide, la
+// précédente a des programmées. Masquable pour la session.
+let _cartePreparerMasquee=false;
+function affCartePreparerAnnee(){
+  const el=document.getElementById('carte-preparer-annee');if(!el)return;
+  const a=parseInt(E.annee,10);
+  if(_cartePreparerMasquee||anneeAProgrammees(a)||!anneeAProgrammees(a-1)){el.innerHTML='';return;}
+  el.innerHTML=`<div class="carte-preparer"><span>${a} n'a encore aucune dépense ni revenu programmé.</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="bs2" style="width:auto;margin:0;padding:11px 14px" onclick="_cartePreparerMasquee=true;affCartePreparerAnnee()">Plus tard</button>
+    <button class="bp" onclick="ouvrirPreparerAnnee()">📅 Préparer ${a} à partir de ${a-1}</button></span></div>`;
+}
 function ouvrirAjoutProg(){
   document.getElementById('ov-prog-ti').textContent='Nouvel élément programmé';
   document.getElementById('prog-nom').value='';
