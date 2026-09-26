@@ -116,8 +116,10 @@
     .brec{margin-top:10px;width:100%;padding:8px;border-radius:9px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:var(--wf);font-size:.78rem;font-family:'Inter',sans-serif;cursor:pointer}
     /* Écrans larges : regrouper le solde et les 3 indicateurs côte à côte, alignés
        à gauche, plutôt que de les laisser s'étirer sur toute la largeur du bandeau. */
+    /* Limité aux deux bandeaux de solde : la classe .ban est réutilisée ailleurs
+       (guide, checklist…) où cette mise en ligne cassait l'affichage. */
     @media(min-width:700px){
-      .ban{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+      #ban-budget,#ban-mois{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
       .ban .ban-solde{flex:none}
       .ban .g3{display:flex;gap:32px;border-top:none;padding-top:0}
       .ban .ms{min-width:auto}
@@ -1331,7 +1333,7 @@ function lancerApp(){
 const TUTO_SLIDES=[
   {emoji:'👋',titre:'Bienvenue dans Cashorizon',html:`<p>Cette application vous aide à suivre vos revenus et vos dépenses, mois après mois, sans rien laisser passer.</p><p>Ce petit guide vous montre les bases, une idée par écran. Vous pourrez le revoir à tout moment depuis Réglages → "🎬 Revoir le tutoriel".</p>`},
   {emoji:'📅',titre:'Les 4 onglets, en haut de l\'écran',html:`<p>Tout se passe depuis ces 4 onglets :</p><ul><li><strong>📊 Budget</strong> — votre année entière en un coup d'œil</li><li><strong>📅 Mois</strong> — le détail jour par jour d'un mois précis</li><li><strong>🔍 Recherche</strong> — pour retrouver une dépense précise</li><li><strong>⚙️ Réglages</strong> — pour tout personnaliser</li></ul><p>On regarde chacun en détail dans les écrans suivants.</p>`},
-  {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton orange <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
+  {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton violet <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
   {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p><p>💡 Astuce : dans la vue Mois, glissez le doigt vers la gauche ou la droite pour passer directement au mois précédent ou suivant.</p>`},
   {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Solde du mois" indique votre marge</li></ul><p>Vous organisez vos pôles directement depuis ce tableau, via le bouton "✏️ Modifier".</p>`},
   {emoji:'🎯',titre:'Surveiller un budget',html:`<p>Pour une catégorie qui vous tient à cœur (ex : "Alimentation"), vous pouvez fixer un budget maximum, par mois ou par an, depuis Réglages → Pôles de dépenses.</p><p>Dès que vous approchez ou dépassez ce montant, un petit badge coloré apparaît automatiquement sur la catégorie, dans la vue Mois — sans rien à calculer vous-même.</p>`},
@@ -2972,7 +2974,7 @@ function affListeAClasserMois(){
   if(!liste)return; // section pas affichée (aucune dépense à classer)
   liste.innerHTML=E.aClasser.map(t=>{
     const cats=t.type==='revenu'?CREV:toutesCategoriesConnues();
-    return `<div class="ban" style="margin-bottom:10px;padding:14px">
+    return `<div class="si" style="margin-bottom:10px;padding:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
           <div style="font-weight:600;font-size:.9rem">${esc(t.desc)}</div>
@@ -3851,7 +3853,7 @@ function toggleImportTotaux(mi){
   const bloc=document.getElementById('bloc-import-totaux');
   if(bloc.style.display==='block'){bloc.style.display='none';bloc.innerHTML='';return;}
   const tout=[...CREV.map(c=>({c,t:'revenu'})),...toutesCategoriesConnues().map(c=>({c,t:'depense'}))];
-  bloc.innerHTML=`<div class="ban" style="padding:14px">
+  bloc.innerHTML=`<div class="si" style="padding:14px">
     <p style="font-size:.78rem;color:var(--txl);margin-bottom:10px">Saisissez les totaux par catégorie pour ${MOIS[mi]} ${E.annee} — pratique pour rattraper un mois passé rapidement.</p>
     <div class="gi" id="gi-cats-mois">${tout.map(({c,t})=>`<div class="cii"><label>${esc(c)} ${t==='revenu'?'(Rev)':'(Dép)'}</label><input type="number" step="0.01" inputmode="decimal" placeholder="0" data-cat="${esc(c)}" data-type="${t}"/></div>`).join('')}</div>
     <button class="bp" style="margin-top:10px" onclick="importerMoisVue(${mi})">Importer ${MOIS[mi]}</button>
