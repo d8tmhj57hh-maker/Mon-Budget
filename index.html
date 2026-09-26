@@ -276,7 +276,7 @@
     .ch3 textarea{resize:vertical;min-height:60px}
     .cm3{position:relative}.cm3 input{padding-right:28px}
     .cm3::after{content:'€';position:absolute;right:12px;bottom:0;height:var(--h-champ,42px);display:flex;align-items:center;color:var(--txl);pointer-events:none}
-    .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
     .bp{width:100%;padding:13px;background:var(--bl);color:var(--wf);border:none;border-radius:12px;font-size:.9rem;font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;margin-top:4px}
     .bs2{width:100%;padding:11px;background:var(--fo);color:var(--tx);border:1.5px solid var(--bo);border-radius:12px;font-size:.875rem;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;margin-top:7px}
     .er{background:var(--roc);border:1px solid #f5c6c3;border-radius:12px;padding:10px 13px;color:var(--ro);font-size:.8rem;margin-bottom:11px;display:none}
@@ -401,6 +401,16 @@
     }
     /* Survol réservé aux appareils qui ont vraiment un survol : sur tablette, un
        :hover reste « collé » après un appui et laisse le bouton faussement actif. */
+    /* Souris : retour visuel au survol sur les éléments cliquables. */
+    @media(hover:hover) and (pointer:fine){
+      .ltx:hover,.cm:hover,.cr3:hover{box-shadow:0 0 0 1.5px var(--or),var(--sh)}
+      .bs2:hover,.bedit:not(.on):hover,.tt:not(.a):hover{border-color:var(--or)}
+      .bp:hover,.bo2:hover{filter:brightness(1.15)}
+      .nb:not(.a):hover{color:var(--tx)}
+      .bret:hover{text-decoration:underline}
+      .ta tbody tr.cat-row:not(.sel):hover td{filter:brightness(.96)}
+      body.dark .ta tbody tr.cat-row:not(.sel):hover td{filter:brightness(1.2)}
+    }
     @media(hover:none){
       .dm-fleche:hover{background:var(--wh)}
       .tw::-webkit-scrollbar-thumb:hover{background:var(--bo)}
@@ -1088,6 +1098,17 @@ function confirmerAction(message,onConfirm,titre){
   document.getElementById('ov-confirm').classList.add('v');
 }
 function fOv(id){document.getElementById(id).classList.remove('v');}
+// Ordinateur : Échap ferme la fenêtre du dessus, en passant par son propre bouton
+// ✕ (ou Annuler) pour conserver les actions propres à chaque fenêtre à la fermeture
+// (ex : rafraîchir le mois après une saisie de relevé).
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const ouvertes=[...document.querySelectorAll('.ov.v')];
+  if(!ouvertes.length)return;
+  const ov=ouvertes.find(o=>o.id==='ov-confirm'||o.id==='ov-prompt')||ouvertes[ouvertes.length-1];
+  const btn=ov.querySelector('.bf')||[...ov.querySelectorAll('button')].find(b=>/fOv\(/.test(b.getAttribute('onclick')||''));
+  if(btn){e.preventDefault();btn.click();}
+});
 // Remplace les prompt() natifs (mêmes défauts que confirm() : incohérents
 // visuellement, bloquants, désactivés dans certaines webviews) par une modale de
 // saisie cohérente avec le reste de l'application. onValider reçoit le texte saisi
