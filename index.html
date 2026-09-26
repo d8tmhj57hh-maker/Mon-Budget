@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
   <title>Cashorizon</title>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
@@ -72,6 +72,8 @@
     .ea-mark{width:40px;height:40px;color:var(--or);margin-bottom:14px;position:relative;z-index:1}
     .tuto-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);transition:.2s}
     .tuto-dot.actif{background:var(--or);width:22px;border-radius:4px}
+    #tuto-contenu{display:flex;flex-direction:column;justify-content:center;width:100%;max-width:560px;margin:0 auto}
+    .aide-carte ul{margin:4px 0 10px 20px}
     .tuto-slide h2{font-family:'DM Serif Display',serif;color:var(--wf);font-size:1.5rem;margin-bottom:14px}
     .tuto-slide p{color:rgba(255,255,255,.85);font-size:.92rem;line-height:1.55;margin-bottom:12px}
     .tuto-slide .tuto-emoji{font-size:2.6rem;margin-bottom:18px;text-align:center}
@@ -91,7 +93,10 @@
 
     /* APP */
     #app{display:none;min-height:100vh;flex-direction:column}
-    .hd{background:var(--bl);padding:52px 20px 16px;display:flex;align-items:center;justify-content:space-between}
+    .hd{background:var(--bl);padding:20px 20px 16px;display:flex;align-items:center;justify-content:space-between}
+    /* App installée sur l'écran d'accueil (barre d'état translucide par-dessus
+       l'en-tête) : on garde la marge haute. Dans Safari/Chrome, elle était perdue. */
+    html.pwa .hd{padding-top:max(52px,calc(env(safe-area-inset-top) + 12px))}
     .hd h1{font-family:'DM Serif Display',serif;color:var(--wf);font-size:1.5rem}
     .hdr{display:flex;align-items:center;gap:8px}
     .san{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:var(--wf);border-radius:8px;padding:6px 10px;font-size:.875rem;font-family:'Inter',sans-serif;outline:none}
@@ -254,7 +259,17 @@
 
     /* LIGNE TRANSACTION */
     .ltx{background:var(--wh);border-radius:12px;padding:11px 13px;margin-bottom:6px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh);cursor:pointer}
-    .ltx.pt{opacity:.55}
+    .ltx.attente .de{font-style:italic;color:var(--txl)}
+    .ltx.attente .mtx{color:var(--txl);font-style:italic}
+    .itx.cat{width:36px;height:36px;background:var(--fo);border:1px solid var(--bo);position:relative;font-size:1.05rem}
+    .itx .etat{position:absolute;right:-5px;bottom:-5px;width:15px;height:15px;border-radius:50%;font-size:.5rem;line-height:1;display:flex;align-items:center;justify-content:center;border:2px solid var(--wh);font-style:normal}
+    .itx .etat.etat-ok{background:var(--ve);color:#fff}
+    .itx .etat.etat-at{background:var(--or2c);color:var(--or2)}
+    .statut-tx{display:inline-block;font-size:.8rem;font-weight:600;padding:5px 11px;border-radius:20px;margin-bottom:12px}
+    .statut-tx.realisee{background:var(--vec);color:var(--ve)}
+    .statut-tx.attente{background:var(--or2c);color:var(--or2)}
+    /* Libellé d'une case à cocher : phrase normale, pas le style MAJUSCULES des libellés de champ. */
+    .ch3 input[type="checkbox"]+label{text-transform:none;letter-spacing:0;color:var(--tx)}
     .ltx.prev-tx{background:rgba(26,47,74,.03);border:1px dashed var(--bo)}
     .itx{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem}
     .itx.fa{background:var(--or2c);color:var(--or2)}
@@ -323,6 +338,7 @@
     .ov{position:fixed;inset:0;background:rgba(26,47,74,.5);z-index:200;display:none;align-items:flex-end}
     #ov-confirm{z-index:300}
     .ov.v{display:flex}
+    .modal:focus{outline:none}
     .modal{background:var(--wh);border-radius:22px 22px 0 0;padding:18px 17px 40px;width:100%;max-height:88vh;overflow-y:auto;animation:gl .22s ease;scrollbar-width:thin;scrollbar-color:var(--bo) transparent}
     .modal::-webkit-scrollbar{width:6px}
     .modal::-webkit-scrollbar-track{background:transparent}
@@ -337,8 +353,11 @@
     .bd{width:100%;padding:11px;background:none;color:var(--ro);border:1.5px solid var(--ro);border-radius:12px;font-size:.875rem;font-weight:500;font-family:'Inter',sans-serif;cursor:pointer;margin-top:7px}
 
     /* FAB */
-    .fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;background:var(--or);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--bl);cursor:pointer;box-shadow:0 4px 16px rgba(141,110,224,.4);z-index:100;transition:transform .15s ease, box-shadow .15s ease}
+    .fab{position:fixed;bottom:24px;right:20px;width:52px;height:52px;background:var(--or);border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--bl);cursor:pointer;box-shadow:0 4px 16px rgba(141,110,224,.4);z-index:100;transition:transform .2s ease, box-shadow .15s ease, opacity .2s ease}
     .fab:active{transform:scale(.92)}
+    /* S'efface quand on descend dans une liste (il masquait les montants alignés à
+       droite), réapparaît dès qu'on remonte. */
+    .fab.cache{transform:translateY(160%);opacity:0;pointer-events:none}
 
     /* TOAST & LOADER */
     .toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:var(--bl);color:var(--wf);padding:10px 16px;border-radius:10px;font-size:.8rem;font-weight:500;z-index:300;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
@@ -381,7 +400,7 @@
     .ov.v{animation:ovIn .18s ease}
 
     .nb{transition:color .15s ease, border-color .15s ease}
-    .bp,.bo2,.bs2,.bd,.bedit,.tt,.dm-fleche,.fab,.bg{transition:transform .12s ease, filter .12s ease, background .15s ease, color .15s ease, border-color .15s ease}
+    .bp,.bo2,.bs2,.bd,.bedit,.tt,.dm-fleche,.fab,.bg{transition:transform .12s ease, filter .12s ease, background .15s ease, color .15s ease, border-color .15s ease, opacity .2s ease}
     .bp:active,.bo2:active,.bs2:active,.bd:active,.bedit:active,.tt:active,.dm-fleche:active,.bg:active{transform:scale(.96)}
     .ch3 input,.ch3 select,.ch3 textarea,.br2 input{transition:border-color .15s ease}
     .ltx{transition:transform .12s ease, box-shadow .15s ease}
@@ -395,11 +414,18 @@
 
     /* Actions du détail d'un mois (import PDF, relevé papier, totaux, épargne) */
     .dm-actions{display:grid;gap:8px}
+    .remplir-mois{grid-column:1/-1;display:flex;gap:8px;align-items:stretch;margin-bottom:12px}
+    .remplir-mois input{flex:0 0 120px;padding:9px 10px;border:1.5px solid var(--bo);border-radius:9px;font-family:'Inter',sans-serif;background:var(--wh);color:var(--tx);outline:none}
+    .remplir-mois .bs2{margin-top:0;flex:1;padding:9px}
     .dm-actions .bs2{margin-top:0;font-size:.82rem;padding:11px}
 
     /* ── TACTILE (téléphone et tablette) : cibles d'au moins ~44px, recommandation
        Apple/WCAG, pour les petits contrôles pensés à l'origine pour la souris. ── */
     @media(pointer:coarse){
+      /* Zoom à deux doigts autorisé (accessibilité) : iOS zoome alors automatiquement
+         sur tout champ de moins de 16px quand on le touche — on les passe à 16px. */
+      input:not([type="checkbox"]):not([type="radio"]),select,textarea{font-size:16px!important}
+      .ta select{font-size:.72rem!important}
       .dm-fleche{width:44px;height:44px;font-size:.95rem}
       .bf{width:44px;height:44px;margin:-10px -10px 0 0;display:flex;align-items:center;justify-content:center}
       .btn-taille{width:44px!important;height:44px!important}
@@ -455,6 +481,7 @@
       .inf .so{font-size:.74rem}
       .mtx{font-size:.95rem}
       .itx{width:32px;height:32px}
+      .itx.cat{width:40px;height:40px;font-size:1.15rem}
       .sec-ti .sn{font-size:.72rem}
       .sec-ti .st{font-size:.9rem}
       .ch3 input:not([type="checkbox"]):not([type="radio"]),.ch3 select,.ch3 textarea,.br2 input{padding:13px 15px;font-size:1rem}
@@ -609,6 +636,7 @@
             <button class="bedit" onclick="ajusterTailleTableau(-1)" aria-label="Réduire le tableau">A−</button>
             <span class="lbl-taille-tableau">100%</span>
             <button class="bedit" onclick="ajusterTailleTableau(1)" aria-label="Agrandir le tableau">A+</button>
+            <button class="bedit" id="btn-arrondi" onclick="basculerArrondiTableau()" aria-pressed="false" title="Afficher les montants sans centimes (2 100 au lieu de 2 100,00 €)">≈ Arrondir</button>
           </div>
           <button class="bedit" onclick="ouvrirListeProjets()">🎯 Projets</button>
           <button class="bedit" onclick="ouvrirListeProg()">🔄 Programmées</button>
@@ -1001,6 +1029,7 @@ function ajusterTailleTableau(direction){
 }
 appliquerTailleTableauInitiale();
 appliquerThemeInitial();
+if(window.navigator.standalone||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches))document.documentElement.classList.add('pwa');
 
 window.onload=()=>{
   appliquerThemeInitial();
@@ -1058,6 +1087,14 @@ function fmtISO(date){return date.getFullYear()+'-'+String(date.getMonth()+1).pa
 // interprète "YYYY-MM-DD" comme minuit UTC puis .getMonth() reconvertit dans le
 // fuseau local de l'appareil : sur un fuseau négatif (ex. voyage aux États-Unis),
 // une transaction du 1er du mois se retrouvait affichée dans le mois précédent.
+// Format de date unique pour l'affichage : « 12 sept. 2026 » (ou « 12 sept. »).
+// Découpe la chaîne ISO plutôt que new Date("2026-09-12"), interprété en UTC et
+// donc décalé d'un jour selon le fuseau horaire.
+function fmtDateCourte(iso,avecAnnee=true){
+  const p=String(iso||'').split('-').map(Number);
+  if(p.length<3||!p[0])return esc(iso||'');
+  return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('fr-FR',avecAnnee?{day:'numeric',month:'short',year:'numeric'}:{day:'numeric',month:'short'});
+}
 function moisDe(dateISO){return parseInt(String(dateISO).substring(5,7),10)-1;}
 // Convertit en nombre une valeur venant de Google Sheets, qu'elle soit déjà
 // numérique ou une chaîne avec virgule décimale française (ex: "183,23").
@@ -1069,6 +1106,16 @@ function parseNum(v){
   return parseFloat(String(v).replace(',','.'))||0;
 }
 function fmtDec(n){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2}).format(n||0);}
+// Tableau Budget en « montants arrondis » : 2 100 au lieu de 2 100,00 € — deux fois
+// moins large, pour voir l'année entière sur un écran étroit (iPad mini en portrait).
+function fmtArrondi(n){return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Math.round(n||0));}
+const fmtDecExact=fmtDec;
+let ARRONDI_TABLEAU=(()=>{try{return localStorage.getItem('arrondi-tableau')==='1';}catch(e){return false;}})();
+function basculerArrondiTableau(){
+  ARRONDI_TABLEAU=!ARRONDI_TABLEAU;
+  try{localStorage.setItem('arrondi-tableau',ARRONDI_TABLEAU?'1':'0');}catch(e){}
+  affBudget();
+}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('v');setTimeout(()=>t.classList.remove('v'),2500);}
 
 // ── ANNULATION DES SUPPRESSIONS ──
@@ -1118,6 +1165,43 @@ function confirmerAction(message,onConfirm,titre){
   btn.onclick=()=>{fOv('ov-confirm');onConfirm();};
   document.getElementById('ov-confirm').classList.add('v');
 }
+let _dernierDefilement=0;
+window.addEventListener('scroll',()=>{
+  const y=window.scrollY,fab=document.getElementById('fab');
+  if(!fab)return;
+  if(y>_dernierDefilement+6&&y>120)fab.classList.add('cache');
+  else if(y<_dernierDefilement-6||y<=120)fab.classList.remove('cache');
+  _dernierDefilement=y;
+},{passive:true});
+// Clavier : Entrée / Espace activent les éléments cliquables qui ne sont pas de
+// vrais boutons (lignes de transaction, cartes de mois, résultats de recherche).
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const el=e.target;
+  if(el&&el.getAttribute&&el.getAttribute('role')==='button'&&el.tagName!=='BUTTON'){e.preventDefault();el.click();}
+});
+// Fenêtres : annoncées comme boîtes de dialogue aux lecteurs d'écran ; à l'ouverture
+// le focus entre dans la fenêtre, à la fermeture il revient là où il était.
+const _focusAvantOv=new Map();
+function initAccessibiliteModales(){
+  document.querySelectorAll('.ov').forEach(ov=>{
+    const m=ov.querySelector('.modal');if(!m)return;
+    m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('tabindex','-1');
+    new MutationObserver(()=>{
+      const ouverte=ov.classList.contains('v');
+      if(ouverte&&!_focusAvantOv.has(ov)){
+        _focusAvantOv.set(ov,document.activeElement);
+        const titre=m.querySelector('h2');
+        if(titre){if(!titre.id)titre.id=ov.id+'-titre';m.setAttribute('aria-labelledby',titre.id);}
+        setTimeout(()=>{if(!m.contains(document.activeElement))m.focus({preventScroll:true});},30);
+      }else if(!ouverte&&_focusAvantOv.has(ov)){
+        const prec=_focusAvantOv.get(ov);_focusAvantOv.delete(ov);
+        if(prec&&document.contains(prec)&&prec.focus)prec.focus({preventScroll:true});
+      }
+    }).observe(ov,{attributes:true,attributeFilter:['class']});
+  });
+}
+document.addEventListener('DOMContentLoaded',initAccessibiliteModales);
 function fOv(id){document.getElementById(id).classList.remove('v');}
 // Ordinateur : Échap ferme la fenêtre du dessus, en passant par son propre bouton
 // ✕ (ou Annuler) pour conserver les actions propres à chaque fenêtre à la fermeture
@@ -1336,13 +1420,15 @@ const TUTO_SLIDES=[
   {emoji:'➕',titre:'Ajouter une dépense ou un revenu',html:`<p>Le bouton violet <strong>+</strong>, toujours visible en bas à droite, ouvre le formulaire de saisie.</p><p>Exemple : vous achetez du pain pour 2,50€ aujourd'hui.</p><ul><li>Choisissez <strong>Dépense</strong></li><li>Tapez <strong>2,50</strong> dans Montant — c'est la seule case obligatoire !</li><li>Choisissez la catégorie, par exemple "Alimentation"</li></ul><p>Si vous laissez la description vide, elle reprend automatiquement le nom de la catégorie. La date d'aujourd'hui est déjà pré-remplie.</p>`},
   {emoji:'✓',titre:'Réel ou prévisible ?',html:`<p>Si la date que vous saisissez est <strong>déjà passée</strong>, la dépense est comptée comme réelle tout de suite.</p><p>Si elle est <strong>dans le futur</strong> (ex : un loyer qui sera prélevé dans 5 jours), elle apparaît en italique comme "prévisible", jusqu'à ce que vous la "pointiez" une fois l'opération vraiment passée sur votre compte.</p><p>Ça vous permet d'anticiper sans fausser vos totaux déjà réalisés.</p><p>💡 Astuce : dans la vue Mois, glissez le doigt vers la gauche ou la droite pour passer directement au mois précédent ou suivant.</p>`},
   {emoji:'📊',titre:'Le tableau annuel et les pôles',html:`<p>L'onglet <strong>Budget</strong> affiche toute votre année, organisée par "pôles de vie" — par exemple "Maison", "Voiture" — plutôt que par catégories isolées.</p><ul><li>Chaque pôle a sa propre couleur</li><li>Le texte en italique gris est prévisionnel, pas encore réel</li><li>La ligne "Solde du mois" indique votre marge</li></ul><p>Vous organisez vos pôles directement depuis ce tableau, via le bouton "✏️ Modifier".</p>`},
-  {emoji:'🎯',titre:'Surveiller un budget',html:`<p>Pour une catégorie qui vous tient à cœur (ex : "Alimentation"), vous pouvez fixer un budget maximum, par mois ou par an, depuis Réglages → Pôles de dépenses.</p><p>Dès que vous approchez ou dépassez ce montant, un petit badge coloré apparaît automatiquement sur la catégorie, dans la vue Mois — sans rien à calculer vous-même.</p>`},
-  {emoji:'🔁',titre:'Les dépenses qui reviennent chaque mois',html:`<p>Pour vos charges régulières (loyer, assurances, abonnements...), créez une <strong>programmée</strong> depuis Réglages → Programmées.</p><p>Chaque mois, elle apparaît automatiquement, et vous n'avez qu'à la "pointer" une fois le prélèvement réellement effectué.</p><p>Pour une dépense qui revient tous les 2 ou 3 ans (ex : le contrôle technique), cochez "Se répète tous les X ans" — elle réapparaîtra seule, sans jamais la ressaisir.</p>`},
+  {emoji:'🔁',titre:'Les dépenses qui reviennent chaque mois',html:`<p>Pour vos charges régulières (loyer, assurances, abonnements...), créez une <strong>programmée</strong> avec le bouton « 🔄 Programmées » au-dessus du tableau Budget.</p><p>Chaque mois, elle apparaît automatiquement, et vous n'avez qu'à la "pointer" une fois le prélèvement réellement effectué.</p><p>Pour une dépense qui revient tous les 2 ou 3 ans (ex : le contrôle technique), cochez "Se répète tous les X ans" — elle réapparaîtra seule, sans jamais la ressaisir.</p>`},
   {emoji:'⌨️',titre:'Saisir un relevé papier',html:`<p>Vous recevez vos relevés bancaires par courrier ? Depuis la vue <strong>Mois</strong>, le bouton "⌨️ Saisir un relevé papier" ouvre un petit formulaire : vous tapez chaque ligne une par une (montant, description, date), et elle s'ajoute aussitôt.</p><p>Pratique pour rattraper un relevé complet en quelques minutes, sans jamais quitter cet écran.</p>`},
   {emoji:'🗂️',titre:'Classer une dépense importée',html:`<p>Qu'elle vienne d'un relevé PDF (lecture automatique) ou d'une saisie manuelle, chaque ligne importée arrive dans une zone <strong>"À classer"</strong>, en haut du mois.</p><p>Vous choisissez la catégorie, vérifiez le montant, et validez — la dépense rejoint alors votre suivi normal.</p>`},
-  {emoji:'🎉',titre:'Vous êtes prête !',html:`<p>Vous connaissez maintenant les bases. N'hésitez pas à explorer Réglages pour personnaliser vos pôles, votre épargne, et l'apparence de l'application (mode sombre, taille du texte).</p><p>En cas de doute, le guide complet reste accessible depuis Réglages → Aide. Bonne gestion de budget !</p>`}
+  {emoji:'🎉',titre:'Vous êtes prête !',html:`<p>Vous connaissez maintenant les bases. Vos pôles s'organisent depuis le tableau Budget (bouton « ✏️ Modifier »), votre épargne depuis la vue Mois, et l'apparence (mode sombre, taille du texte) depuis Réglages.</p><p>Programmées, relevé papier, lignes « À classer »… : tout est détaillé dans le guide complet, accessible depuis Réglages → Aide. Bonne gestion de budget !</p>`}
 ];
 let _tutoIdx=0;
+// Tutoriel de bienvenue : l'essentiel en 5 écrans. Le guide complet (Réglages →
+// Aide) reprend tous les écrans, dont programmées, relevé papier, À classer.
+const TUTO_COURT=[0,1,2,3].map(i=>TUTO_SLIDES[i]).concat(TUTO_SLIDES.slice(-1));
 function afficherTuto(){
   _tutoIdx=0;
   document.getElementById('app').style.display='none';
@@ -1351,18 +1437,18 @@ function afficherTuto(){
   document.getElementById('ec-tuto').style.display='flex';
   // Génère les points de pagination dynamiquement : s'adapte automatiquement
   // si le nombre d'écrans du tutoriel change, sans synchronisation manuelle du HTML.
-  document.getElementById('tuto-dots').innerHTML=TUTO_SLIDES.map((_,i)=>`<span class="tuto-dot" id="tuto-dot-${i}"></span>`).join('');
+  document.getElementById('tuto-dots').innerHTML=TUTO_COURT.map((_,i)=>`<span class="tuto-dot" id="tuto-dot-${i}"></span>`).join('');
   renderTutoSlide();
 }
 function renderTutoSlide(){
-  const s=TUTO_SLIDES[_tutoIdx];
+  const s=TUTO_COURT[_tutoIdx];
   document.getElementById('tuto-contenu').innerHTML=`<div class="tuto-slide"><div class="tuto-emoji">${s.emoji}</div><h2>${s.titre}</h2>${s.html}</div>`;
-  for(let i=0;i<TUTO_SLIDES.length;i++)document.getElementById('tuto-dot-'+i).classList.toggle('actif',i===_tutoIdx);
-  document.getElementById('tuto-suivant').textContent=_tutoIdx===TUTO_SLIDES.length-1?'Terminer ✓':'Suivant →';
-  document.getElementById('tuto-passer').style.display=_tutoIdx===TUTO_SLIDES.length-1?'none':'block';
+  for(let i=0;i<TUTO_COURT.length;i++)document.getElementById('tuto-dot-'+i).classList.toggle('actif',i===_tutoIdx);
+  document.getElementById('tuto-suivant').textContent=_tutoIdx===TUTO_COURT.length-1?'Terminer ✓':'Suivant →';
+  document.getElementById('tuto-passer').style.display=_tutoIdx===TUTO_COURT.length-1?'none':'block';
 }
 function tutoSuivant(){
-  if(_tutoIdx<TUTO_SLIDES.length-1){_tutoIdx++;renderTutoSlide();}
+  if(_tutoIdx<TUTO_COURT.length-1){_tutoIdx++;renderTutoSlide();}
   else fermerTuto();
 }
 function fermerTuto(){
@@ -1373,7 +1459,7 @@ function fermerTuto(){
 }
 function ouvrirPageAide(){
   let h='';
-  TUTO_SLIDES.forEach(s=>{h+=`<div class="ban" style="margin-bottom:14px;padding:14px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
+  TUTO_SLIDES.forEach(s=>{h+=`<div class="ban aide-carte" style="margin-bottom:14px;padding:14px"><div style="font-size:1.6rem;margin-bottom:8px">${s.emoji}</div><h3 style="margin-bottom:8px">${s.titre}</h3>${s.html.replace(/<p>/g,'<p style="font-size:.85rem;color:var(--wf);opacity:.9;margin-bottom:8px">').replace(/<li>/g,'<li style="font-size:.85rem;color:var(--wf);opacity:.9">')}</div>`;});
   document.getElementById('contenu-aide').innerHTML=h;
   document.getElementById('ov-aide').classList.add('v');
 }
@@ -1887,10 +1973,10 @@ function affBanner(){
     <input type="date" onchange="verifierSoldeADate(this)" style="padding:4px 7px;border-radius:6px;border:none;background:rgba(255,255,255,.9);color:var(--tx);font-size:.72rem;font-family:'Inter',sans-serif"/>
     <strong></strong>
   </div>`;
-  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${new Date().toLocaleDateString('fr-FR')}</div>${ligPrev}${verifSolde}</div><div class="g3">
-    <div class="ms"><div class="v2"><span class="vreel vp">${fmtDec(revReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vp">${fmtDec(revProj)}</span><span class="vlbl">projeté</span></div><div class="l">Revenus ${E.annee}</div></div>
-    <div class="ms"><div class="v2"><span class="vreel vn">${fmtDec(depReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj vn">${fmtDec(depProj)}</span><span class="vlbl">projeté</span></div><div class="l">Dépenses ${E.annee}</div></div>
-    <div class="ms"><div class="v2"><span class="vreel ${rReel>=0?'vp':'vn'}">${fmtDec(rReel)}</span><span class="vlbl">au ${new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit'})}</span></div><div class="v2"><span class="vproj ${rProj>=0?'vp':'vn'}">${fmtDec(rProj)}</span><span class="vlbl">projeté</span></div><div class="l">Reste ${E.annee}</div></div>
+  const h=solde!==null?`<div class="ban-solde"><div class="lb">Solde compte courant</div><div class="gr">${fmtDec(solde)}</div><div class="su">Calculé au ${fmtDateCourte(today())}</div>${ligPrev}${verifSolde}</div><div class="g3">
+    <div class="ms"><div class="v2"><span class="vreel vp">${fmtDec(revReel)}</span><span class="vlbl">au ${fmtDateCourte(today(),false)}</span></div><div class="v2"><span class="vproj vp">${fmtDec(revProj)}</span><span class="vlbl">projeté</span></div><div class="l">Revenus ${E.annee}</div></div>
+    <div class="ms"><div class="v2"><span class="vreel vn">${fmtDec(depReel)}</span><span class="vlbl">au ${fmtDateCourte(today(),false)}</span></div><div class="v2"><span class="vproj vn">${fmtDec(depProj)}</span><span class="vlbl">projeté</span></div><div class="l">Dépenses ${E.annee}</div></div>
+    <div class="ms"><div class="v2"><span class="vreel ${rReel>=0?'vp':'vn'}">${fmtDec(rReel)}</span><span class="vlbl">au ${fmtDateCourte(today(),false)}</span></div><div class="v2"><span class="vproj ${rProj>=0?'vp':'vn'}">${fmtDec(rProj)}</span><span class="vlbl">projeté</span></div><div class="l">Reste ${E.annee}</div></div>
   </div>`:`<div class="ban-solde"><div class="lb">Solde</div><div class="gr">Non initialisé</div><button class="brec" onclick="ouvrirRecal()">+ Initialiser</button></div>`;
   ['ban-budget','ban-mois'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=h;});
 }
@@ -1993,6 +2079,10 @@ function affChecklistDemarrage(){
 }
 
 function affBudget(){
+  // Dans le tableau seulement, fmtDec suit l'option « montants arrondis ».
+  const fmtDec=ARRONDI_TABLEAU?fmtArrondi:fmtDecExact;
+  const btnArr=document.getElementById('btn-arrondi');
+  if(btnArr){btnArr.classList.toggle('on',ARRONDI_TABLEAU);btnArr.setAttribute('aria-pressed',ARRONDI_TABLEAU);}
   document.getElementById('ld-budget').style.display='none';document.getElementById('cv').style.display='block';
   const txA=E.tx.filter(t=>t.an===E.annee);
   const data={};MOIS.forEach((_,i)=>data[i]={rev:{},dep:{}});
@@ -2000,7 +2090,7 @@ function affBudget(){
   const nc=MOIS.length+2;
   // Mois en cours (uniquement si on consulte l'année réelle d'aujourd'hui)
   const moisActuel=(E.annee===new Date().getFullYear().toString())?new Date().getMonth():-1;
-  let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach((m,i)=>h+=`<th${i===moisActuel?' id="th-mois-actuel"':''}>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
+  let h=`<thead><tr><th>Catégorie${ARRONDI_TABLEAU?' <span style="opacity:.6;font-weight:400">(€)</span>':''}</th>`;MOIS.forEach((m,i)=>h+=`<th${i===moisActuel?' id="th-mois-actuel"':''}>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
 
   // ÉPARGNE
   h+=`<tr class="ch z-ep"><td colspan="${nc}"><span class="ch-lbl">Épargne (soldes)</span></td></tr>`;
@@ -2236,7 +2326,7 @@ function affGrille(){
     const r=rev-dep;const p=rev>0?Math.min((dep/rev)*100,100):0;
     const col=p>90?'var(--ro)':p>70?'var(--or2)':'var(--ve)';
     const ec=i===mA&&E.annee===new Date().getFullYear().toString();
-    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" onclick="ouvrirDm(${i})">${ec?'<span class="tag-actuel">En cours</span>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmtDec(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
+    h+=`<div class="cm${E.moisOuvert===i?' sel':''}" role="button" tabindex="0" aria-label="${n}" onclick="ouvrirDm(${i})">${ec?'<span class="tag-actuel">En cours</span>':''}<div class="cn">${n.substring(0,3)}</div><div class="cr" style="color:${r>0?'var(--ve)':r<0?'var(--ro)':'var(--txl)'}">${fmtDec(r)}</div><div class="cb"><div class="cbf" style="width:${p}%;background:${col}"></div></div></div>`;
   });
   document.getElementById('gm').innerHTML=h;
 }
@@ -2358,7 +2448,7 @@ function affDm(mi){
     h+=`<div class="sec"><div class="sec-ti"><span class="sn">À pointer</span></div>`;
     enAttente.forEach(p=>{
       const cl=p.type==='revenu'?'rev':'dep';
-      h+=`<div class="ltx prev-tx" onclick="ouvrirPointerProg('${p.id}')">
+      h+=`<div class="ltx prev-tx" role="button" tabindex="0" onclick="ouvrirPointerProg('${p.id}')">
         <div class="itx pr">⏳</div>
         <div class="inf"><div class="de it">${esc(p.nom)}</div><div class="so">${esc(p.cat)} · prévu</div></div>
         <div class="mtx prev-m">${fmtDec(montantProgPour(p,E.annee,mi)||0)}</div>
@@ -2408,13 +2498,14 @@ function affDm(mi){
 }
 
 function ltx(t){
-  const ep=E.prog.some(p=>p.cat===t.cat&&p.actif);
-  const ty=t.type==='revenu'?'re':ep?(t.pointe?'fo':'fa'):'va';
-  const ic={re:'↑',fo:'✓',fa:'⏳',va:'·'};
+  // Icône de la catégorie + pastille d'état : ✓ réalisée (pointée), ⏳ en attente.
+  // Une ligne réalisée s'affiche normalement ; une ligne en attente est en gris
+  // italique, comme les montants prévisionnels du tableau Budget.
   const cl=t.type==='revenu'?'rev':'dep';
   const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;
-  const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:''].filter(Boolean).join(' · ');
-  return `<div class="ltx${t.pointe?' pt':''}" onclick="ouvrirTx('${t.id}')"><div class="itx ${ty}">${ic[ty]}</div><div class="inf"><div class="de${ty==='fa'?' it':''}">${esc(t.desc||t.cat)}</div>${s?`<div class="so">${esc(s)}</div>`:''}</div><div class="mtx ${cl}">${fmtDec(m)}</div></div>`;
+  const s=[fmtDateCourte(t.date,false),t.pointe?'':'en attente',t.projet,t.note&&!t.note.startsWith('prog:')?t.note:''].filter(Boolean).join(' · ');
+  const etat=t.pointe?'Réalisée':'En attente';
+  return `<div class="ltx${t.pointe?'':' attente'}" role="button" tabindex="0" onclick="ouvrirTx('${t.id}')" aria-label="${esc(t.desc||t.cat)}, ${fmtDec(m)}, ${etat}"><div class="itx cat">${iconePourCategorie(t.cat)}<span class="etat ${t.pointe?'etat-ok':'etat-at'}" aria-hidden="true">${t.pointe?'✓':'⏳'}</span></div><div class="inf"><div class="de">${esc(t.desc||t.cat)}</div><div class="so">${esc(s)}</div></div><div class="mtx ${cl}">${fmtDec(m)}</div></div>`;
 }
 
 // ── POINTER UNE PROGRAMMÉE ──
@@ -2518,13 +2609,11 @@ function ouvrirTx(id){
   // impossible à modifier ou supprimer (cf. "Achat Pellet").
   const idProgLie=(t.note||'').startsWith('prog:')?t.note.slice(5):null;
   const ep=idProgLie&&E.prog.some(p=>p.id===idProgLie&&p.actif);
-  document.getElementById('ov-co').innerHTML=`
-    <div class="rd"><span class="la">Montant</span><span class="va">${fmtDec(m)}</span></div>
-    <div class="rd"><span class="la">Date</span><span class="va">${new Date(t.date).toLocaleDateString('fr-FR')}</span></div>
-    <div class="rd"><span class="la">Catégorie</span><span class="va">${esc(t.cat)}</span></div>
-    ${t.projet?`<div class="rd"><span class="la">Projet</span><span class="va">${esc(t.projet)}</span></div>`:''}
-    ${t.note&&!t.note.startsWith('prog:')?`<div class="rd"><span class="la">Note</span><span class="va">${esc(t.note)}</span></div>`:''}
-    <div class="rd"><span class="la">Statut</span><span class="va">${t.pointe?'✓ Réalisée':'En attente'}</span></div>`;
+  // Les champs modifiables ci-dessous montrent déjà montant, date, catégorie…
+  // On n'affiche en tête que le statut, qui n'y figure pas.
+  document.getElementById('ov-co').innerHTML=t.pointe
+    ?`<div class="statut-tx realisee">✓ Réalisée le ${fmtDateCourte(t.date)}</div>`
+    :`<div class="statut-tx attente">⏳ En attente — prévue le ${fmtDateCourte(t.date)}</div>`;
   document.getElementById('ov-de').value=t.desc||'';
   document.getElementById('ov-mo').value=m;
   document.getElementById('ov-da').value=t.date;
@@ -2896,9 +2985,6 @@ function ouvrirSaisieManuelle(){
 }
 let _saisieDateDefaut=null;
 function renderSaisieManuelle(infoLigne){
-  const cats=toutesCategoriesConnues();
-  const dlCats=cats.map(c=>`<option value="${c}">`).join('');
-  const crevOpts=CREV.map(c=>`<option value="${c}">`).join('');
   const nbAjoutees=E.aClasser.filter(t=>t._manuelle).length;
   const body=`
     <button class="bf" onclick="fOv('ov-saisie');if(E.moisOuvert!==null)affDm(E.moisOuvert)">✕</button>
@@ -2913,8 +2999,7 @@ function renderSaisieManuelle(infoLigne){
     <div class="ch3"><label>Montant (€)</label><input type="number" id="sm-montant" step="0.01" inputmode="decimal" placeholder="Ex : 45.30"/></div>
     <div class="ch3"><label>Description</label><input type="text" id="sm-desc" placeholder="Ex : Carrefour"/></div>
     <div class="ch3"><label>Date</label><input type="date" id="sm-date" value="${_saisieDateDefaut}"/></div>
-    <div class="ch3"><label>Catégorie</label><input type="text" id="sm-cat" list="sm-dl-cat" placeholder="Tapez ou choisissez"/><datalist id="sm-dl-cat">${dlCats}</datalist></div>
-    <datalist id="sm-dl-crev">${crevOpts}</datalist>
+    <div class="ch3"><label>Catégorie</label><select id="sm-cat"></select></div>
     <div id="sm-info" style="font-size:.82rem;min-height:18px;margin:4px 0 10px;color:var(--ve)">${infoLigne}</div>
     <button class="bp" onclick="validerSaisieLigne()">✓ Ajouter cette ligne</button>
     <button class="bs2" onclick="fOv('ov-saisie');if(E.moisOuvert!==null)affDm(E.moisOuvert)">Terminé</button>
@@ -2927,8 +3012,15 @@ function setSmType(t){
   _smType=t;
   const d=document.getElementById('sm-type-dep'),r=document.getElementById('sm-type-rev');
   if(!d||!r)return;
+  // Liste fermée (plus de saisie libre) : une faute de frappe créait une
+  // catégorie fantôme. Vide = suggestion automatique, confirmée dans « À classer ».
   const cat=document.getElementById('sm-cat');
-  if(cat)cat.setAttribute('list',t==='depense'?'sm-dl-cat':'sm-dl-crev');
+  if(cat){
+    const cats=t==='depense'?toutesCategoriesConnues():CREV;
+    const avant=cat.value;
+    cat.innerHTML=`<option value="">✨ Suggestion automatique</option>`+cats.map(c=>`<option value="${esc(c)}">${iconePourCategorie(c)} ${esc(c)}</option>`).join('');
+    if(cats.includes(avant))cat.value=avant;
+  }
   if(t==='depense'){d.style.background='var(--bl)';d.style.color='#fff';d.style.borderColor='var(--bl)';r.style.background='';r.style.color='';r.style.borderColor='';}
   else{r.style.background='var(--bl)';r.style.color='#fff';r.style.borderColor='var(--bl)';d.style.background='';d.style.color='';d.style.borderColor='';}
 }
@@ -2978,7 +3070,7 @@ function affListeAClasserMois(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div>
           <div style="font-weight:600;font-size:.9rem">${esc(t.desc)}</div>
-          <div style="font-size:.75rem;color:var(--txl)">${esc(t.date)} · ${t.type==='revenu'?'Revenu':'Dépense'}</div>
+          <div style="font-size:.75rem;color:var(--txl)">${fmtDateCourte(t.date)} · ${t.type==='revenu'?'Revenu':'Dépense'}</div>
         </div>
         <div style="font-weight:700;font-size:1.05rem;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'}">${fmtDec(t.montant)}</div>
       </div>
@@ -3257,11 +3349,22 @@ function affGrilleMontantsMois(p,anneeRef){
   E.montsMoisEnCours=monts.map(v=>(v!==null&&v!==undefined&&v>0)?v:null);
   const el=document.getElementById('prog-mois-sel');
   el.innerHTML='<p style="font-size:.72rem;color:var(--txl);margin-bottom:10px;grid-column:1/-1">Montants pour '+anneeRef+' (€) — laissez vide si non applicable</p>'+
+  // Raccourci : un loyer, un abonnement… ont souvent le même montant chaque mois.
+  '<div class="remplir-mois"><input type="number" id="pmois-tous" step="0.01" inputmode="decimal" placeholder="Montant" aria-label="Même montant pour les 12 mois"/><button type="button" class="bs2" onclick="remplirTousMoisProg()">↓ Même montant les 12 mois</button></div>'+
   MOIS.map((m,i)=>{
     const v=E.montsMoisEnCours[i]!==null?E.montsMoisEnCours[i]:'';
     // oninput met à jour immédiatement en mémoire à chaque frappe
     return '<div class="cii"><label>'+m+'</label><input type="number" id="pmois'+i+'" step="0.01" inputmode="decimal" placeholder="0.00" value="'+v+'" oninput="E.montsMoisEnCours['+i+']=this.value?parseFloat(this.value):null"/></div>';
   }).join('');
+}
+
+function remplirTousMoisProg(){
+  const v=parseFloat(document.getElementById('pmois-tous').value);
+  if(!(v>0)){toast('Indiquez un montant');return;}
+  for(let i=0;i<12;i++){
+    E.montsMoisEnCours[i]=v;
+    const inp=document.getElementById('pmois'+i);if(inp)inp.value=v;
+  }
 }
 
 async function saveProg(){
@@ -3487,7 +3590,7 @@ function chercher(q){
   if(tD>0)h+=`<span class="bt" style="background:var(--ro);color:#fff">Dépenses : ${fmtDec(tD)}</span>`;
   if(tR>0)h+=`<span class="bt" style="background:var(--ve);color:#fff">Revenus : ${fmtDec(tR)}</span>`;
   h+=`<div class="res-liste" style="margin-top:12px">`;
-  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" onclick="ouvrirTx('${t.id}')"><div class="ti">${esc(t.desc||t.cat)} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${new Date(t.date).toLocaleDateString('fr-FR')} · ${t.an}</span></div><div class="de2">${esc(s)}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
+  res.forEach(t=>{const m=t.pointe&&t.montant_reel?t.montant_reel:t.montant;const s=[t.projet,t.note&&!t.note.startsWith('prog:')?t.note:null,t.cat].filter(Boolean).join(' · ');h+=`<div class="cr3" role="button" tabindex="0" onclick="ouvrirTx('${t.id}')"><div class="ti">${esc(t.desc||t.cat)} <span style="font-weight:400;color:var(--txl);font-size:.75rem">${fmtDateCourte(t.date)}</span></div><div class="de2">${esc(s)}</div><div style="font-weight:600;margin-top:4px;color:${t.type==='revenu'?'var(--ve)':'var(--ro)'};">${t.type==='depense'?'−':'+'} ${fmtDec(m)}</div></div>`;});
   h+=`</div>`;el.innerHTML=h;
 }
 
@@ -3573,7 +3676,7 @@ function affProjets(){
         <div style="font-size:.85rem;font-weight:500">${esc(pj)}${badge}</div>
         <div style="font-size:.72rem;color:var(--txl)">${aVenir?'Pas encore de mouvement':'Dépensé : '+fmtDec(tot)}${budget?` / ${fmtDec(budget)}`:''}${collecte>0?` · 💶 Collecté : ${fmtDec(collecte)}`:''}</div>
       </div>
-      <input type="number" placeholder="Budget total" value="${budget||''}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${escJs(pj)}',this.value)" style="width:84px;padding:6px 7px;border-radius:7px;border:1.5px solid var(--bo);font-family:Inter,sans-serif;font-size:.72rem;outline:none;text-align:right"/>
+      <input type="number" inputmode="decimal" placeholder="Budget €" value="${budget||''}" aria-label="Budget total du projet ${esc(pj)}" title="Budget total pour ce projet, toutes dates et catégories confondues" onchange="definirBudgetProjet('${escJs(pj)}',this.value)" style="width:120px;padding:9px 10px;border-radius:9px;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);font-family:Inter,sans-serif;font-size:.9rem;outline:none;text-align:right"/>
       <button onclick="masquerProjetDepuisListe('${escJs(pj)}')" aria-label="Retirer ce projet de la liste" title="Retirer de la liste (l'historique reste retrouvable via Recherche)" style="background:none;border:none;color:var(--txl);font-size:1rem;cursor:pointer;padding:4px;min-width:28px;min-height:28px">🗑</button>
     </div>`;
   }).join('');
