@@ -1592,6 +1592,14 @@ async function ecrire(p,v){
     await gapi.client.sheets.spreadsheets.values.update({spreadsheetId:E.sid,range:p,valueInputOption:'RAW',resource:{values:v}});
   });
 }
+// Une programmée a une ligne par (id × année × mois) dans l'onglet Prog. On retrouve
+// la ligne par ses colonnes (id de base, année, mois) et non par son identifiant :
+// les anciennes lignes s'appellent « id_mX » (sans l'année), ce qui faisait qu'enregistrer
+// les montants d'une autre année écrasait — ou supprimait — ceux de l'année d'origine.
+function idxLigneProg(rows,id,annee,mi){
+  return rows.findIndex(r=>r[0]&&r[0].split('_m')[0]===id&&String(r[4])===String(annee)&&parseInt(r[5],10)===mi);
+}
+function idLigneProg(id,annee,mi){return `${id}_m${mi}_${annee}`;}
 async function ajouter(o,v){
   // Utiliser A:A comme ancre pour forcer l'insertion depuis la colonne A
   return appelAvecRetry(async()=>{
@@ -2571,8 +2579,8 @@ async function corrigerOccurrenceProg(pid){
   if(newCat!==p.cat)p.cat=newCat; // la catégorie est globale à la programmée, pas par mois
   try{
     const rows=await lire('Prog!A2:I');
-    const lid=`${pid}_m${E.moisOuvert}`;
-    const idx=rows.findIndex(r=>r[0]===lid);
+    const idx=idxLigneProg(rows,pid,anneeRef,E.moisOuvert);
+    const lid=idx>=0?rows[idx][0]:idLigneProg(pid,anneeRef,E.moisOuvert);
     const ligne=[lid,p.nom,p.type,newCat,anneeRef,E.moisOuvert,newMontant,'TRUE',p.recurAns||''];
     if(idx>=0)await ecrire(`Prog!A${idx+2}:I${idx+2}`,[ligne]);
     else await ajouter('Prog',ligne);
@@ -3407,13 +3415,12 @@ async function saveProg(){
     // JAMAIS de suppression
     const rows=await lire('Prog!A2:I');
     for(let mi=0;mi<12;mi++){
-      const lid=`${id}_m${mi}`;
       const val=montsMois[mi];
-      const idxExist=rows.findIndex(r=>r[0]===lid);
+      const idxExist=idxLigneProg(rows,id,anneeRef,mi);
       if(idxExist>=0){
-        // Mettre à jour la ligne existante
+        // Mettre à jour la ligne existante (en gardant son identifiant d'origine)
         if(val!==null){
-          await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[[lid,nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']]);
+          await ecrire(`Prog!A${idxExist+2}:I${idxExist+2}`,[[rows[idxExist][0],nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']]);
         } else {
           // Supprimer réellement cette ligne précise (montant nul = pas prévu ce
           // mois), pas juste vider son contenu — une ligne vidée mais laissée en
@@ -3426,7 +3433,7 @@ async function saveProg(){
         }
       } else if(val!==null){
         // Ajouter nouvelle ligne
-        await ajouter('Prog',[lid,nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']);
+        await ajouter('Prog',[idLigneProg(id,anneeRef,mi),nom,PROG_TYPE,cat,anneeRef,mi,val,'TRUE',recurAns||'']);
       }
     }
 
