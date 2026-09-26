@@ -132,7 +132,11 @@
     .dm-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:11px}
     .dm-fleche{background:var(--wh);border:1.5px solid var(--bo);border-radius:50%;width:32px;height:32px;font-size:.85rem;color:var(--tx);cursor:pointer;flex-shrink:0}
     .dm-fleche:hover{background:var(--fo)}
-    .barre-edition-budget{display:flex;justify-content:flex-end;gap:8px;padding:6px 0 10px}
+    .barre-edition-budget{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:6px 0 10px}
+    /* Taille du tableau réglable sur place, sans passer par Réglages. */
+    .zoom-ta{display:flex;align-items:center;gap:6px;margin-right:auto}
+    .zoom-ta .bedit{min-width:44px;padding-left:10px;padding-right:10px}
+    .zoom-ta .lbl-taille-tableau{font-size:.78rem;color:var(--txl);min-width:36px;text-align:center}
     .bedit{padding:7px 15px;border-radius:20px;font-size:.82rem;font-weight:600;border:1.5px solid var(--bo);background:var(--wh);color:var(--tx);cursor:pointer}
     .bedit.on{background:var(--or);color:#fff;border-color:var(--or)}
     .reord{display:inline-flex;flex-direction:column;gap:1px;margin-right:6px;vertical-align:middle}
@@ -143,12 +147,12 @@
     tr.ligne-ajout-cat td{font-style:italic;color:var(--or);cursor:pointer;padding-left:30px!important}
     tr.ligne-ajout-pole td{font-weight:600;color:var(--or);text-align:center;cursor:pointer;background:rgba(232,183,74,.08)}
     :root{--ta-fs:1}
-    .ta{width:100%;min-width:760px;border-collapse:collapse;font-size:calc(.75rem * var(--ta-fs));background:var(--wh)}
-    .ta th{background:var(--bl);color:var(--wf);padding:10px 9px;text-align:right;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2}
-    .ta th:first-child{text-align:left;min-width:160px;position:sticky;left:0;top:0;z-index:3}
-    .ta td{padding:9px 9px;text-align:right;border-bottom:1px solid var(--bo)}
+    .ta{width:100%;min-width:calc(760px * var(--ta-fs));border-collapse:collapse;font-size:calc(.75rem * var(--ta-fs));background:var(--wh)}
+    .ta th{background:var(--bl);color:var(--wf);padding:.83em .75em;text-align:right;font-weight:500;white-space:nowrap;position:sticky;top:0;z-index:2}
+    .ta th:first-child{text-align:left;min-width:13.5em;position:sticky;left:0;top:0;z-index:3}
+    .ta td{padding:.75em;text-align:right;border-bottom:1px solid var(--bo)}
     .ta td:first-child{text-align:left;position:sticky;left:0;background:var(--wh);z-index:1}
-    .ta tr.lr td{font-weight:700;font-size:calc(.78rem * var(--ta-fs));padding:11px 9px}
+    .ta tr.lr td{font-weight:700;font-size:calc(.78rem * var(--ta-fs));padding:.9em .72em}
     .ta .tp{color:var(--ve)}.ta .tn{color:var(--ro)}
     .ta .prev{color:var(--txl);font-style:italic}
     .ta tr.lr td.prev{font-style:italic;color:inherit}
@@ -208,14 +212,18 @@
     /* Texte noir/gris (pas vert/rouge) pour toutes les lignes de pôle, cohérent avec l'accessibilité déjà en place */
     .ta tr.z-p0 td.tn,.ta tr.z-p1 td.tn,.ta tr.z-p2 td.tn,.ta tr.z-p3 td.tn,.ta tr.z-p4 td.tn,.ta tr.z-p5 td.tn,.ta tr.z-pa td.tn{color:var(--tx);font-style:normal}
     .ta tr.z-p0.lt td.tn,.ta tr.z-p1.lt td.tn,.ta tr.z-p2.lt td.tn,.ta tr.z-p3.lt td.tn,.ta tr.z-p4.lt td.tn,.ta tr.z-p5.lt td.tn,.ta tr.z-pa.lt td.tn{color:var(--tx);font-weight:700}
-    .ta tr.ch td{font-weight:600;font-size:calc(.69rem * var(--ta-fs));text-transform:uppercase;letter-spacing:.06em;padding:9px 9px}
+    .ta tr.ch td{font-weight:600;font-size:calc(.69rem * var(--ta-fs));text-transform:uppercase;letter-spacing:.06em;padding:.8em .8em}
     .ta tr.ch td:first-child{border-radius:10px 0 0 0}
     .ta tr.ch td:last-child{border-radius:0 10px 0 0}
-    .ta tr.lt td{font-weight:700;padding:10px 9px}
+    /* La cellule de titre de section couvre toute la ligne (colspan) : elle ne peut
+       pas « coller » à gauche. On fait donc coller son libellé, qui reste lisible
+       quand on fait défiler le tableau horizontalement. */
+    .ta tr.ch td .ch-lbl{position:sticky;left:.8em;display:inline-block}
+    .ta tr.lt td{font-weight:700;padding:.83em .75em}
     .ta tr.lt td:first-child{border-radius:0 0 0 10px}
     .ta tr.lt td:last-child{border-radius:0 0 10px 0}
     .ta tr.lr{background:var(--lr-bg)!important}
-    .ta tr.lr td{background:var(--lr-bg)!important;font-family:'DM Serif Display',serif;font-weight:400;font-size:calc(.92rem * var(--ta-fs));padding:10px 9px;border-top:2px solid var(--lr-border)}
+    .ta tr.lr td{background:var(--lr-bg)!important;font-family:'DM Serif Display',serif;font-weight:400;font-size:calc(.92rem * var(--ta-fs));padding:.7em .62em;border-top:2px solid var(--lr-border)}
     .ta tr.lr.compte td{background:var(--lr-bg-compte)!important}
     .ta tr.esp td{background:var(--fo)!important;border:none;padding:0;height:14px}
     .ta tbody tr.cat-row{cursor:pointer}
@@ -353,6 +361,11 @@
     .vi .bp,.vi .bs2{max-width:280px;margin-left:auto;margin-right:auto}
     @media(max-width:380px){.gm{grid-template-columns:repeat(2,1fr)}.ban .gr{font-size:1.6rem}}
     @media(max-width:699px){
+      /* Barre du tableau Budget sur téléphone : taille du tableau sur sa propre ligne,
+         puis les 4 actions sur une ligne de largeur égale (elles débordaient de l'écran). */
+      .barre-edition-budget{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+      .barre-edition-budget .zoom-ta{grid-column:1/-1;margin-right:0}
+      .barre-edition-budget>.bedit{padding:8px 4px;font-size:.74rem;border-radius:12px;white-space:normal;line-height:1.25}
       .ban .g3{flex-direction:column;gap:13px;align-items:stretch}
       .ban .ms{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 16px}
       .ban .ms .l{order:-1;width:100%;opacity:.6;margin-top:0;margin-bottom:1px}
@@ -449,6 +462,15 @@
       .bp{padding:15px;font-size:1rem}
       .bs2,.bd{padding:13px;font-size:.92rem}
       .saisie-rapide{padding:20px}
+      /* Formulaire de saisie en haut du mois, sur toute la largeur : champs répartis
+         sur deux lignes (Description | Montant | Date, puis Catégorie | Projet | Note). */
+      .saisie-rapide{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));column-gap:12px;align-items:end}
+      .saisie-rapide>*{grid-column:1/-1}
+      .saisie-rapide>.sr-de,.saisie-rapide>.sr-mo-da{grid-column:span 3}
+      .saisie-rapide>.sr-ca,.saisie-rapide>.sr-pr,.saisie-rapide>.sr-no{grid-column:span 2}
+      .saisie-rapide>.bp,.saisie-rapide>.bs2{grid-column:span 3;margin-top:4px}
+      .saisie-rapide .g2{align-self:end}
+      .saisie-rapide>.bp,.saisie-rapide>.bs2{align-self:stretch}
       .saisie-rapide h3{font-size:.95rem}
       .si{padding:20px}
       .si h3{font-size:.95rem}
@@ -457,11 +479,11 @@
          continue de s'appliquer par-dessus via --ta-fs), et lignes plus hautes pour
          viser la bonne cellule au doigt. */
       .ta{font-size:calc(.82rem * var(--ta-fs))}
-      .ta td{padding:11px 10px}
-      .ta th{padding:12px 10px}
+      .ta td{padding:.84em .76em}
+      .ta th{padding:.9em .76em}
       .ta tr.ch td{font-size:calc(.74rem * var(--ta-fs))}
       .ta tr.lr td{font-size:calc(1rem * var(--ta-fs))}
-      .ta th:first-child{min-width:200px}
+      .ta th:first-child{min-width:15em}
       .fab{width:60px;height:60px;font-size:1.6rem;right:28px;bottom:28px}
       .toast{bottom:104px;font-size:.88rem;padding:12px 18px}
 
@@ -481,18 +503,7 @@
     @media(min-width:1000px){
       #o-mois,#o-recherche,#o-reglages{max-width:1180px}
       .gm{grid-template-columns:repeat(6,1fr)}
-      /* Détail d'un mois sur deux colonnes : résumé + actions + formulaire de saisie
-         à gauche (reste en vue pendant qu'on défile), transactions à droite — on voit
-         la ligne apparaître dans la liste au moment où on l'enregistre. #cdm passe en
-         display:contents pour que ses deux colonnes et le formulaire (#saisie-rapide,
-         hors de #cdm) partagent la même grille. */
-      .dm.v{display:grid;grid-template-columns:minmax(360px,420px) minmax(0,1fr);column-gap:24px;align-items:start}
-      .dm .bret{grid-column:1/-1}
-      #cdm{display:contents}
-      .dm-col-g{grid-column:1;grid-row:2}
-      #saisie-rapide{grid-column:1;grid-row:3}
-      .dm-col-d{grid-column:2;grid-row:2/span 2;min-width:0}
-      .dm-actions{grid-template-columns:1fr}
+      .dm-actions{grid-template-columns:repeat(4,1fr)}
       /* Réglages : deux colonnes de cartes plutôt qu'une longue pile étirée. */
       #o-reglages{columns:2;column-gap:18px}
       #o-reglages>*{break-inside:avoid}
@@ -592,6 +603,11 @@
         <div id="checklist-demarrage"></div>
         <div class="ban" id="ban-budget"></div>
         <div class="barre-edition-budget">
+          <div class="zoom-ta" role="group" aria-label="Taille du tableau">
+            <button class="bedit" onclick="ajusterTailleTableau(-1)" aria-label="Réduire le tableau">A−</button>
+            <span class="lbl-taille-tableau">100%</span>
+            <button class="bedit" onclick="ajusterTailleTableau(1)" aria-label="Agrandir le tableau">A+</button>
+          </div>
           <button class="bedit" onclick="ouvrirListeProjets()">🎯 Projets</button>
           <button class="bedit" onclick="ouvrirListeProg()">🔄 Programmées</button>
           <button class="bedit" onclick="ouvrirRecal()">⚡ Recaler</button>
@@ -609,8 +625,8 @@
       </div>
       <div class="dm" id="dm">
         <button class="bret" onclick="fermerDm()">← Tous les mois</button>
-        <div id="cdm"></div>
-        <!-- Saisie rapide intégrée -->
+        <!-- Saisie rapide intégrée : en haut du détail, visible dès l'appui sur « + »
+             sans avoir à défiler sous la liste des transactions. -->
         <div class="saisie-rapide" id="saisie-rapide" style="display:none">
           <h3>+ Nouvelle transaction</h3>
           <div class="tts">
@@ -619,8 +635,8 @@
           </div>
           <div class="er" id="er-s"></div>
           <div class="ok" id="ok-s"></div>
-          <div class="ch3"><label>Description <span style="color:var(--txl);font-weight:400">(optionnel)</span></label><input type="text" id="s-de" placeholder="Ex : Courses, Restaurant..."/></div>
-          <div class="g2">
+          <div class="ch3 sr-de"><label>Description <span style="color:var(--txl);font-weight:400">(optionnel)</span></label><input type="text" id="s-de" placeholder="Ex : Courses, Restaurant..."/></div>
+          <div class="g2 sr-mo-da">
             <div class="ch3 cm3"><label>Montant *</label><input type="number" id="s-mo" placeholder="0.00" step="0.01" inputmode="decimal"/></div>
             <div class="ch3"><label>Date <span style="color:var(--txl);font-weight:400">(aujourd'hui par défaut)</span></label><input type="date" id="s-da" oninput="checkDateFutureSaisie()"/></div>
           </div>
@@ -631,12 +647,13 @@
             </div>
             <p style="font-size:.7rem;color:var(--txl);margin:5px 0 0">Cette date est dans le futur — cochez si cet élément revient régulièrement, pour le programmer une fois pour toutes.</p>
           </div>
-          <div class="ch3"><label>Catégorie</label><select id="s-ca"></select></div>
-          <div class="ch3"><label>Projet</label><select id="s-pr" onchange="gererChoixProjet(this)"></select></div>
-          <div class="ch3"><label>Note</label><input type="text" id="s-no" placeholder="Détail..."/></div>
+          <div class="ch3 sr-ca"><label>Catégorie</label><select id="s-ca"></select></div>
+          <div class="ch3 sr-pr"><label>Projet</label><select id="s-pr" onchange="gererChoixProjet(this)"></select></div>
+          <div class="ch3 sr-no"><label>Note</label><input type="text" id="s-no" placeholder="Détail..."/></div>
           <button class="bp" id="btn-save-tx" onclick="saveTx()">Enregistrer</button>
           <button class="bs2" onclick="fermerSaisie()">Annuler</button>
         </div>
+        <div id="cdm"></div>
       </div>
     </div>
 
@@ -961,22 +978,24 @@ function toggleDark(){
 }
 
 // ── TAILLE DE TEXTE DU TABLEAU BUDGET ──
-const PALIERS_TAILLE=[85,92,100,110,120,130];
+const PALIERS_TAILLE=[50,55,60,65,70,75,80,85,92,100,110,120,130];
 function appliquerTailleTableauInitiale(){
   const sauve=parseInt(localStorage.getItem('taille-tableau'))||100;
   document.documentElement.style.setProperty('--ta-fs', sauve/100);
-  const lbl=document.getElementById('lbl-taille-tableau');
-  if(lbl)lbl.textContent=sauve+'%';
+  majLibellesTailleTableau(sauve);
+}
+function majLibellesTailleTableau(pct){
+  document.querySelectorAll('#lbl-taille-tableau,.lbl-taille-tableau').forEach(l=>l.textContent=pct+'%');
 }
 function ajusterTailleTableau(direction){
   const actuel=parseInt(localStorage.getItem('taille-tableau'))||100;
   let idx=PALIERS_TAILLE.indexOf(actuel);
-  if(idx===-1)idx=2; // fallback sur 100%
+  if(idx===-1)idx=PALIERS_TAILLE.indexOf(100); // fallback sur 100%
   idx=Math.max(0,Math.min(PALIERS_TAILLE.length-1,idx+direction));
   const nouvelle=PALIERS_TAILLE[idx];
   localStorage.setItem('taille-tableau',nouvelle);
   document.documentElement.style.setProperty('--ta-fs', nouvelle/100);
-  document.getElementById('lbl-taille-tableau').textContent=nouvelle+'%';
+  majLibellesTailleTableau(nouvelle);
 }
 appliquerTailleTableauInitiale();
 appliquerThemeInitial();
@@ -1982,7 +2001,7 @@ function affBudget(){
   let h=`<thead><tr><th>Catégorie</th>`;MOIS.forEach((m,i)=>h+=`<th${i===moisActuel?' id="th-mois-actuel"':''}>${m.substring(0,3)}</th>`);h+=`<th>Total</th></tr></thead><tbody>`;
 
   // ÉPARGNE
-  h+=`<tr class="ch z-ep"><td colspan="${nc}">Épargne (soldes)</td></tr>`;
+  h+=`<tr class="ch z-ep"><td colspan="${nc}"><span class="ch-lbl">Épargne (soldes)</span></td></tr>`;
   LIVRETS.forEach((liv,idxLiv)=>{
     const ep=E.epargne.find(e=>e.livret===liv);
     const ctrlLiv=E.editionBudget?
@@ -2027,7 +2046,7 @@ function affBudget(){
   const cRBrut=[...new Set([...txA.filter(t=>t.type==='revenu').map(t=>t.cat),...E.prog.filter(p=>p.type==='revenu'&&p.actif).map(p=>p.cat)])];
   const aucuneRevenuSaisi=!cRBrut.length;
   const cR=aucuneRevenuSaisi?[...CREV]:[...CREV.filter(c=>cRBrut.includes(c)),...cRBrut.filter(c=>!CREV.includes(c))];
-  h+=`<tr class="ch z-rv"><td colspan="${nc}">Revenus</td></tr>`;
+  h+=`<tr class="ch z-rv"><td colspan="${nc}"><span class="ch-lbl">Revenus</span></td></tr>`;
   // Tableau pour cumuler les totaux par mois (réels + prévisionnels)
   const totRevMois=Array(12).fill(0);
   cR.forEach(cat=>{let tot=0;
@@ -2082,7 +2101,7 @@ function affBudget(){
     const ctrlPole=(E.editionBudget&&!pole.auto)?
       `<span class="reord"><button onclick="deplacerPole(${idxPole},-1)" aria-label="Monter">▲</button><button onclick="deplacerPole(${idxPole},1)" aria-label="Descendre">▼</button></span>
        <span class="ic-edit-pole" onclick="renommerPoleDepuisBudget(${idxPole})">✏️</span><span class="ic-edit-pole" onclick="supprimerPoleDepuisBudget(${idxPole})">🗑️</span>`:'';
-    h+=`<tr class="ch ${zcls}"><td colspan="${nc}">${esc(pole.nom)}${ctrlPole}</td></tr>`;
+    h+=`<tr class="ch ${zcls}"><td colspan="${nc}"><span class="ch-lbl">${esc(pole.nom)}${ctrlPole}</span></td></tr>`;
     catsDuPole.forEach(c=>{let tot=0;
       // pole.auto ("Autres / Non classé") n'existe pas dans POLES : POLES[idxPole]
       // serait hors bornes et ferait planter tout le rendu du tableau Budget dès
@@ -2298,9 +2317,7 @@ function affDm(mi){
   const catsCouvertes=new Set(txM.filter(t=>t.pointe).map(t=>t.cat));
   const pointeesIds=new Set([...pointeesParNote,...E.prog.filter(p=>catsCouvertes.has(p.cat)).map(p=>p.id)]);
 
-  // Deux colonnes sur tablette en paysage (voir CSS .dm-col-g/.dm-col-d) :
-  // à gauche le résumé du mois et les actions, à droite la liste des lignes.
-  let h=`<div class="dm-col-g"><div class="dm-nav"><button class="dm-fleche" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;">${MOIS[mi]} ${E.annee}</h2><button class="dm-fleche" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>`;
+  let h=`<div class="dm-nav"><button class="dm-fleche" onclick="moisPrecedent()" aria-label="Mois précédent">◀</button><h2 style="font-family:'DM Serif Display',serif;font-size:1.15rem;margin:0;">${MOIS[mi]} ${E.annee}</h2><button class="dm-fleche" onclick="moisSuivant()" aria-label="Mois suivant">▶</button></div>`;
   const couleurEtat=sF!==null?(sF>=0?'vp':'vn'):'';
   h+=`<div class="ban" style="margin-bottom:11px;">
     <div class="g3">
@@ -2326,7 +2343,7 @@ function affDm(mi){
     </div>
     <div id="msg-import-releve" style="display:none;margin-top:10px;padding:10px 13px;border-radius:10px;font-size:.82rem"></div>
     <div id="bloc-import-totaux" style="display:none;margin-top:10px"></div>
-  </div></div><div class="dm-col-d">`;
+  </div>`;
 
   // Dépenses à classer (extraites d'un relevé, en attente de validation)
   if(E.aClasser&&E.aClasser.length){
@@ -2384,7 +2401,6 @@ function affDm(mi){
     <button class="bp" style="margin-top:0" onclick="ouvrirSaisie()">+ Ajouter ma première dépense</button>
     <button class="bs2" style="font-size:.82rem" onclick="document.getElementById('inp-photo-releve').click()">📄 Importer un relevé PDF</button>
   </div>`;
-  h+=`</div>`;
   document.getElementById('cdm').innerHTML=h;
   affListeAClasserMois();
 }
@@ -3049,7 +3065,8 @@ function ouvrirSaisie(){
     aller('mois');
     if(E.moisOuvert===null)ouvrirDm(new Date().getMonth());
   }
-  document.getElementById('saisie-rapide').style.display='block';
+  // '' plutôt que 'block' : laisse la feuille de style choisir (grille sur tablette).
+  document.getElementById('saisie-rapide').style.display='';
   document.getElementById('saisie-rapide').scrollIntoView({behavior:'smooth'});
   // Pré-remplir avec aujourd'hui pour une saisie en un minimum de gestes,
   // sauf si une date a déjà été définie par un autre flux (ex: modification d'une ligne importée)
